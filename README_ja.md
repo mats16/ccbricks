@@ -82,5 +82,6 @@ claude --help
 
 ## ライセンス
 
-MIT（必要に応じて更新）
+Apache License 2.0。詳細は `LICENSE` を参照してください。
+<https://www.apache.org/licenses/LICENSE-2.0>
 

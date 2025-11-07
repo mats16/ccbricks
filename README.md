@@ -82,4 +82,5 @@ claude --help
 
 ## License
 
-MIT (update if necessary)
+Apache License 2.0. See the `LICENSE` file for details.
+<https://www.apache.org/licenses/LICENSE-2.0>
