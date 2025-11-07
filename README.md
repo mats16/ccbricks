@@ -11,9 +11,6 @@ This repository provides a minimal setup to deploy and provision Claude Code in 
 ## Prerequisites
 
 - Databricks CLI v0.205+ (Bundles enabled)
-- Unity Catalog enabled
-- A writable Volume (catalog/schema/volume) available
-- Artifact allowlists configured in Unity Catalog (to allow writing to Volumes)
 - A model serving endpoint named `anthropic` (proxy for Claude)
 - The cluster can access `DATABRICKS_HOST` and `DATABRICKS_TOKEN`
   - Use cluster environment variables or Secrets as needed
@@ -22,30 +19,25 @@ This repository provides a minimal setup to deploy and provision Claude Code in 
 
 The following variables are used in `databricks.yml`:
 
-- `catalog`: The catalog to use (e.g., `main`)
-- `schema`: The schema to use (e.g., `claude_code`)
-- `volume`: The volume to use (e.g., `init_scripts`)
+- `node_type_id`: The node type to use for the cluster (e.g., `m6i.2xlarge`)
 
-Artifacts are placed under `/Volumes/${catalog}/${schema}/${volume}`.
+Artifacts are uploaded to the workspace path automatically during bundle deployment.
 
 ## Quickstart
 
-1) Configure artifact allowlists  
-Add Volumes to the allowlist in Unity Catalog to enable artifact deployment.
-
-2) Set variables  
+1) Set variables (optional)
 Edit `targets.prod.variables` in `databricks.yml`, or override at CLI runtime.
 
-3) Deploy
+2) Deploy
 
 ```bash
 databricks bundle deploy --profile <profile_name>
 ```
 
-4) Create/Start the cluster  
-The single-node cluster `claude-code` defined in `resources/cluster.yml` will be created. Start it from the UI or CLI.
+3) Create/Start the cluster
+The single-node cluster `claude-code` defined in `resources/cluster.yml` will be created with `SINGLE_USER` data security mode. Start it from the UI or CLI.
 
-5) Verify (e.g., in a notebook)
+4) Verify (e.g., in a notebook)
 
 ```bash
 %sh
@@ -62,23 +54,27 @@ claude --help
   - `ANTHROPIC_BASE_URL=$DATABRICKS_HOST/serving-endpoints/anthropic`
   - `ANTHROPIC_AUTH_TOKEN=$DATABRICKS_TOKEN`
 
+## Cluster Configuration
+
+The cluster is configured with:
+- `SINGLE_USER` data security mode for simplified setup and maximum compatibility
+- Workspace-based init script (automatically uploaded during deployment)
+- Single-node architecture optimized for Claude Code usage
+
 ## Troubleshooting
 
-- Fails to write to Volumes  
-  - Confirm artifact allowlists are correctly configured
-  - Ensure `catalog/schema/volume` exist
-
-- `claude` command not found  
+- `claude` command not found
   - After cluster restart, run `%sh which claude` to check PATH
   - Verify init script completion in cluster event logs
 
-- Authentication errors  
+- Authentication errors
   - Ensure `DATABRICKS_HOST`/`DATABRICKS_TOKEN` are available to the cluster runtime
+  - Verify the `anthropic` serving endpoint exists and is accessible
 
 ## Cleanup
 
-- Delete the cluster
-- Remove artifacts from the Volume if needed
+- Delete the cluster from the workspace
+- Bundle artifacts in the workspace will be automatically removed when the cluster is deleted
 
 ## License
 

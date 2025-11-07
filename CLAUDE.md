@@ -9,9 +9,6 @@ This is a Databricks asset bundle (DAB) project that deploys Claude Code to Data
 ## Prerequisites
 
 - Databricks CLI v0.205+ with Bundles enabled
-- Unity Catalog enabled in the workspace
-- A writable Volume (catalog/schema/volume) available
-- Artifact allowlists configured in Unity Catalog to allow writing to Volumes
 - A model serving endpoint named `anthropic` configured as a proxy for Claude
 - The cluster must have access to `DATABRICKS_HOST` and `DATABRICKS_TOKEN` environment variables
 
@@ -26,15 +23,13 @@ This is a Databricks asset bundle (DAB) project that deploys Claude Code to Data
 ### Key Components
 
 **Variables Configuration:**
-The bundle uses three variables defined in [databricks.yml](databricks.yml):
-- `catalog`: Unity Catalog catalog name (default: `main`)
-- `schema`: Schema name within the catalog (default: `claude_code`)
-- `volume`: Volume name for artifacts (default: `init_scripts`)
+The bundle uses one variable defined in [databricks.yml](databricks.yml):
+- `node_type_id`: The node type to use for the cluster (default: `m6i.2xlarge`)
 
-Artifacts are deployed to `/Volumes/${catalog}/${schema}/${volume}`. Override these by editing `targets.prod.variables` or passing CLI arguments.
+Override this by editing `targets.prod.variables` or passing CLI arguments with `--var="node_type_id=<value>"`.
 
 **Claude Code Installation Flow:**
-1. Init script runs during cluster startup from Unity Catalog Volumes path
+1. Init script runs during cluster startup from Workspace files path
 2. Downloads and installs Claude Code via `curl -fsSL https://claude.ai/install.sh | bash -s stable`
 3. Copies binaries from `$HOME/.local/share/claude` to `/usr/local/share/claude` for system-wide access
 4. Creates symlink in `/usr/local/bin/claude` pointing to the installed version
@@ -47,29 +42,28 @@ The init script configures Claude Code to use Databricks-hosted Claude by settin
 - `ANTHROPIC_AUTH_TOKEN=$DATABRICKS_TOKEN`
 
 **Cluster Configuration:**
-- Single-node cluster named `claude-code` using `m6i.2xlarge` instance type
+- Single-node cluster named `claude-code` with configurable node type (default: `m6i.2xlarge`)
 - Spark 16.4.x with Scala 2.12
-- `USER_ISOLATION` data security mode (allows multi-user sharing with isolation)
+- `SINGLE_USER` data security mode for simplified setup and maximum compatibility
 - Auto-terminates after 60 minutes of inactivity
-- Init script sourced from Unity Catalog Volumes (alternative Workspace path commented out in [resources/cluster.yml](resources/cluster.yml:18-19))
-
-**Init Script Deployment:**
-The init script can be sourced from two locations:
-- **Unity Catalog Volumes** (active): `/Volumes/${catalog}/${schema}/${volume}/.internal/install-claude-code.sh`
-- **Workspace files** (commented): `/Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}/files/src/install-claude-code.sh`
-
-The Volumes approach is preferred for production; Workspace approach can be used for testing.
+- Init script sourced from Workspace files (automatically uploaded during bundle deployment)
 
 ## Common Commands
 
-### Deploy the bundle to Databricks
+### Validate bundle configuration
+```sh
+databricks bundle validate
+```
+
+### Deploy the bundle
 ```sh
 databricks bundle deploy
 ```
+Add `--profile <profile_name>` if using a specific Databricks profile.
 
-### Validate bundle configuration before deploying
+### Override node type at deployment
 ```sh
-databricks bundle validate
+databricks bundle deploy --var="node_type_id=m5.xlarge"
 ```
 
 ### Destroy deployed resources
@@ -77,14 +71,37 @@ databricks bundle validate
 databricks bundle destroy
 ```
 
+### Verify Claude Code installation
+After cluster starts, run in a notebook:
+```sh
+%sh
+claude --version
+claude --help
+```
+
 ## Development Workflow
 
-When modifying cluster configurations in `resources/cluster.yml`, note that:
-- The init script path must point to a valid location (either Volumes or Workspace)
-- If using Workspace files, the script will be automatically uploaded during bundle deployment
-- If using Volumes, manually upload `src/install-claude-code.sh` to the specified Volume path before deployment
+**Modifying cluster configuration** ([resources/cluster.yml](resources/cluster.yml)):
+- The init script is automatically uploaded during bundle deployment
+- After changes, run `databricks bundle deploy` to update the cluster definition
 
-When modifying the init script `src/install-claude-code.sh`:
-- Changes to environment variables will only take effect on new cluster starts
-- The script must be executable and have proper error handling (`set -e`)
-- If using Volumes for the init script, re-upload the script after changes and restart the cluster
+**Modifying the init script** ([src/install-claude-code.sh](src/install-claude-code.sh)):
+- Environment variable changes only take effect on new cluster starts
+- Script must be executable with proper error handling (`set -e` at the top)
+- After changes, run `databricks bundle deploy` and restart the cluster
+
+**Changing node type:**
+- Edit `node_type_id` in [databricks.yml](databricks.yml) under `targets.prod.variables`
+- Or override at deployment time: `databricks bundle deploy --var="node_type_id=m5.xlarge"`
+
+## Troubleshooting
+
+**`claude` command not found:**
+- Run `%sh which claude` in a notebook to check if `/usr/local/bin/claude` is in PATH
+- Check cluster event logs to verify init script completed successfully
+- Ensure the cluster was restarted after deployment
+
+**Authentication errors:**
+- Verify `DATABRICKS_HOST` and `DATABRICKS_TOKEN` are available at cluster runtime
+- Check that the `anthropic` serving endpoint exists and is accessible
+- Test environment variables with `%sh env | grep ANTHROPIC`
