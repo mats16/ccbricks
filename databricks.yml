@@ -5,14 +5,29 @@ bundle:
 
 workspace:
   root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+  artifact_path: /Volumes/${var.catalog}/${var.schema}/${var.volume}
+
+artifacts:
+  init_script:
+    files:
+      - source: ./src/install-claude-code.sh
 
 include:
   - resources/*.yml
   - resources/*/*.yml
 
+variables:
+  catalog:
+    description: The catalog to use
+  schema:
+    description: The schema to use
+  volume:
+    description: The volume to use
+
 targets:
-  dev:
-    mode: development
+  prod:
     default: true
-    presets:
-      artifacts_dynamic_version: true
+    variables:
+      catalog: main
+      schema: claude_code
+      volume: init_scripts
