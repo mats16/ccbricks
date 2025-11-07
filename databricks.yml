@@ -25,6 +25,8 @@ variables:
     description: The volume to use
   node_type_id:
     description: The node type to use for the cluster
+  data_security_mode:
+    description: The data security mode for the cluster (SINGLE_USER or USER_ISOLATION)
 
 targets:
   prod:
@@ -34,3 +36,4 @@ targets:
       schema: claude_code
       volume: init_scripts
       node_type_id: m6i.2xlarge
+      data_security_mode: USER_ISOLATION

@@ -10,8 +10,7 @@ resources:
       autotermination_minutes: 60
       enable_elastic_disk: true
       enable_local_disk_encryption: true
-      #data_security_mode: SINGLE_USER
-      data_security_mode: USER_ISOLATION
+      data_security_mode: ${var.data_security_mode}
       init_scripts:
         - volumes:
             destination: /Volumes/${var.catalog}/${var.schema}/${var.volume}/.internal/install-claude-code.sh
