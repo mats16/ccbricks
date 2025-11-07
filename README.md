@@ -9,5 +9,5 @@ Set up Claude Code on Databricks (Quickstart)
 ## How to deploy
 
 ```sh
-$ databricks bundle deploy
+$ databricks bundle deploy --profile <profile_name>
 ```
