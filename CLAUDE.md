@@ -6,38 +6,59 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Databricks asset bundle (DAB) project that deploys Claude Code to Databricks clusters. The bundle configures a Databricks cluster with an init script that automatically installs and configures Claude Code to work with Databricks-hosted Claude models via serving endpoints.
 
+## Prerequisites
+
+- Databricks CLI v0.205+ with Bundles enabled
+- Unity Catalog enabled in the workspace
+- A writable Volume (catalog/schema/volume) available
+- Artifact allowlists configured in Unity Catalog to allow writing to Volumes
+- A model serving endpoint named `anthropic` configured as a proxy for Claude
+- The cluster must have access to `DATABRICKS_HOST` and `DATABRICKS_TOKEN` environment variables
+
 ## Architecture
 
-### Databricks Bundle Structure
+### Bundle Structure
 
-- `databricks.yml` - Main bundle configuration file that defines the project structure, workspace paths, and includes resource definitions
-- `resources/cluster.yml` - Cluster resource definition that specifies the Claude Code server cluster configuration
-- `src/install-claude-code.sh` - Init script that installs Claude Code and configures it to use Databricks serving endpoints
+- [databricks.yml](databricks.yml) - Main bundle configuration with artifact paths, variables, and resource includes
+- [resources/cluster.yml](resources/cluster.yml) - Single-node cluster definition with init script configuration
+- [src/install-claude-code.sh](src/install-claude-code.sh) - Init script that installs Claude Code and configures environment variables
 
-### Key Architectural Patterns
+### Key Components
 
-**Databricks Bundle Configuration:**
-The project uses Databricks Asset Bundles (DAB) to manage infrastructure as code. The bundle includes resource definitions from `resources/*.yml` files and deploys them to a workspace path under the current user's directory.
+**Variables Configuration:**
+The bundle uses three variables defined in [databricks.yml](databricks.yml):
+- `catalog`: Unity Catalog catalog name (default: `main`)
+- `schema`: Schema name within the catalog (default: `claude_code`)
+- `volume`: Volume name for artifacts (default: `init_scripts`)
+
+Artifacts are deployed to `/Volumes/${catalog}/${schema}/${volume}`. Override these by editing `targets.prod.variables` or passing CLI arguments.
 
 **Claude Code Installation Flow:**
-1. Init script runs during cluster startup (defined in `resources/cluster.yml:15-19`)
-2. Script downloads and installs Claude Code from `claude.ai/install.sh`
-3. Claude Code binaries are copied to `/usr/local/share/claude` for system-wide access
-4. Environment variables are configured via `/etc/profile.d/databricks_claude_code.sh` to point to Databricks serving endpoints
+1. Init script runs during cluster startup from Unity Catalog Volumes path
+2. Downloads and installs Claude Code via `curl -fsSL https://claude.ai/install.sh | bash -s stable`
+3. Copies binaries from `$HOME/.local/share/claude` to `/usr/local/share/claude` for system-wide access
+4. Creates symlink in `/usr/local/bin/claude` pointing to the installed version
+5. Writes `/etc/profile.d/databricks_claude_code.sh` with environment variables
 
 **Model Configuration:**
-The init script configures Claude Code to use the Databricks-hosted Claude model by setting:
+The init script configures Claude Code to use Databricks-hosted Claude by setting:
 - `ANTHROPIC_MODEL=databricks-claude-sonnet-4-5`
 - `ANTHROPIC_BASE_URL=$DATABRICKS_HOST/serving-endpoints/anthropic`
 - `ANTHROPIC_AUTH_TOKEN=$DATABRICKS_TOKEN`
 
 **Cluster Configuration:**
-The cluster is configured with `USER_ISOLATION` data security mode (line 14 in `resources/cluster.yml`), which allows multiple users to share the cluster while maintaining isolation. The commented-out `SINGLE_USER` mode option is available if stronger isolation is needed.
+- Single-node cluster named `claude-code` using `m6i.2xlarge` instance type
+- Spark 16.4.x with Scala 2.12
+- `USER_ISOLATION` data security mode (allows multi-user sharing with isolation)
+- Auto-terminates after 60 minutes of inactivity
+- Init script sourced from Unity Catalog Volumes (alternative Workspace path commented out in [resources/cluster.yml](resources/cluster.yml:18-19))
 
-**Init Script Path:**
-The init script can be sourced from two locations (see `resources/cluster.yml:15-19`):
-- Unity Catalog Volumes: `/Volumes/mats/sandbox/scripts/install-claude-code.sh` (active)
-- Workspace files: `.bundle/${bundle.name}/${bundle.target}/files/src/install-claude-code.sh` (commented out)
+**Init Script Deployment:**
+The init script can be sourced from two locations:
+- **Unity Catalog Volumes** (active): `/Volumes/${catalog}/${schema}/${volume}/.internal/install-claude-code.sh`
+- **Workspace files** (commented): `/Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}/files/src/install-claude-code.sh`
+
+The Volumes approach is preferred for production; Workspace approach can be used for testing.
 
 ## Common Commands
 
