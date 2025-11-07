@@ -4,7 +4,7 @@ resources:
       cluster_name: claude-code-server
       kind: CLASSIC_PREVIEW
       is_single_node: true
-      node_type_id: 'm6i.xlarge'
+      node_type_id: 'm5a.2xlarge'
       spark_version: '16.4.x-scala2.12'
       runtime_engine: STANDARD
       autotermination_minutes: 60
