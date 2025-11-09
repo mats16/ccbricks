@@ -1,7 +1,7 @@
 resources:
   clusters:
     cluster:
-      cluster_name: claude-code
+      cluster_name: claude-code-server
       kind: CLASSIC_PREVIEW
       is_single_node: true
       node_type_id: ${var.node_type_id}
@@ -10,10 +10,5 @@ resources:
       autotermination_minutes: 60
       enable_elastic_disk: true
       enable_local_disk_encryption: true
-      data_security_mode: SINGLE_USER
-      # data_security_mode: USER_ISOLATION
-      init_scripts:
-        - workspace:
-            destination: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}/files/src/install-claude-code.sh
-        # - volumes:
-        #     destination: /Volumes/${var.catalog}/${var.schema}/${var.volume}/.internal/install-claude-code.sh
+      data_security_mode: ${var.data_security_mode}
+      init_scripts: ${var.init_scripts}

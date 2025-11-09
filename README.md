@@ -5,8 +5,8 @@ This repository provides a minimal setup to deploy and provision Claude Code in 
 ## Project structure
 
 - `src/`: Cluster init scripts. `install-claude-code.sh` installs Claude Code and configures environment variables.
-- `resources/`: Databricks resource definitions (e.g., cluster).
-- `databricks.yml`: Bundle definition (artifact destinations and variables).
+- `resources/cluster.yml`: Cluster configuration that adapts based on target (dev/prod)
+- `databricks.yml`: Bundle definition with target-specific variables and init script configurations
 
 ## Prerequisites
 
@@ -14,36 +14,56 @@ This repository provides a minimal setup to deploy and provision Claude Code in 
 - A model serving endpoint named `anthropic` (proxy for Claude)
 - The cluster can access `DATABRICKS_HOST` and `DATABRICKS_TOKEN`
   - Use cluster environment variables or Secrets as needed
+- **For production target**: Unity Catalog with a writable Volume and artifact allowlists configured
 
 ## Variables
 
 The following variables are used in `databricks.yml`:
 
 - `node_type_id`: The node type to use for the cluster (e.g., `m6i.2xlarge`)
-
-Artifacts are uploaded to the workspace path automatically during bundle deployment.
+- `data_security_mode`: The data security mode (`SINGLE_USER` or `USER_ISOLATION`)
+- `catalog`, `schema`, `volume`: Unity Catalog coordinates (required for prod target only)
 
 ## Quickstart
 
-1) Set variables (optional)
-Edit `targets.prod.variables` in `databricks.yml`, or override at CLI runtime.
+### Development Environment (default)
 
-2) Deploy
+1) Deploy
 
 ```bash
 databricks bundle deploy --profile <profile_name>
+# or explicitly specify dev target
+databricks bundle deploy -t dev --profile <profile_name>
 ```
 
-3) Create/Start the cluster
-The single-node cluster `claude-code` defined in `resources/cluster.yml` will be created with `SINGLE_USER` data security mode. Start it from the UI or CLI.
+2) Create/Start the cluster
+The single-node cluster `claude-code-dev` will be created with `SINGLE_USER` data security mode and Workspace-based init script. Start it from the UI or CLI.
 
-4) Verify (e.g., in a notebook)
+3) Verify (e.g., in a notebook)
 
 ```bash
 %sh
 claude --version
 claude --help
 ```
+
+### Production Environment
+
+1) Configure Unity Catalog
+   - Ensure you have a writable Volume (catalog/schema/volume)
+   - Configure artifact allowlists in Unity Catalog
+
+2) Set variables (optional)
+Edit `targets.prod.variables` in `databricks.yml` if your Volume coordinates differ from the defaults.
+
+3) Deploy
+
+```bash
+databricks bundle deploy -t prod --profile <profile_name>
+```
+
+4) Create/Start the cluster
+The single-node cluster `claude-code-prod` will be created with `USER_ISOLATION` data security mode and Volumes-based init script. Start it from the UI or CLI.
 
 ## What the init script does
 
@@ -56,10 +76,17 @@ claude --help
 
 ## Cluster Configuration
 
-The cluster is configured with:
-- `SINGLE_USER` data security mode for simplified setup and maximum compatibility
+### Development Target (`dev`)
+- `SINGLE_USER` data security mode for simplified setup
 - Workspace-based init script (automatically uploaded during deployment)
 - Single-node architecture optimized for Claude Code usage
+- Cluster name: `claude-code-dev`
+
+### Production Target (`prod`)
+- `USER_ISOLATION` data security mode for multi-user support with isolation
+- Volumes-based init script (deployed to Unity Catalog Volume)
+- Single-node architecture optimized for Claude Code usage
+- Cluster name: `claude-code-prod`
 
 ## Troubleshooting
 

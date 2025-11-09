@@ -3,20 +3,53 @@
 bundle:
   name: ccbricks
 
-workspace:
-  root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
-
 include:
   - resources/*.yml
-  - resources/*/*.yml
 
 variables:
   node_type_id:
     description: The node type to use for the cluster
+    default: m6i.xlarge
+  data_security_mode:
+    description: The data security mode for the cluster (SINGLE_USER or USER_ISOLATION)
+    default: SINGLE_USER
+  init_scripts:
+    description: The init scripts configuration
+    default:
+      - workspace:
+          destination: ${workspace.root_path}/files/src/install-claude-code.sh
+  catalog:
+    description: The catalog to use (required for prod target)
+    default: ""
+  schema:
+    description: The schema to use (required for prod target)
+    default: ""
+  volume:
+    description: The volume to use (required for prod target)
+    default: ""
 
 targets:
   dev:
     mode: development
     default: true
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+      artifact_path: /Volumes/${var.catalog}/${var.schema}/${var.volume}
+    artifacts:
+      init_script:
+        files:
+          - source: ./src/install-claude-code.sh
     variables:
       node_type_id: m6i.2xlarge
+      data_security_mode: USER_ISOLATION
+      init_scripts:
+        - volumes:
+            destination: ${workspace.artifact_path}/.internal/install-claude-code.sh
+      catalog: main
+      schema: claude_code
+      volume: init_scripts
