@@ -1,0 +1,344 @@
+{
+  "app": {
+    "title": "LakeScout",
+    "badge": "Unofficial"
+  },
+  "sidebar": {
+    "newSession": "New Session",
+    "openSidebar": "Open sidebar",
+    "closeSidebar": "Close sidebar",
+    "newSessionPlaceholder": "Start a new session...",
+    "attachImage": "Attach image",
+    "moreOptions": "More options",
+    "startSession": "Start session",
+    "searchPlaceholder": "Search sessions...",
+    "sessions": "Sessions",
+    "noSessions": "No sessions yet",
+    "untitledSession": "Untitled Session",
+    "sessionCreateError": "Failed to create session. Please try again.",
+    "filter": {
+      "active": "Active",
+      "archived": "Archived",
+      "all": "All"
+    },
+    "model": {
+      "label": "Model",
+      "default": "Default",
+      "opusDesc": "Most capable for complex work",
+      "sonnetDesc": "Best for everyday tasks",
+      "haikuDesc": "Fastest for quick answers"
+    }
+  },
+  "main": {
+    "selectSession": "Select a session to start",
+    "inputPlaceholder": "Type your message...",
+    "send": "Send",
+    "attachImage": "Attach image",
+    "dropImageHere": "Drop image here",
+    "openInCli": "Open in CLI",
+    "openWorkspace": "Open Workspace",
+    "emptyChat": "Start a conversation",
+    "renameSession": "Rename session",
+    "archiveSession": "Archive",
+    "archiveSessionError": "Failed to archive session",
+    "sessionTitlePlaceholder": "Session title",
+    "sessionNotFound": "Session not found",
+    "sessionNotFoundDescription": "This session may have been deleted or does not exist.",
+    "goHome": "Go to Home",
+    "stop": "Stop",
+    "thinking": "Thinking…"
+  },
+  "image": {
+    "unsupportedFormat": "{{fileName}} is not a supported image format",
+    "exceedsMaxSize": "{{fileName}} exceeds maximum file size (20MB)",
+    "maxImagesAllowed": "Maximum {{count}} images allowed",
+    "processingFailed": "Failed to process image"
+  },
+  "user": {
+    "settings": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "claudeCode": "Claude Code",
+    "skills": "Skills",
+    "agents": "Subagents",
+    "databricksConsole": "Databricks Console",
+    "loadError": "Failed to load user",
+    "defaultName": "User"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your account settings and integrations.",
+    "token": {
+      "label": "Databricks Personal Access Token",
+      "placeholder": "dapi...",
+      "help": "Your Databricks PAT is stored securely with encryption.",
+      "registered": "Registered",
+      "replace": "Replace Token",
+      "save": "Save Token",
+      "fetchError": "Failed to load token information",
+      "emptyError": "Please enter a token",
+      "formatError": "Invalid format. Databricks PAT should start with 'dapi'",
+      "saveSuccess": "Token saved successfully",
+      "saveError": "Failed to save token",
+      "deleteSuccess": "Token deleted successfully",
+      "deleteError": "Failed to delete token",
+      "createLink": "Create a new token in Databricks"
+    }
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}}h ago",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}}d ago"
+  },
+  "language": {
+    "en": "English",
+    "ja": "Japanese"
+  },
+  "workspace": {
+    "select": "Select Workspace Folder",
+    "patRequired": "PAT configuration is required to select Workspace",
+    "recent": "Recent",
+    "selectOther": "Select another folder",
+    "clear": "Clear selection",
+    "browserTitle": "Select Workspace",
+    "browserDescription": "Select a workspace folder or repository to work with.",
+    "cancel": "Cancel",
+    "selectButton": "Select",
+    "selectCurrentFolder": "Select this folder",
+    "open": "Open",
+    "loading": "Loading...",
+    "empty": "This folder is empty",
+    "error": "Failed to load workspace"
+  },
+  "skills": {
+    "title": "Skill Management",
+    "description": "Add and manage custom skills",
+    "backup": "Backup",
+    "restore": "Restore",
+    "createNew": "Create New",
+    "importFromGit": "Import",
+    "fetchError": "Failed to fetch skills",
+    "createError": "Failed to create skill",
+    "importError": "Failed to import",
+    "deleteError": "Failed to delete",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
+    "empty": "No skills yet",
+    "backToHome": "Back to Home",
+    "createDialog": {
+      "title": "Create New Skill",
+      "description": "Create a custom skill",
+      "name": "Skill Name",
+      "namePlaceholder": "my-skill",
+      "version": "Version",
+      "versionPlaceholder": "1.0.0",
+      "skillDescription": "Description",
+      "descriptionPlaceholder": "Enter skill description",
+      "content": "Content",
+      "contentPlaceholder": "Enter skill prompt...",
+      "submit": "Create"
+    },
+    "importDialog": {
+      "title": "Import skills",
+      "description": "Import skills from a Git repository",
+      "repositoryUrl": "Repository URL",
+      "repositoryUrlPlaceholder": "https://github.com/user/repo",
+      "selectOrEnterRepo": "Select or enter repository URL...",
+      "enterCustomUrl": "Enter a custom URL above",
+      "presets": "Presets",
+      "path": "Path",
+      "pathPlaceholder": "skills",
+      "branch": "Branch",
+      "branchPlaceholder": "main",
+      "fetchSkills": "Fetch Skills",
+      "selectSkill": "Select a Skill",
+      "selectSkills": "Select Skills",
+      "selectedCount": "{{count}} selected",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "invalidUrl": "Invalid Repository URL",
+      "fetchError": "Failed to fetch skills",
+      "submit": "Import",
+      "submitCount": "Import {{count}} skill(s)"
+    },
+    "previewDialog": {
+      "content": "Content",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "editing": "Editing"
+    },
+    "updateError": "Failed to update skill",
+    "updateSuccess": "Skill updated successfully",
+    "backupDialog": {
+      "title": "Backup to Workspace",
+      "description": "Backup skills to the following path:",
+      "warning": "All existing skills in Workspace will be deleted and replaced with current skills.",
+      "submit": "Start Backup",
+      "success": "Skills backed up successfully",
+      "error": "Backup failed"
+    },
+    "restoreDialog": {
+      "title": "Restore from Workspace",
+      "description": "Restore skills from the following path:",
+      "warning": "All existing local skills will be deleted and replaced with Workspace skills.",
+      "submit": "Start Restore",
+      "success": "Skills restored successfully",
+      "error": "Restore failed"
+    }
+  },
+  "agents": {
+    "title": "Subagent Management",
+    "description": "Add and manage custom subagents",
+    "backup": "Backup",
+    "restore": "Restore",
+    "createNew": "Create New",
+    "importFromGit": "Import",
+    "fetchError": "Failed to fetch agents",
+    "createError": "Failed to create agent",
+    "importError": "Failed to import",
+    "deleteError": "Failed to delete",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
+    "empty": "No agents yet",
+    "backToHome": "Back to Home",
+    "createDialog": {
+      "title": "Create New Subagent",
+      "description": "Create a custom subagent",
+      "name": "Agent Name",
+      "namePlaceholder": "my-agent",
+      "version": "Version",
+      "versionPlaceholder": "1.0.0",
+      "agentDescription": "Description",
+      "descriptionPlaceholder": "Enter agent description",
+      "content": "Content",
+      "contentPlaceholder": "Enter agent prompt...",
+      "submit": "Create"
+    },
+    "importDialog": {
+      "title": "Import subagents",
+      "description": "Import subagents from a Git repository",
+      "repositoryUrl": "Repository URL",
+      "repositoryUrlPlaceholder": "https://github.com/user/repo",
+      "selectOrEnterRepo": "Select or enter repository URL...",
+      "enterCustomUrl": "Enter a custom URL above",
+      "presets": "Presets",
+      "path": "Path",
+      "pathPlaceholder": "categories/05-data-ai",
+      "branch": "Branch",
+      "branchPlaceholder": "main",
+      "fetchAgents": "Fetch Agents",
+      "selectAgent": "Select an Agent",
+      "selectAgents": "Select Agents",
+      "selectedCount": "{{count}} selected",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "invalidUrl": "Invalid Repository URL",
+      "fetchError": "Failed to fetch agents",
+      "submit": "Import",
+      "submitCount": "Import {{count}} agent(s)"
+    },
+    "previewDialog": {
+      "content": "Content",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "editing": "Editing"
+    },
+    "updateError": "Failed to update agent",
+    "updateSuccess": "Agent updated successfully",
+    "backupDialog": {
+      "title": "Backup to Workspace",
+      "description": "Backup agents to the following path:",
+      "warning": "All existing agents in Workspace will be deleted and replaced with current agents.",
+      "submit": "Start Backup",
+      "success": "Agents backed up successfully",
+      "error": "Backup failed"
+    },
+    "restoreDialog": {
+      "title": "Restore from Workspace",
+      "description": "Restore agents from the following path:",
+      "warning": "All existing local agents will be deleted and replaced with Workspace agents.",
+      "submit": "Start Restore",
+      "success": "Agents restored successfully",
+      "error": "Restore failed"
+    }
+  },
+  "welcome": {
+    "heading": "Claude Code on Databricks",
+    "title": "Welcome to LakeScout",
+    "subtitle": "Accelerate your Databricks development with AI Agent.\nStart with a quickstart below or type a message.",
+    "comingSoon": "This feature is coming soon",
+    "databricksAppsToggle": "Enable automatic deployment to Databricks Apps",
+    "databricksSqlWriteToggle": "Allow write operations (INSERT/UPDATE/DELETE) on Databricks SQL",
+    "quickstarts": {
+      "lakeflow": {
+        "title": "Investigate Job Errors",
+        "description": "Analyze job failures and suggest solutions",
+        "modalDescription": "Analyze error logs from Lakeflow Jobs to identify root causes and suggest fixes."
+      },
+      "databricksApps": {
+        "title": "App Development",
+        "description": "Build applications on Databricks Apps",
+        "modalDescription": "Support web application development using the Databricks Apps platform."
+      },
+      "tbd": {
+        "title": "Coming Soon",
+        "description": "New quickstart coming soon",
+        "modalDescription": "This feature is coming soon."
+      }
+    }
+  },
+  "quickstart": {
+    "lakeflow": {
+      "fetchError": "Failed to fetch failed jobs",
+      "noFailedJobs": "No failed jobs in the last 7 days",
+      "failedJobsCount": "{{count}} failed job(s)",
+      "presetPrompt": "Job ID: {{jobId}}, Run ID: {{runId}} has failed.\n\nPlease investigate the root cause of this job failure and suggest solutions.",
+      "investigateJob": "Investigate {{runName}}"
+    },
+    "databricksApps": {
+      "fetchError": "Failed to fetch templates",
+      "noTemplates": "No templates available",
+      "templatesCount": "{{count}} template(s)",
+      "selectTemplate": "Select {{name}} template",
+      "cloneError": "Failed to clone template",
+      "cloneInfo": "Select a template and click Clone.",
+      "viewOnGithub": "View on GitHub",
+      "clone": "Clone",
+      "presetPrompt": "Cloned {{templateName}} template. Please proceed with developing Databricks Apps based on this template.\n\nFirst, please perform the initial deployment of the app."
+    }
+  },
+  "databricksApp": {
+    "title": "Databricks Apps",
+    "notCreated": "App has not been created yet",
+    "fetchError": "Failed to fetch app info",
+    "status": "Status",
+    "openApp": "Open App",
+    "openConsole": "Open Console",
+    "app": "App",
+    "logs": "Logs",
+    "workspace": "Workspace"
+  },
+  "tools": {
+    "updateTodos": "Update Todos",
+    "readLines": "Read {{count}} lines",
+    "collapse": "Collapse",
+    "expandLines": "+{{count}} lines",
+    "toolUsesCount": "{{count}} tool uses",
+    "collapseToolDetails": "Collapse tool use details",
+    "expandToolDetails": "Show {{count}} tool use details",
+    "collapseResult": "Collapse result",
+    "showRemainingLines": "Show remaining {{count}} lines",
+    "collapseContent": "Collapse content",
+    "showRemainingLinesContent": "Show remaining {{count}} lines",
+    "showFullDiff": "Show full diff ({{count}} more lines)"
+  }
+}

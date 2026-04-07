@@ -1,0 +1,344 @@
+{
+  "app": {
+    "title": "LakeScout",
+    "badge": "Unofficial"
+  },
+  "sidebar": {
+    "newSession": "新規セッション",
+    "openSidebar": "サイドバーを開く",
+    "closeSidebar": "サイドバーを閉じる",
+    "newSessionPlaceholder": "新しいセッションを開始...",
+    "attachImage": "画像を添付",
+    "moreOptions": "その他のオプション",
+    "startSession": "セッション開始",
+    "searchPlaceholder": "セッションを検索...",
+    "sessions": "セッション",
+    "noSessions": "セッションがありません",
+    "untitledSession": "無題のセッション",
+    "sessionCreateError": "セッションの作成に失敗しました。もう一度お試しください。",
+    "filter": {
+      "active": "アクティブ",
+      "archived": "アーカイブ済み",
+      "all": "すべて"
+    },
+    "model": {
+      "label": "モデル",
+      "default": "デフォルト",
+      "opusDesc": "複雑な作業に最も優れた性能",
+      "sonnetDesc": "日常的なタスクに最適",
+      "haikuDesc": "素早い回答に最速のモデルです"
+    }
+  },
+  "main": {
+    "selectSession": "セッションを選択してください",
+    "inputPlaceholder": "メッセージを入力...",
+    "send": "送信",
+    "attachImage": "画像を添付",
+    "dropImageHere": "画像をここにドロップ",
+    "openInCli": "CLIで開く",
+    "openWorkspace": "Workspace を開く",
+    "emptyChat": "会話を開始",
+    "renameSession": "セッション名を変更",
+    "archiveSession": "アーカイブ",
+    "archiveSessionError": "セッションのアーカイブに失敗しました",
+    "sessionTitlePlaceholder": "セッション名",
+    "sessionNotFound": "セッションが見つかりませんでした",
+    "sessionNotFoundDescription": "このセッションは削除されたか、存在しない可能性があります。",
+    "goHome": "ホームに戻る",
+    "stop": "停止",
+    "thinking": "Thinking…"
+  },
+  "image": {
+    "unsupportedFormat": "{{fileName}} はサポートされていない画像形式です",
+    "exceedsMaxSize": "{{fileName}} が最大ファイルサイズ (20MB) を超えています",
+    "maxImagesAllowed": "最大 {{count}} 枚の画像まで添付できます",
+    "processingFailed": "画像の処理に失敗しました"
+  },
+  "user": {
+    "settings": "設定",
+    "language": "言語",
+    "theme": "テーマ",
+    "claudeCode": "Claude Code",
+    "skills": "スキル",
+    "agents": "サブエージェント",
+    "databricksConsole": "Databricks Console",
+    "loadError": "ユーザー情報の取得に失敗しました",
+    "defaultName": "ユーザー"
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "retry": "再試行",
+    "cancel": "キャンセル",
+    "save": "保存"
+  },
+  "settings": {
+    "title": "設定",
+    "description": "アカウント設定と連携を管理します。",
+    "token": {
+      "label": "Databricks Personal Access Token",
+      "placeholder": "dapi...",
+      "help": "Databricks PAT は暗号化されて安全に保存されます。",
+      "registered": "登録済み",
+      "replace": "トークンを変更",
+      "save": "トークンを保存",
+      "fetchError": "トークン情報の取得に失敗しました",
+      "emptyError": "トークンを入力してください",
+      "formatError": "形式が正しくありません。Databricks PAT は 'dapi' で始まります",
+      "saveSuccess": "トークンを保存しました",
+      "saveError": "トークンの保存に失敗しました",
+      "deleteSuccess": "トークンを削除しました",
+      "deleteError": "トークンの削除に失敗しました",
+      "createLink": "Databricks で新しいトークンを作成"
+    }
+  },
+  "time": {
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "yesterday": "昨日",
+    "daysAgo": "{{count}}日前"
+  },
+  "language": {
+    "en": "英語",
+    "ja": "日本語"
+  },
+  "workspace": {
+    "select": "Workspace フォルダを選択",
+    "patRequired": "Workspace を選択するには PAT の設定が必要です",
+    "recent": "最近",
+    "selectOther": "別のフォルダを選択",
+    "clear": "選択解除",
+    "browserTitle": "Workspace を選択",
+    "browserDescription": "作業対象の Workspace フォルダまたはリポジトリを選択してください。",
+    "cancel": "キャンセル",
+    "selectButton": "選択",
+    "selectCurrentFolder": "このフォルダを選択",
+    "open": "開く",
+    "loading": "読み込み中...",
+    "empty": "このフォルダは空です",
+    "error": "Workspace の読み込みに失敗しました"
+  },
+  "skills": {
+    "title": "スキル管理",
+    "description": "カスタムスキルの追加・管理ができます",
+    "backup": "バックアップ",
+    "restore": "リストア",
+    "createNew": "新規作成",
+    "importFromGit": "インポート",
+    "fetchError": "スキル一覧の取得に失敗しました",
+    "createError": "スキルの作成に失敗しました",
+    "importError": "インポートに失敗しました",
+    "deleteError": "削除に失敗しました",
+    "deleteConfirm": "スキル「{{name}}」を削除しますか？",
+    "empty": "スキルがありません",
+    "backToHome": "ホームに戻る",
+    "createDialog": {
+      "title": "新規スキル作成",
+      "description": "カスタムスキルを作成します",
+      "name": "スキル名",
+      "namePlaceholder": "my-skill",
+      "version": "バージョン",
+      "versionPlaceholder": "1.0.0",
+      "skillDescription": "説明",
+      "descriptionPlaceholder": "スキルの説明を入力",
+      "content": "コンテンツ",
+      "contentPlaceholder": "スキルのプロンプトを入力...",
+      "submit": "作成"
+    },
+    "importDialog": {
+      "title": "スキルのインポート",
+      "description": "Git リポジトリからスキルをインポートします",
+      "repositoryUrl": "リポジトリ URL",
+      "repositoryUrlPlaceholder": "https://github.com/user/repo",
+      "selectOrEnterRepo": "リポジトリ URL を選択または入力...",
+      "enterCustomUrl": "上のフィールドに URL を入力",
+      "presets": "プリセット",
+      "path": "パス",
+      "pathPlaceholder": "skills",
+      "branch": "ブランチ",
+      "branchPlaceholder": "main",
+      "fetchSkills": "スキル一覧を取得",
+      "selectSkill": "スキルを選択",
+      "selectSkills": "スキルを選択",
+      "selectedCount": "{{count}} 件選択中",
+      "selectAll": "すべて選択",
+      "deselectAll": "すべて解除",
+      "invalidUrl": "無効なリポジトリ URL",
+      "fetchError": "スキルの取得に失敗しました",
+      "submit": "インポート",
+      "submitCount": "{{count}} 件インポート"
+    },
+    "previewDialog": {
+      "content": "コンテンツ",
+      "edit": "編集",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "editing": "編集中"
+    },
+    "updateError": "スキルの更新に失敗しました",
+    "updateSuccess": "スキルを更新しました",
+    "backupDialog": {
+      "title": "Workspace へバックアップ",
+      "description": "スキルを以下のパスにバックアップします:",
+      "warning": "Workspace 上の既存スキルは全て削除され、現在のスキルで置き換えられます。",
+      "submit": "バックアップ開始",
+      "success": "バックアップが完了しました",
+      "error": "バックアップに失敗しました"
+    },
+    "restoreDialog": {
+      "title": "Workspace からリストア",
+      "description": "以下のパスからスキルをリストアします:",
+      "warning": "ローカルの既存スキルは全て削除され、Workspace のスキルで置き換えられます。",
+      "submit": "リストア開始",
+      "success": "リストアが完了しました",
+      "error": "リストアに失敗しました"
+    }
+  },
+  "agents": {
+    "title": "サブエージェント管理",
+    "description": "カスタムサブエージェントの追加・管理ができます",
+    "backup": "バックアップ",
+    "restore": "リストア",
+    "createNew": "新規作成",
+    "importFromGit": "インポート",
+    "fetchError": "サブエージェント一覧の取得に失敗しました",
+    "createError": "サブエージェントの作成に失敗しました",
+    "importError": "インポートに失敗しました",
+    "deleteError": "削除に失敗しました",
+    "deleteConfirm": "サブエージェント「{{name}}」を削除しますか？",
+    "empty": "サブエージェントがありません",
+    "backToHome": "ホームに戻る",
+    "createDialog": {
+      "title": "新規サブエージェント作成",
+      "description": "カスタムサブエージェントを作成します",
+      "name": "エージェント名",
+      "namePlaceholder": "my-agent",
+      "version": "バージョン",
+      "versionPlaceholder": "1.0.0",
+      "agentDescription": "説明",
+      "descriptionPlaceholder": "エージェントの説明を入力",
+      "content": "コンテンツ",
+      "contentPlaceholder": "エージェントのプロンプトを入力...",
+      "submit": "作成"
+    },
+    "importDialog": {
+      "title": "サブエージェントのインポート",
+      "description": "Git リポジトリからサブエージェントをインポートします",
+      "repositoryUrl": "リポジトリ URL",
+      "repositoryUrlPlaceholder": "https://github.com/user/repo",
+      "selectOrEnterRepo": "リポジトリ URL を選択または入力...",
+      "enterCustomUrl": "上のフィールドに URL を入力",
+      "presets": "プリセット",
+      "path": "パス",
+      "pathPlaceholder": "categories/05-data-ai",
+      "branch": "ブランチ",
+      "branchPlaceholder": "main",
+      "fetchAgents": "エージェント一覧を取得",
+      "selectAgent": "エージェントを選択",
+      "selectAgents": "エージェントを選択",
+      "selectedCount": "{{count}} 件選択中",
+      "selectAll": "すべて選択",
+      "deselectAll": "すべて解除",
+      "invalidUrl": "無効なリポジトリ URL",
+      "fetchError": "エージェントの取得に失敗しました",
+      "submit": "インポート",
+      "submitCount": "{{count}} 件インポート"
+    },
+    "previewDialog": {
+      "content": "コンテンツ",
+      "edit": "編集",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "editing": "編集中"
+    },
+    "updateError": "サブエージェントの更新に失敗しました",
+    "updateSuccess": "サブエージェントを更新しました",
+    "backupDialog": {
+      "title": "Workspace へバックアップ",
+      "description": "サブエージェントを以下のパスにバックアップします:",
+      "warning": "Workspace 上の既存エージェントは全て削除され、現在のエージェントで置き換えられます。",
+      "submit": "バックアップ開始",
+      "success": "バックアップが完了しました",
+      "error": "バックアップに失敗しました"
+    },
+    "restoreDialog": {
+      "title": "Workspace からリストア",
+      "description": "以下のパスからサブエージェントをリストアします:",
+      "warning": "ローカルの既存エージェントは全て削除され、Workspace のエージェントで置き換えられます。",
+      "submit": "リストア開始",
+      "success": "リストアが完了しました",
+      "error": "リストアに失敗しました"
+    }
+  },
+  "welcome": {
+    "heading": "Claude Code on Databricks",
+    "title": "LakeScout へようこそ",
+    "subtitle": "AI Agent で Databricks での開発を加速しましょう。\n下のクイックスタートか、メッセージを入力から始めてください。",
+    "comingSoon": "この機能は近日公開予定です",
+    "databricksAppsToggle": "Databricks Apps への自動デプロイを有効化",
+    "databricksSqlWriteToggle": "Databricks SQL の書き込み操作（INSERT/UPDATE/DELETE）を許可",
+    "quickstarts": {
+      "lakeflow": {
+        "title": "ジョブのエラー調査",
+        "description": "ジョブの失敗原因を分析し、解決策を提案します",
+        "modalDescription": "Lakeflow Jobs で発生したエラーのログを解析し、根本原因の特定と修正方法を提案します。"
+      },
+      "databricksApps": {
+        "title": "アプリの開発",
+        "description": "Databricks Apps 上でアプリを構築します",
+        "modalDescription": "Databricks Apps プラットフォームを活用したウェブアプリケーションの開発をサポートします。"
+      },
+      "tbd": {
+        "title": "Coming Soon",
+        "description": "新しいクイックスタートを準備中です",
+        "modalDescription": "この機能は近日公開予定です。"
+      }
+    }
+  },
+  "quickstart": {
+    "lakeflow": {
+      "fetchError": "失敗したジョブの取得に失敗しました",
+      "noFailedJobs": "直近7日間で失敗したジョブはありません",
+      "failedJobsCount": "{{count}} 件の失敗したジョブ",
+      "presetPrompt": "Job ID: {{jobId}}, Run ID: {{runId}} が失敗しました。\n\nこのジョブの失敗原因を調査し、解決策を提案してください。",
+      "investigateJob": "{{runName}} を調査"
+    },
+    "databricksApps": {
+      "fetchError": "テンプレートの取得に失敗しました",
+      "noTemplates": "利用可能なテンプレートがありません",
+      "templatesCount": "{{count}} 件のテンプレート",
+      "selectTemplate": "{{name}} テンプレートを選択",
+      "cloneError": "テンプレートのクローンに失敗しました",
+      "cloneInfo": "テンプレートを選択し、クローンボタンを押してください。",
+      "viewOnGithub": "GitHub で表示",
+      "clone": "クローン",
+      "presetPrompt": "{{templateName}} テンプレートをクローンしました。このテンプレートをベースに Databricks Apps の開発を進めてください。\n\nまずはアプリの初回デプロイを行なって下さい。"
+    }
+  },
+  "databricksApp": {
+    "title": "Databricks Apps",
+    "notCreated": "App はまだ作成されていません",
+    "fetchError": "App 情報の取得に失敗しました",
+    "status": "ステータス",
+    "openApp": "App を開く",
+    "openConsole": "Console を開く",
+    "app": "アプリ",
+    "logs": "ログ",
+    "workspace": "ワークスペース"
+  },
+  "tools": {
+    "updateTodos": "Update Todos",
+    "readLines": "{{count}} 行を読み込み",
+    "collapse": "折りたたむ",
+    "expandLines": "+{{count}} 行",
+    "toolUsesCount": "{{count}}個のツール使用",
+    "collapseToolDetails": "ツール使用の詳細を折りたたむ",
+    "expandToolDetails": "{{count}}個のツール使用の詳細を表示",
+    "collapseResult": "結果を折りたたむ",
+    "showRemainingLines": "残り {{count}} 行を表示",
+    "collapseContent": "コンテンツを折りたたむ",
+    "showRemainingLinesContent": "残り {{count}} 行を表示",
+    "showFullDiff": "すべての差分を表示 (+{{count}} 行)"
+  }
+}

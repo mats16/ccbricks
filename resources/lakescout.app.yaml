@@ -1,0 +1,30 @@
+resources:
+  apps:
+    lakescout_app:
+      name: ${var.app_name}
+      description: Log exploration on Databricks
+      source_code_path: ../
+      resources:
+        - name: encryption-key-secret
+          description: Encryption key
+          secret:
+            scope: lakescout-${bundle.target}
+            key: encryption-key
+            permission: READ
+        - name: database-url-secret
+          description: Database connection string
+          secret:
+            scope: lakescout-${bundle.target}
+            key: database-url
+            permission: READ
+      user_api_scopes:
+        - sql
+        - dashboards.genie
+        - files.files
+        - serving.serving-endpoints
+        - catalog.catalogs:read
+        - catalog.schemas:read
+        - catalog.tables:read
+      permissions:
+        - level: CAN_USE
+          group_name: users
