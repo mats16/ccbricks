@@ -12,6 +12,10 @@ resources:
       #      key: database-url
       #      permission: READ
       user_api_scopes:
+        - mcp.genie
+        - mcp.vectorsearch
+        - mcp.functions
+        - mcp.external
         - sql
         - dashboards.genie
         - files.files
