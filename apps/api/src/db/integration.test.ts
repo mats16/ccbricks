@@ -26,7 +26,7 @@ const TEST_USER_2 = 'test-user-2';
 const TEST_SESSION_1 = '11111111-1111-1111-1111-111111111111';
 const TEST_SESSION_2 = '22222222-2222-2222-2222-222222222222';
 
-describe('Database Integration Tests', () => {
+describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
   let client: ReturnType<typeof postgres>;
   let db: PostgresJsDatabase<typeof schema>;
 
@@ -45,10 +45,7 @@ describe('Database Integration Tests', () => {
   }
 
   beforeAll(async () => {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
+    const databaseUrl = process.env.DATABASE_URL!;
 
     client = postgres(databaseUrl, { max: 1 });
     db = drizzle({ client, schema });

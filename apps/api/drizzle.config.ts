@@ -11,17 +11,26 @@ const __dirname = path.dirname(__filename);
 // プロジェクトルートの .env ファイルを読み込む
 config({ path: path.join(__dirname, '../../.env') });
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not set in environment variables');
-}
+const databaseUrl = process.env.DATABASE_URL;
 
-export default defineConfig({
-  schema: './src/db/schema.ts',
-  out: './migrations',
-  dialect: 'postgresql',
-  dbCredentials: {
-    url: process.env.DATABASE_URL,
-  },
-  verbose: true,
-  strict: true,
-});
+export default databaseUrl
+  ? defineConfig({
+      schema: './src/db/schema.pg.ts',
+      out: './migrations',
+      dialect: 'postgresql',
+      dbCredentials: {
+        url: databaseUrl,
+      },
+      verbose: true,
+      strict: true,
+    })
+  : defineConfig({
+      schema: './src/db/schema.sqlite.ts',
+      out: './migrations-sqlite',
+      dialect: 'sqlite',
+      dbCredentials: {
+        url: './db/lakescout.sqlite',
+      },
+      verbose: true,
+      strict: true,
+    });

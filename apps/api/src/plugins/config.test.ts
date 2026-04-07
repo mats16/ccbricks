@@ -113,10 +113,12 @@ describe('config plugin', () => {
   });
 
   describe('validation errors', () => {
-    it('should fail when DATABASE_URL is missing', async () => {
+    it('should use empty string default when DATABASE_URL is missing', async () => {
       process.env.DATABRICKS_HOST = 'test.databricks.com';
 
-      await expect(app.register(configPlugin)).rejects.toThrow();
+      await app.register(configPlugin);
+
+      expect(app.config.DATABASE_URL).toBe('');
     });
 
     it('should fail when DATABRICKS_HOST is missing', async () => {

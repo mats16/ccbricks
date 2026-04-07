@@ -7,7 +7,7 @@ const __dirname = import.meta.dirname;
 // JSON Schema for environment variables
 const schema = {
   type: 'object',
-  required: ['DATABASE_URL', 'DATABRICKS_HOST'],
+  required: ['DATABRICKS_HOST'],
   properties: {
     // Server
     NODE_ENV: {
@@ -22,10 +22,11 @@ const schema = {
       description:
         'Server port (used in development, overridden by DATABRICKS_APP_PORT in production)',
     },
-    // Database (required)
+    // Database (optional — empty string triggers SQLite fallback)
     DATABASE_URL: {
       type: 'string',
-      description: 'PostgreSQL connection string',
+      default: '',
+      description: 'PostgreSQL connection string (empty = SQLite fallback)',
     },
     DISABLE_AUTO_MIGRATION: {
       type: 'boolean',

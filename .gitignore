@@ -152,3 +152,8 @@ vite.config.ts.timestamp-*
 
 # Application temporary files
 tmp/
+
+# SQLite database files
+apps/api/db/*.sqlite
+apps/api/db/*.sqlite-wal
+apps/api/db/*.sqlite-shm
