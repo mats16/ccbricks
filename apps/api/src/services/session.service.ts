@@ -247,17 +247,22 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     const abortController = new AbortController();
     const authProvider = ctx.getAuthProvider();
 
-    // MCP サーバーを構築
+    // MCP サーバーを構築（フロントエンドの mcp_config から、OBO トークンを注入）
     const mcpServers: Record<string, McpServerConfig> = {};
     const oboToken = ctx.oboAccessToken;
-    if (oboToken) {
-      mcpServers.sql = {
-        type: 'http',
-        url: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/mcp/sql`,
-        headers: {
-          Authorization: `Bearer ${oboToken}`,
-        },
-      };
+    if (sessionContext.mcp_config?.mcpServers && oboToken) {
+      for (const [serverId, serverConfig] of Object.entries(
+        sessionContext.mcp_config.mcpServers
+      )) {
+        mcpServers[serverId] = {
+          type: serverConfig.type,
+          url: serverConfig.url,
+          headers: {
+            ...serverConfig.headers,
+            Authorization: `Bearer ${oboToken}`,
+          },
+        };
+      }
     }
     const workspacePath = sessionContext.outcomes.find(
       (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
@@ -291,7 +296,6 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ...(workspacePath ? { DATABRICKS_WORKSPACE_PATH: workspacePath } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
-          ANTHROPIC_MODEL: fastify.config.ANTHROPIC_DEFAULT_SONNET_MODEL,
           ANTHROPIC_DEFAULT_OPUS_MODEL: fastify.config.ANTHROPIC_DEFAULT_OPUS_MODEL,
           ANTHROPIC_DEFAULT_SONNET_MODEL: fastify.config.ANTHROPIC_DEFAULT_SONNET_MODEL,
           ANTHROPIC_DEFAULT_HAIKU_MODEL: fastify.config.ANTHROPIC_DEFAULT_HAIKU_MODEL,
@@ -373,6 +377,7 @@ export async function createSession(
     model: session_context.model,
     sources: session_context.sources,
     outcomes: resolvedOutcomes,
+    mcp_config: session_context.mcp_config,
   };
 
   // 6. タイムスタンプを設定（レスポンス用）

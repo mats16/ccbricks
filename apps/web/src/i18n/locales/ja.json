@@ -60,6 +60,7 @@
     "claudeCode": "Claude Code",
     "skills": "スキル",
     "agents": "サブエージェント",
+    "mcp": "MCP サーバー",
     "databricksConsole": "Databricks Console",
     "loadError": "ユーザー情報の取得に失敗しました",
     "defaultName": "ユーザー"
@@ -264,6 +265,13 @@
   },
   "databricksApp": {
     "workspace": "ワークスペース"
+  },
+  "mcp": {
+    "title": "MCP サーバー管理",
+    "description": "AI セッションで利用する MCP サーバーを管理",
+    "fetchError": "Genie スペースの取得に失敗しました",
+    "empty": "利用可能な Genie スペースがありません",
+    "sessionDropdownLabel": "MCP サーバー"
   },
   "tools": {
     "updateTodos": "Update Todos",

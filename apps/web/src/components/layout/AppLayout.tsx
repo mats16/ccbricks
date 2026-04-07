@@ -10,6 +10,7 @@ import { AppSidebar } from '@/components/sidebar/AppSidebar';
 import { MainArea } from '@/components/main/MainArea';
 import { SkillsContent } from '@/pages/SkillsPage';
 import { AgentsContent } from '@/pages/AgentsPage';
+import { McpContent } from '@/pages/McpPage';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from '@/constants';
@@ -21,6 +22,7 @@ export function AppLayout() {
   const { t } = useTranslation();
   const isSkillsPage = location.pathname === '/skills';
   const isAgentsPage = location.pathname === '/agents';
+  const isMcpPage = location.pathname === '/mcp';
   const {
     sessions,
     isLoading: isSessionsLoading,
@@ -99,6 +101,8 @@ export function AppLayout() {
                   <SkillsContent />
                 ) : isAgentsPage ? (
                   <AgentsContent />
+                ) : isMcpPage ? (
+                  <McpContent />
                 ) : (
                   <MainArea
                     onSessionArchived={handleMainAreaArchive}
@@ -134,6 +138,8 @@ export function AppLayout() {
               <SkillsContent />
             ) : isAgentsPage ? (
               <AgentsContent />
+            ) : isMcpPage ? (
+              <McpContent />
             ) : (
               <MainArea
                 onSessionArchived={handleMainAreaArchive}

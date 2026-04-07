@@ -10,6 +10,9 @@ import {
   Bug,
   Construction,
   DatabaseZap,
+  DatabaseSearch,
+  Cable,
+  Sparkle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { QuickstartCard } from './QuickstartCard';
 import { QuickstartModal, QuickstartType } from './QuickstartModal';
 import { ImagePreview } from './ImagePreview';
@@ -28,14 +33,17 @@ import { DropZoneOverlay } from './DropZoneOverlay';
 import { useImageAttachment } from '@/hooks/useImageAttachment';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { buildMessageContent } from '@/lib/content-builder';
-import { SESSION_MODELS, DEFAULT_SESSION_MODEL, TEXTAREA_MAX_HEIGHT_MAIN } from '@/constants';
-import type { UserMessageContentBlock } from '@repo/types';
+import { SESSION_MODELS, DEFAULT_SESSION_MODEL, TEXTAREA_MAX_HEIGHT_MAIN, MCP_DBSQL_ID } from '@/constants';
+import { useMcpSelection } from '@/hooks/useMcpSelection';
+import type { UserMessageContentBlock, McpConfig } from '@repo/types';
 
 interface WelcomeScreenProps {
   onNewSession?: (
     content: UserMessageContentBlock[],
     modelId: string,
-    enableDatabricksSqlWrite: boolean
+    enableDatabricksSqlWrite: boolean,
+    mcpConfig?: McpConfig,
+    mcpAllowedTools?: string[]
   ) => Promise<void> | void;
   sessionError?: string | null;
 }
@@ -52,6 +60,7 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
   const selectedModel = SESSION_MODELS.find(m => m.id === selectedModelId) ?? DEFAULT_SESSION_MODEL;
   const [enableDatabricksSqlWrite, setEnableDatabricksSqlWrite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { items: mcpItems, enabledCount: mcpEnabledCount, toggleItem: toggleMcpItem, buildMcpConfig, buildMcpAllowedTools } = useMcpSelection();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,7 +94,9 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
     setIsSubmitting(true);
     try {
       const messageContent = buildMessageContent(content.trim(), images);
-      await onNewSession?.(messageContent, selectedModel.id, enableDatabricksSqlWrite);
+      const mcpConfig = buildMcpConfig();
+      const mcpAllowedTools = buildMcpAllowedTools();
+      await onNewSession?.(messageContent, selectedModel.id, enableDatabricksSqlWrite, mcpConfig, mcpAllowedTools);
       setContent('');
       clearImages();
     } finally {
@@ -209,6 +220,73 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+
+              {mcpItems.length > 0 && (
+                <Popover>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              'h-8 px-2 shrink-0 gap-1',
+                              mcpEnabledCount > 0 && 'bg-primary/10'
+                            )}
+                            disabled={isSubmitting}
+                          >
+                            <Cable
+                              className={cn(
+                                'h-4 w-4',
+                                mcpEnabledCount > 0
+                                  ? 'text-primary stroke-[2.5]'
+                                  : 'text-muted-foreground'
+                              )}
+                            />
+                            {mcpEnabledCount > 0 && (
+                              <span className="text-xs text-primary font-medium">
+                                {mcpEnabledCount}
+                              </span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('mcp.sessionDropdownLabel')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <PopoverContent align="start" className="w-64 p-2">
+                    <div className="space-y-1">
+                      {mcpItems.map(item => (
+                        <div
+                          key={item.space_id}
+                          className="flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors"
+                        >
+                          <label
+                            htmlFor={`mcp-session-${item.space_id}`}
+                            className="flex items-center gap-2 truncate cursor-pointer"
+                          >
+                            {item.space_id === MCP_DBSQL_ID ? (
+                              <DatabaseSearch className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            ) : (
+                              <Sparkle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            )}
+                            <span className="truncate">{item.title}</span>
+                          </label>
+                          <Switch
+                            id={`mcp-session-${item.space_id}`}
+                            checked={item.enabled}
+                            onCheckedChange={() => toggleMcpItem(item.space_id)}
+                            className="shrink-0 ml-2 h-5 w-9 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&>span]:h-4 [&>span]:w-4 [&>span]:data-[state=checked]:translate-x-4"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
