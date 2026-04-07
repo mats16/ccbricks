@@ -31,12 +31,6 @@ vi.mock('../lib/databricks-auth.js', () => ({
   }),
 }));
 
-vi.mock('../lib/databricks-apps-client.js', () => ({
-  DatabricksAppsClient: vi.fn().mockImplementation(() => ({
-    delete: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
 vi.mock('../models/claude-settings.model.js', () => ({
   ClaudeSettings: vi.fn().mockImplementation(() => ({
     addSessionStartHooks: vi.fn().mockReturnThis(),

@@ -254,18 +254,12 @@
     "title": "LakeScout へようこそ",
     "subtitle": "AI Agent で Databricks での開発を加速しましょう。\n下のクイックスタートか、メッセージを入力から始めてください。",
     "comingSoon": "この機能は近日公開予定です",
-    "databricksAppsToggle": "Databricks Apps への自動デプロイを有効化",
     "databricksSqlWriteToggle": "Databricks SQL の書き込み操作（INSERT/UPDATE/DELETE）を許可",
     "quickstarts": {
       "lakeflow": {
         "title": "ジョブのエラー調査",
         "description": "ジョブの失敗原因を分析し、解決策を提案します",
         "modalDescription": "Lakeflow Jobs で発生したエラーのログを解析し、根本原因の特定と修正方法を提案します。"
-      },
-      "databricksApps": {
-        "title": "アプリの開発",
-        "description": "Databricks Apps 上でアプリを構築します",
-        "modalDescription": "Databricks Apps プラットフォームを活用したウェブアプリケーションの開発をサポートします。"
       },
       "tbd": {
         "title": "Coming Soon",
@@ -281,28 +275,9 @@
       "failedJobsCount": "{{count}} 件の失敗したジョブ",
       "presetPrompt": "Job ID: {{jobId}}, Run ID: {{runId}} が失敗しました。\n\nこのジョブの失敗原因を調査し、解決策を提案してください。",
       "investigateJob": "{{runName}} を調査"
-    },
-    "databricksApps": {
-      "fetchError": "テンプレートの取得に失敗しました",
-      "noTemplates": "利用可能なテンプレートがありません",
-      "templatesCount": "{{count}} 件のテンプレート",
-      "selectTemplate": "{{name}} テンプレートを選択",
-      "cloneError": "テンプレートのクローンに失敗しました",
-      "cloneInfo": "テンプレートを選択し、クローンボタンを押してください。",
-      "viewOnGithub": "GitHub で表示",
-      "clone": "クローン",
-      "presetPrompt": "{{templateName}} テンプレートをクローンしました。このテンプレートをベースに Databricks Apps の開発を進めてください。\n\nまずはアプリの初回デプロイを行なって下さい。"
     }
   },
   "databricksApp": {
-    "title": "Databricks Apps",
-    "notCreated": "App はまだ作成されていません",
-    "fetchError": "App 情報の取得に失敗しました",
-    "status": "ステータス",
-    "openApp": "App を開く",
-    "openConsole": "Console を開く",
-    "app": "アプリ",
-    "logs": "ログ",
     "workspace": "ワークスペース"
   },
   "tools": {

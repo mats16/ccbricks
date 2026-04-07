@@ -14,7 +14,6 @@ import reposRoute from './routes/repos.js';
 import jobsRoute from './routes/jobs.js';
 import userSkillsRoute from './routes/user-skills.js';
 import userAgentsRoute from './routes/user-agents.js';
-import sessionAppRoute from './routes/session-app.js';
 import { startEventBatcher } from './services/event-queue.service.js';
 
 export async function build() {
@@ -46,7 +45,6 @@ export async function build() {
   await app.register(healthRoute, { prefix: '/api' });
   await app.register(userRoute, { prefix: '/api' });
   await app.register(sessionRoute, { prefix: '/api' });
-  await app.register(sessionAppRoute, { prefix: '/api' });
   await app.register(titleRoute, { prefix: '/api' });
   await app.register(workspaceRoute, { prefix: '/api/databricks' });
   await app.register(reposRoute, { prefix: '/api/databricks' });

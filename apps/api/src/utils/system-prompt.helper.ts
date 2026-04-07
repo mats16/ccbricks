@@ -1,4 +1,4 @@
-import type { DatabricksWorkspaceSource, DatabricksAppsOutcome, SessionOutcome } from '@repo/types';
+import type { DatabricksWorkspaceSource, SessionOutcome } from '@repo/types';
 
 /** systemPrompt の設定型 */
 export interface SystemPromptConfig {
@@ -20,29 +20,18 @@ export interface SystemPromptConfig {
  * ```
  */
 export function buildSystemPromptConfig(outcomes: SessionOutcome[] = []): SystemPromptConfig {
-  // outcomes から必要な値を抽出
   const workspaceOutcome = outcomes.find(
     (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
-  );
-  const appsOutcome = outcomes.find(
-    (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps'
   );
 
   const workspacePath = workspaceOutcome?.path;
 
-  // Apps outcome がある場合は Apps instruction のみ（Workspace Push を含む）
-  // そうでなければ Workspace instruction のみ
-  // 注: Apps のみのパターンは存在しない（Apps がある場合は必ず Workspace もある）
-  let append: string | undefined;
-
-  if (appsOutcome && workspacePath) {
-    append = createDatabricksAppsInstruction(workspacePath);
-  } else if (workspacePath) {
-    append = createWorkspacePushInstruction(workspacePath);
-  }
-
-  if (append) {
-    return { type: 'preset', preset: 'claude_code', append };
+  if (workspacePath) {
+    return {
+      type: 'preset',
+      preset: 'claude_code',
+      append: createWorkspacePushInstruction(workspacePath),
+    };
   }
   return { type: 'preset', preset: 'claude_code' };
 }
@@ -83,64 +72,5 @@ The workspace path is provided via the \`DATABRICKS_WORKSPACE_PATH\` environment
   \`databricks sync --include "*" --exclude .claude/settings.local.json . "$DATABRICKS_WORKSPACE_PATH"\`
 - To check the upload result:
   \`databricks workspace list "$DATABRICKS_WORKSPACE_PATH"\`
-`.trim();
-}
-
-/**
- * Databricks Apps をデプロイするための systemPrompt 追加指示を生成
- *
- * @param workspacePath - Workspace のパス
- * @returns systemPrompt に追加する指示文字列
- *
- * @example
- * ```typescript
- * const instruction = createDatabricksAppsInstruction('/Workspace/Users/user@example.com/project');
- * // Returns markdown instruction text for Claude
- * ```
- */
-export function createDatabricksAppsInstruction(workspacePath: string): string {
-  return `
-Your task is to complete the request described in the task description.
-
-Instructions:
-1. For questions: Research the codebase and provide a detailed answer
-2. For implementations: Make the requested changes, push to Workspace and **deploy Databricks Apps**
-
-## Databricks Apps Development Requirements
-
-- Workspace path: \`DATABRICKS_WORKSPACE_PATH\` = \`${workspacePath}\`
-
-### App Name:
-
-The app name is **automatically generated** from the session ID. You don't need to choose an app name.
-
-### Important Instructions:
-
-**Use TodoWrite to create tasks for each step below.** Mark each task complete as you finish it.
-Do not consider the work done until the app is successfully deployed and verified.
-
-1. **CREATE** the app: \`databricks apps create --name "$APP_NAME" --description "Deployed by LakeScout"\` (takes ~2 minutes)
-2. **DEVELOP** all your changes in the current working directory
-3. **PUSH** your completed work to the specified Workspace path
-4. **DEPLOY** the app: \`databricks apps deploy "$APP_NAME" --source-code-path "$DATABRICKS_WORKSPACE_PATH"\`
-5. **VERIFY** deployment status: \`databricks apps get "$APP_NAME"\`
-
-### CLI Reference:
-
-| Command | Description |
-|---------|-------------|
-| \`databricks apps create --name "$APP_NAME"\` | Create the app |
-| \`databricks apps deploy "$APP_NAME" --source-code-path "$DATABRICKS_WORKSPACE_PATH"\` | Deploy the app |
-| \`databricks apps get "$APP_NAME"\` | Get app details and status |
-| \`databricks apps list-deployments "$APP_NAME"\` | List deployment history |
-
-### Workspace Push:
-
-- To push all files from the session directory to workspace:
-  \`databricks sync --include "*" --exclude .claude/settings.local.json . "$DATABRICKS_WORKSPACE_PATH"\`
-- To check the upload result:
-  \`databricks workspace list "$DATABRICKS_WORKSPACE_PATH"\`
-
-If any step fails, troubleshoot and retry. Do NOT consider the task complete until the app is accessible and verified.
 `.trim();
 }

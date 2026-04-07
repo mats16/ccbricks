@@ -254,18 +254,12 @@
     "title": "Welcome to LakeScout",
     "subtitle": "Accelerate your Databricks development with AI Agent.\nStart with a quickstart below or type a message.",
     "comingSoon": "This feature is coming soon",
-    "databricksAppsToggle": "Enable automatic deployment to Databricks Apps",
     "databricksSqlWriteToggle": "Allow write operations (INSERT/UPDATE/DELETE) on Databricks SQL",
     "quickstarts": {
       "lakeflow": {
         "title": "Investigate Job Errors",
         "description": "Analyze job failures and suggest solutions",
         "modalDescription": "Analyze error logs from Lakeflow Jobs to identify root causes and suggest fixes."
-      },
-      "databricksApps": {
-        "title": "App Development",
-        "description": "Build applications on Databricks Apps",
-        "modalDescription": "Support web application development using the Databricks Apps platform."
       },
       "tbd": {
         "title": "Coming Soon",
@@ -281,28 +275,9 @@
       "failedJobsCount": "{{count}} failed job(s)",
       "presetPrompt": "Job ID: {{jobId}}, Run ID: {{runId}} has failed.\n\nPlease investigate the root cause of this job failure and suggest solutions.",
       "investigateJob": "Investigate {{runName}}"
-    },
-    "databricksApps": {
-      "fetchError": "Failed to fetch templates",
-      "noTemplates": "No templates available",
-      "templatesCount": "{{count}} template(s)",
-      "selectTemplate": "Select {{name}} template",
-      "cloneError": "Failed to clone template",
-      "cloneInfo": "Select a template and click Clone.",
-      "viewOnGithub": "View on GitHub",
-      "clone": "Clone",
-      "presetPrompt": "Cloned {{templateName}} template. Please proceed with developing Databricks Apps based on this template.\n\nFirst, please perform the initial deployment of the app."
     }
   },
   "databricksApp": {
-    "title": "Databricks Apps",
-    "notCreated": "App has not been created yet",
-    "fetchError": "Failed to fetch app info",
-    "status": "Status",
-    "openApp": "Open App",
-    "openConsole": "Open Console",
-    "app": "App",
-    "logs": "Logs",
     "workspace": "Workspace"
   },
   "tools": {

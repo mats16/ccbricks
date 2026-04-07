@@ -6,7 +6,6 @@ import type {
   SessionCreateRequest,
   UserMessageContentBlock,
   SessionOutcome,
-  DatabricksAppsOutcome,
   DatabricksWorkspaceSource,
   WorkspaceSelection,
 } from '@repo/types';
@@ -68,13 +67,6 @@ export function MainArea({
     return sessionStatus === 'init' || sessionStatus === 'running';
   }, [sessionStatus]);
 
-  // session_context.outcomes から databricks_apps を取得
-  const databricksAppsOutcome = useMemo(() => {
-    const outcomes = session?.session_context?.outcomes;
-    if (!outcomes) return null;
-    return outcomes.find((o): o is DatabricksAppsOutcome => o.type === 'databricks_apps') ?? null;
-  }, [session?.session_context?.outcomes]);
-
   // session_context.outcomes から databricks_workspace を取得
   const databricksWorkspaceOutcome = useMemo(() => {
     const outcomes = session?.session_context?.outcomes;
@@ -86,7 +78,7 @@ export function MainArea({
   }, [session?.session_context?.outcomes]);
 
   // フローティングボタンを表示するかどうか
-  const hasFloatingButtons = !!databricksAppsOutcome || !!databricksWorkspaceOutcome;
+  const hasFloatingButtons = !!databricksWorkspaceOutcome;
 
   const handleSend = (content: UserMessageContentBlock[]) => {
     onSendMessage?.(content);
@@ -106,7 +98,6 @@ export function MainArea({
     content: UserMessageContentBlock[],
     modelId: string,
     workspaceSelection: WorkspaceSelection | null,
-    enableDatabricksApps: boolean,
     enableDatabricksSqlWrite: boolean
   ) => {
     try {
@@ -127,9 +118,6 @@ export function MainArea({
           path: workspaceSelection.path,
           id: workspaceSelection.object_id,
         });
-      }
-      if (enableDatabricksApps) {
-        outcomes.push({ type: 'databricks_apps' });
       }
 
       const request: SessionCreateRequest = {
@@ -161,10 +149,7 @@ export function MainArea({
               ]
             : [],
           outcomes: outcomes,
-          disallowed_tools: [
-            ...(enableDatabricksSqlWrite ? [] : ['mcp__sql__execute_sql']),
-            ...(enableDatabricksApps ? [] : ['mcp__apps__*']),
-          ],
+          disallowed_tools: [...(enableDatabricksSqlWrite ? [] : ['mcp__sql__execute_sql'])],
         },
       };
 
@@ -228,13 +213,7 @@ export function MainArea({
         isAgentThinking={isAgentThinking}
         disabled={session?.session_status === 'archived'}
       />
-      {hasFloatingButtons && (
-        <FloatingButtons
-          sessionId={sessionId}
-          showAppButton={!!databricksAppsOutcome}
-          workspaceObjectId={databricksWorkspaceOutcome?.id}
-        />
-      )}
+      {hasFloatingButtons && <FloatingButtons workspaceObjectId={databricksWorkspaceOutcome?.id} />}
     </div>
   );
 }
