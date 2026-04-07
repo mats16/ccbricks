@@ -222,13 +222,14 @@ describe('EventBatcher', () => {
     expect(insertSessionEventInTx).toHaveBeenCalledTimes(3); // initial + 2 retries
   });
 
-  it('should drop events after max retry attempts', async () => {
+  it('should fall back to individual writes after max retry attempts', async () => {
     (insertSessionEventInTx as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error('persistent failure')
     );
 
     const batcher = new EventBatcher(fastify, 10, 5000);
-    batcher.add(createPayload());
+    batcher.add(createPayload({ eventUuid: 'event-a' }));
+    batcher.add(createPayload({ eventUuid: 'event-b' }));
 
     await batcher.flush();
 
@@ -239,10 +240,66 @@ describe('EventBatcher', () => {
     await vi.advanceTimersByTimeAsync(4000);
     await vi.advanceTimersByTimeAsync(8000);
 
-    expect(fastify.log.error).toHaveBeenCalledWith(
+    // 個別フォールバックが実行される
+    expect(fastify.log.warn).toHaveBeenCalledWith(
       expect.objectContaining({ attempt: 5 }),
-      'Event retry exhausted, events dropped'
+      'Event batch retry exhausted, falling back to individual writes'
     );
+
+    // 個別書き込みが試みられた（各イベントで失敗→ permanently dropped）
+    expect(fastify.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ eventUuid: 'event-a' }),
+      'Event permanently dropped'
+    );
+    expect(fastify.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ eventUuid: 'event-b' }),
+      'Event permanently dropped'
+    );
+  });
+
+  it('should save healthy events when only one event in batch is broken (individual fallback)', async () => {
+    // 最初のフラッシュとリトライはすべて失敗
+    const persistentError = new Error('batch fails');
+    let callCount = 0;
+
+    (insertSessionEventInTx as ReturnType<typeof vi.fn>).mockImplementation(async (_tx, event) => {
+      callCount++;
+      // 個別フォールバック時: event-bad は失敗、event-good は成功
+      if (event.uuid === 'event-bad') {
+        throw new Error('bad event');
+      }
+      // バッチ書き込み時（最初の6回 = initial + 5 retries）は常に失敗
+      if (callCount <= 6) {
+        throw persistentError;
+      }
+      return { uuid: 'inserted' };
+    });
+
+    const batcher = new EventBatcher(fastify, 10, 5000);
+    batcher.add(createPayload({ eventUuid: 'event-bad' }));
+    batcher.add(createPayload({ eventUuid: 'event-good' }));
+
+    await batcher.flush();
+
+    // リトライを消化
+    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(4000);
+    await vi.advanceTimersByTimeAsync(8000);
+
+    // event-bad だけがドロップされ、event-good は保存される
+    expect(fastify.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ eventUuid: 'event-bad' }),
+      'Event permanently dropped'
+    );
+
+    // event-good は permanently dropped されない
+    const droppedCalls = (fastify.log.error as ReturnType<typeof vi.fn>).mock.calls.filter(
+      call => call[1] === 'Event permanently dropped'
+    );
+    expect(droppedCalls).toHaveLength(1);
+    expect(droppedCalls[0][0].eventUuid).toBe('event-bad');
   });
 
   it('should flush on interval timer', async () => {
@@ -254,6 +311,93 @@ describe('EventBatcher', () => {
     await vi.advanceTimersByTimeAsync(5000);
 
     expect(insertSessionEventInTx).toHaveBeenCalledTimes(1);
+  });
+
+  it('should recover when per-user write times out', async () => {
+    // withUserContext がハング（解決しない Promise）
+    (fastify.withUserContext as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () => new Promise(() => {}) // never resolves
+    );
+
+    const batcher = new EventBatcher(fastify, 10, 5000);
+    batcher.add(createPayload());
+
+    // flush を開始
+    const flushPromise = batcher.flush();
+
+    // microtask を flush して chain callback を開始 + per-user write タイムアウト (15秒) を発火
+    await vi.advanceTimersByTimeAsync(15_000);
+    await flushPromise;
+
+    // per-user write タイムアウトでリトライがスケジュールされる
+    expect(fastify.log.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-123', eventCount: 1 }),
+      'Event flush failed for user, scheduling retry'
+    );
+
+    // mock を復元して次のフラッシュは正常に動作
+    (fastify.withUserContext as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_userId, callback) => callback({})
+    );
+
+    batcher.add(createPayload());
+    await batcher.flush();
+
+    expect(insertSessionEventInTx).toHaveBeenCalled();
+  });
+
+  it('should serialize concurrent flush calls via promise chain', async () => {
+    const order: string[] = [];
+    let callIndex = 0;
+
+    (fastify.withUserContext as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_userId, callback) => {
+        const idx = callIndex++;
+        order.push(`start-${idx}`);
+        const result = await callback({});
+        order.push(`end-${idx}`);
+        return result;
+      }
+    );
+
+    const batcher = new EventBatcher(fastify, 10, 5000);
+
+    // 2つのバッチを連続でフラッシュ
+    batcher.add(createPayload());
+    const flush1 = batcher.flush();
+
+    batcher.add(createPayload());
+    const flush2 = batcher.flush();
+
+    await Promise.all([flush1, flush2]);
+
+    // 直列化されている: flush1 が完了してから flush2 が開始される
+    expect(order).toEqual(['start-0', 'end-0', 'start-1', 'end-1']);
+  });
+
+  it('should not schedule retries in flush catch block when doFlush throws', async () => {
+    // doFlush を直接失敗させて catch ブロックの挙動を検証
+    const batcher = new EventBatcher(fastify, 10, 5000);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(batcher as any, 'doFlush').mockRejectedValueOnce(new Error('unexpected'));
+
+    batcher.add(createPayload({ userId: 'user-A' }));
+    batcher.add(createPayload({ userId: 'user-B' }));
+
+    await batcher.flush();
+
+    // catch ブロックはログのみ出力し、リトライをスケジュールしない
+    expect(fastify.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ eventCount: 2 }),
+      'Flush timed out; doFlush will handle retries internally'
+    );
+
+    // scheduleRetry が呼ばれていないことを確認（リトライログが出ない）
+    const retryCalls = (fastify.log.warn as ReturnType<typeof vi.fn>).mock.calls.filter(
+      call => call[1] === 'Event flush failed for user, scheduling retry'
+    );
+    expect(retryCalls).toHaveLength(0);
   });
 
   it('should shutdown: clear timer, cancel retries, and flush remaining', async () => {
@@ -272,6 +416,29 @@ describe('EventBatcher', () => {
     await batcher.shutdown();
 
     expect(insertSessionEventInTx).toHaveBeenCalled();
+    expect(fastify.log.info).toHaveBeenCalledWith('EventBatcher shut down');
+  });
+
+  it('should wait for in-flight flush to complete before shutdown finishes', async () => {
+    // writeUserEvents がハングする（per-user write タイムアウトで解決される）
+    (fastify.withUserContext as ReturnType<typeof vi.fn>).mockImplementation(
+      () => new Promise(() => {}) // never resolves
+    );
+
+    const batcher = new EventBatcher(fastify, 10, 5000);
+    batcher.add(createPayload());
+
+    // フラッシュを開始（per-user write がハング → 15s でタイムアウト → リトライスケジュール → flush 完了）
+    batcher.flush().catch(() => {});
+
+    const shutdownPromise = batcher.shutdown();
+
+    // per-user write タイムアウト (15s) を待機 → doFlush 完了 → flushChain 解決
+    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await shutdownPromise;
+
+    // shutdown は in-flight flush の完了を待ってから正常終了する（データロスなし）
     expect(fastify.log.info).toHaveBeenCalledWith('EventBatcher shut down');
   });
 });

@@ -33,7 +33,12 @@ import { DropZoneOverlay } from './DropZoneOverlay';
 import { useImageAttachment } from '@/hooks/useImageAttachment';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { buildMessageContent } from '@/lib/content-builder';
-import { SESSION_MODELS, DEFAULT_SESSION_MODEL, TEXTAREA_MAX_HEIGHT_MAIN, MCP_DBSQL_ID } from '@/constants';
+import {
+  SESSION_MODELS,
+  DEFAULT_SESSION_MODEL,
+  TEXTAREA_MAX_HEIGHT_MAIN,
+  MCP_DBSQL_ID,
+} from '@/constants';
 import { useMcpSelection } from '@/hooks/useMcpSelection';
 import type { UserMessageContentBlock, McpConfig } from '@repo/types';
 
@@ -60,7 +65,13 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
   const selectedModel = SESSION_MODELS.find(m => m.id === selectedModelId) ?? DEFAULT_SESSION_MODEL;
   const [enableDatabricksSqlWrite, setEnableDatabricksSqlWrite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { items: mcpItems, enabledCount: mcpEnabledCount, toggleItem: toggleMcpItem, buildMcpConfig, buildMcpAllowedTools } = useMcpSelection();
+  const {
+    items: mcpItems,
+    enabledCount: mcpEnabledCount,
+    toggleItem: toggleMcpItem,
+    buildMcpConfig,
+    buildMcpAllowedTools,
+  } = useMcpSelection();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,7 +107,13 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
       const messageContent = buildMessageContent(content.trim(), images);
       const mcpConfig = buildMcpConfig();
       const mcpAllowedTools = buildMcpAllowedTools();
-      await onNewSession?.(messageContent, selectedModel.id, enableDatabricksSqlWrite, mcpConfig, mcpAllowedTools);
+      await onNewSession?.(
+        messageContent,
+        selectedModel.id,
+        enableDatabricksSqlWrite,
+        mcpConfig,
+        mcpAllowedTools
+      );
       setContent('');
       clearImages();
     } finally {
