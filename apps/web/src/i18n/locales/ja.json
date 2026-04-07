@@ -60,6 +60,7 @@
     "claudeCode": "Claude Code",
     "skills": "スキル",
     "agents": "サブエージェント",
+    "mcp": "MCP サーバー",
     "databricksConsole": "Databricks Console",
     "loadError": "ユーザー情報の取得に失敗しました",
     "defaultName": "ユーザー"
@@ -235,7 +236,7 @@
     }
   },
   "welcome": {
-    "heading": "Claude Code on Databricks",
+    "heading": "Explore the Lakehouse",
     "title": "LakeScout へようこそ",
     "subtitle": "AI Agent で Databricks での開発を加速しましょう。\n下のクイックスタートか、メッセージを入力から始めてください。",
     "comingSoon": "この機能は近日公開予定です",
@@ -264,6 +265,13 @@
   },
   "databricksApp": {
     "workspace": "ワークスペース"
+  },
+  "mcp": {
+    "title": "MCP サーバー管理",
+    "description": "AI セッションで利用する MCP サーバーを管理",
+    "fetchError": "Genie スペースの取得に失敗しました",
+    "empty": "利用可能な Genie スペースがありません",
+    "sessionDropdownLabel": "MCP サーバー"
   },
   "tools": {
     "updateTodos": "Update Todos",

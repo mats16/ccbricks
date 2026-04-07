@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Globe, Check, ExternalLink, Sparkles, Bot } from 'lucide-react';
+import { Globe, Check, ExternalLink, Puzzle, Bot, Cable } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -44,7 +44,7 @@ export function UserFooterCollapsed({
               aria-label={t('user.skills')}
               className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent transition-colors"
             >
-              <Sparkles className="h-4 w-4" />
+              <Puzzle className="h-4 w-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">{t('user.skills')}</TooltipContent>
@@ -60,6 +60,18 @@ export function UserFooterCollapsed({
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">{t('user.agents')}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => navigate('/mcp')}
+              aria-label={t('user.mcp')}
+              className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent transition-colors"
+            >
+              <Cable className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{t('user.mcp')}</TooltipContent>
         </Tooltip>
       </div>
 

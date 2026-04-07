@@ -6,6 +6,7 @@ import type {
   SessionCreateRequest,
   UserMessageContentBlock,
   DatabricksWorkspaceSource,
+  McpConfig,
 } from '@repo/types';
 import { MainHeader } from './MainHeader';
 import { MessageArea } from './MessageArea';
@@ -92,7 +93,9 @@ export function MainArea({
   const handleNewSession = async (
     content: UserMessageContentBlock[],
     modelId: string,
-    enableDatabricksSqlWrite: boolean
+    enableDatabricksSqlWrite: boolean,
+    mcpConfig?: McpConfig,
+    mcpAllowedTools?: string[]
   ) => {
     try {
       setCreateSessionError(null);
@@ -131,7 +134,9 @@ export function MainArea({
               id: 0,
             },
           ],
-          disallowed_tools: [...(enableDatabricksSqlWrite ? [] : ['mcp__sql__execute_sql'])],
+          allowed_tools: mcpAllowedTools,
+          disallowed_tools: [...(enableDatabricksSqlWrite ? [] : ['mcp__dbsql__execute_sql'])],
+          mcp_config: mcpConfig,
         },
       };
 

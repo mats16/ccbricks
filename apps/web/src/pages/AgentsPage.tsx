@@ -89,9 +89,9 @@ const AVAILABLE_TOOLS = [
   'AskUserQuestion',
   'Skill',
   'EnterPlanMode',
-  'mcp__sql__execute_sql',
-  'mcp__sql__execute_sql_read_only',
-  'mcp__sql__poll_sql_result',
+  'mcp__dbsql__execute_sql',
+  'mcp__dbsql__execute_sql_read_only',
+  'mcp__dbsql__poll_sql_result',
 ] as const;
 
 /** GitHub APIのディレクトリエントリ型 */

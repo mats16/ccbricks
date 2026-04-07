@@ -60,6 +60,7 @@
     "claudeCode": "Claude Code",
     "skills": "Skills",
     "agents": "Subagents",
+    "mcp": "MCP Servers",
     "databricksConsole": "Databricks Console",
     "loadError": "Failed to load user",
     "defaultName": "User"
@@ -235,7 +236,7 @@
     }
   },
   "welcome": {
-    "heading": "Claude Code on Databricks",
+    "heading": "Explore the Lakehouse",
     "title": "Welcome to LakeScout",
     "subtitle": "Accelerate your Databricks development with AI Agent.\nStart with a quickstart below or type a message.",
     "comingSoon": "This feature is coming soon",
@@ -264,6 +265,13 @@
   },
   "databricksApp": {
     "workspace": "Workspace"
+  },
+  "mcp": {
+    "title": "MCP Server Management",
+    "description": "Manage MCP servers available for AI sessions",
+    "fetchError": "Failed to fetch Genie spaces",
+    "empty": "No Genie spaces available",
+    "sessionDropdownLabel": "MCP Servers"
   },
   "tools": {
     "updateTodos": "Update Todos",

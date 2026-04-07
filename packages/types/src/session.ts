@@ -21,6 +21,8 @@ export type SessionOutcome = DatabricksWorkspaceSource;
 // Session Context Types
 // =====================================================
 
+import type { McpConfig } from './mcp.js';
+
 /**
  * セッション作成リクエスト用のコンテキスト
  */
@@ -30,6 +32,7 @@ export interface SessionCreateContext {
   outcomes: SessionOutcome[];
   allowed_tools?: string[];
   disallowed_tools?: string[];
+  mcp_config?: McpConfig;
 }
 
 /**
@@ -42,6 +45,7 @@ export interface SessionContextResponse {
   model: string;
   sources: SessionSource[];
   outcomes: SessionOutcome[];
+  mcp_config?: McpConfig;
 }
 
 // =====================================================
