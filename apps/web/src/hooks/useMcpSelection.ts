@@ -2,7 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import useLocalStorageState from 'use-local-storage-state';
 import { genieService } from '@/services';
 import { useUser } from '@/hooks/useUser';
-import { buildDbsqlMcpUrl, buildGenieMcpUrl, MCP_DBSQL_ID, STORAGE_KEY_ENABLED_MCP_SERVERS } from '@/constants';
+import {
+  buildDbsqlMcpUrl,
+  buildGenieMcpUrl,
+  MCP_DBSQL_ID,
+  STORAGE_KEY_ENABLED_MCP_SERVERS,
+} from '@/constants';
 import type { GenieSpace, McpConfig } from '@repo/types';
 
 export interface McpSelectionItem {
@@ -112,9 +117,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
 
   // セッションで選択されたサーバーのツールパターンのみ返す
   const buildMcpAllowedTools = useCallback((): string[] => {
-    return items
-      .filter(i => i.enabled && i.mcp_url)
-      .map(i => `mcp__${toServerKey(i.space_id)}__*`);
+    return items.filter(i => i.enabled && i.mcp_url).map(i => `mcp__${toServerKey(i.space_id)}__*`);
   }, [items]);
 
   return { items, enabledCount, toggleItem, buildMcpConfig, buildMcpAllowedTools, isLoading };

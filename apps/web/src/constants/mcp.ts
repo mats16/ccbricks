@@ -6,7 +6,10 @@ export function buildDbsqlMcpUrl(databricksHost: string | null | undefined): str
   return databricksHost ? `https://${databricksHost}${MCP_DBSQL_URL_PATH}` : '';
 }
 
-export function buildGenieMcpUrl(databricksHost: string | null | undefined, spaceId: string): string {
+export function buildGenieMcpUrl(
+  databricksHost: string | null | undefined,
+  spaceId: string
+): string {
   return databricksHost ? `https://${databricksHost}${MCP_GENIE_URL_PREFIX}/${spaceId}` : '';
 }
 

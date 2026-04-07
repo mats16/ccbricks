@@ -6,7 +6,12 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { genieService } from '@/services';
 import { useUser } from '@/hooks/useUser';
-import { buildDbsqlMcpUrl, buildGenieMcpUrl, MCP_DBSQL_ID, STORAGE_KEY_ENABLED_MCP_SERVERS } from '@/constants';
+import {
+  buildDbsqlMcpUrl,
+  buildGenieMcpUrl,
+  MCP_DBSQL_ID,
+  STORAGE_KEY_ENABLED_MCP_SERVERS,
+} from '@/constants';
 import type { GenieSpace } from '@repo/types';
 
 export function McpContent() {
@@ -68,9 +73,7 @@ export function McpContent() {
       <div className="flex-1 overflow-auto p-4">
         {/* Managed MCP */}
         <section className="mb-6">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-2">
-            Managed MCP
-          </h2>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-2">Managed MCP</h2>
           <div className="space-y-2">
             {(() => {
               const dbsqlUrl = buildDbsqlMcpUrl(databricksHost);
@@ -103,9 +106,7 @@ export function McpContent() {
 
         {/* Genie */}
         <section>
-          <h2 className="text-sm font-semibold text-muted-foreground mb-2">
-            Genie
-          </h2>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-2">Genie</h2>
           {error && (
             <div className="flex items-center gap-2 p-3 mb-2 bg-destructive/10 text-destructive rounded-md text-sm">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -131,7 +132,10 @@ export function McpContent() {
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-2">
                       <Sparkle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <Label htmlFor={`genie-${space.space_id}`} className="font-medium cursor-pointer">
+                      <Label
+                        htmlFor={`genie-${space.space_id}`}
+                        className="font-medium cursor-pointer"
+                      >
                         {space.title}
                       </Label>
                     </div>

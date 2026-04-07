@@ -14,6 +14,29 @@ const RETRY_INITIAL_DELAY_MS = 500;
 const RETRY_MAX_DELAY_MS = 30_000;
 const RETRY_MAX_ATTEMPTS = 5;
 
+/** タイムアウト定数 */
+const WRITE_TIMEOUT_MS = 15_000;
+const FLUSH_TIMEOUT_MS = 30_000;
+
+/**
+ * Promise をタイムアウト付きで実行する
+ *
+ * @param promise - 対象の Promise
+ * @param ms - タイムアウト（ミリ秒）
+ * @param label - タイムアウト時のエラーメッセージに含めるラベル
+ * @returns Promise の結果
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label = 'operation'): Promise<T> {
+  let timerId: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timerId = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    timerId.unref();
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timerId);
+  });
+}
+
 /**
  * インメモリバッチバッファによるイベント永続化
  *
@@ -23,12 +46,14 @@ const RETRY_MAX_ATTEMPTS = 5;
  *
  * 書き込み失敗時はエクスポネンシャルバックオフでリトライする。
  * add() 時に enqueuedAt を確定させ、リトライ時も元の時刻で DB に書き込む。
+ *
+ * フラッシュの直列化は Promise チェーン（flushChain）で実現。
+ * boolean フラグと異なり、DB 操作がハングしてもタイムアウトでチェーンが進行する。
  */
 export class EventBatcher {
   private buffer: SessionEventJobPayload[] = [];
   private timer: ReturnType<typeof setInterval> | null = null;
-  private flushing = false;
-  private flushPromise: Promise<void> = Promise.resolve();
+  private flushChain: Promise<void> = Promise.resolve();
   private shuttingDown = false;
   private retryTimers = new Set<ReturnType<typeof setTimeout>>();
   private activeRetries = new Set<Promise<void>>();
@@ -39,9 +64,6 @@ export class EventBatcher {
     private readonly intervalMs: number
   ) {}
 
-  /**
-   * 定期フラッシュタイマーを開始する
-   */
   start(): void {
     this.timer = setInterval(() => {
       this.flush().catch(err => {
@@ -55,10 +77,6 @@ export class EventBatcher {
     );
   }
 
-  /**
-   * イベントをバッファに追加する
-   * バッチサイズ到達時は即時フラッシュをトリガーする
-   */
   add(payload: SessionEventJobPayload): void {
     this.buffer.push({ ...payload, enqueuedAt: new Date() });
     if (this.buffer.length >= this.batchSize) {
@@ -68,57 +86,30 @@ export class EventBatcher {
     }
   }
 
-  /**
-   * バッファ内の全イベントを DB にフラッシュする
-   *
-   * - バッファを swap してから INSERT（新イベントは新バッファに入る）
-   * - 同一ユーザーのイベントは1トランザクションにまとめる
-   * - flushing フラグで並行フラッシュを防止
-   * - 失敗したユーザーグループはエクスポネンシャルバックオフでリトライ
-   */
   async flush(): Promise<void> {
-    if (this.flushing || this.buffer.length === 0) return;
-
-    this.flushing = true;
+    // アトミックにバッファを swap（並行呼び出しで空バッチを処理しない）
+    if (this.buffer.length === 0) return;
     const batch = this.buffer;
     this.buffer = [];
 
-    const doFlush = async () => {
+    // Promise チェーンに繋げて直列化 + タイムアウト保護
+    this.flushChain = this.flushChain.then(async () => {
       try {
-        const eventsByUser = this.groupByUser(batch);
-
-        const userIds = [...eventsByUser.keys()];
-        const results = await Promise.allSettled(
-          userIds.map(async userId => {
-            const events = eventsByUser.get(userId)!;
-            await this.writeUserEvents(userId, events);
-          })
+        await withTimeout(this.doFlush(batch), FLUSH_TIMEOUT_MS, 'flush');
+      } catch (err) {
+        // doFlush は内部で Promise.allSettled を使い、失敗した各ユーザーのリトライを
+        // 個別にスケジュールする。ここでの catch はタイムアウト時のみ到達する。
+        // doFlush はバックグラウンドで継続実行中のため、重複リトライを避けるためログのみ出力。
+        this.fastify.log.error(
+          { err, eventCount: batch.length },
+          'Flush timed out; doFlush will handle retries internally'
         );
-
-        for (let i = 0; i < results.length; i++) {
-          if (results[i].status === 'rejected') {
-            const userId = userIds[i];
-            const events = eventsByUser.get(userId)!;
-            const error = (results[i] as PromiseRejectedResult).reason;
-            this.fastify.log.warn(
-              { err: error, userId, eventCount: events.length },
-              'Event flush failed for user, scheduling retry'
-            );
-            this.scheduleRetry(userId, events, 1);
-          }
-        }
-      } finally {
-        this.flushing = false;
       }
-    };
+    });
 
-    this.flushPromise = doFlush();
-    await this.flushPromise;
+    await this.flushChain;
   }
 
-  /**
-   * タイマーを停止し、残りのイベントをフラッシュする（グレースフルシャットダウン用）
-   */
   async shutdown(): Promise<void> {
     this.shuttingDown = true;
 
@@ -137,10 +128,57 @@ export class EventBatcher {
       await Promise.allSettled([...this.activeRetries]);
     }
 
-    // 実行中のフラッシュを待機してから残りをフラッシュ
-    await this.flushPromise;
-    await this.flush();
+    // 実行中のフラッシュを待機（タイムアウト付き）
+    try {
+      await withTimeout(this.flushChain, FLUSH_TIMEOUT_MS, 'shutdown flush wait');
+    } catch {
+      this.fastify.log.warn('Shutdown: flush chain timed out, proceeding with final flush');
+    }
+
+    // 残りのバッファをフラッシュ
+    if (this.buffer.length > 0) {
+      const batch = this.buffer;
+      this.buffer = [];
+      try {
+        await withTimeout(this.doFlush(batch), FLUSH_TIMEOUT_MS, 'shutdown final flush');
+      } catch (err) {
+        this.fastify.log.error(
+          { err, eventCount: batch.length },
+          'Shutdown: final flush failed, events may be lost'
+        );
+      }
+    }
+
     this.fastify.log.info('EventBatcher shut down');
+  }
+
+  private async doFlush(batch: SessionEventJobPayload[]): Promise<void> {
+    const eventsByUser = this.groupByUser(batch);
+    const userIds = [...eventsByUser.keys()];
+
+    const results = await Promise.allSettled(
+      userIds.map(async userId => {
+        const events = eventsByUser.get(userId)!;
+        await withTimeout(
+          this.writeUserEvents(userId, events),
+          WRITE_TIMEOUT_MS,
+          `writeUserEvents(${userId})`
+        );
+      })
+    );
+
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].status === 'rejected') {
+        const userId = userIds[i];
+        const events = eventsByUser.get(userId)!;
+        const error = (results[i] as PromiseRejectedResult).reason;
+        this.fastify.log.warn(
+          { err: error, userId, eventCount: events.length },
+          'Event flush failed for user, scheduling retry'
+        );
+        this.scheduleRetry(userId, events, 1);
+      }
+    }
   }
 
   private groupByUser(events: SessionEventJobPayload[]): Map<string, SessionEventJobPayload[]> {
@@ -204,7 +242,11 @@ export class EventBatcher {
     attempt: number
   ): Promise<void> {
     try {
-      await this.writeUserEvents(userId, events, true);
+      await withTimeout(
+        this.writeUserEvents(userId, events, true),
+        WRITE_TIMEOUT_MS,
+        `retry(${userId}, attempt=${attempt})`
+      );
       this.fastify.log.info(
         { userId, eventCount: events.length, attempt },
         'Event retry succeeded'
@@ -217,12 +259,50 @@ export class EventBatcher {
         );
         this.scheduleRetry(userId, events, attempt + 1);
       } else {
-        this.fastify.log.error(
+        // 最終リトライ失敗: 個別にフォールバック書き込み
+        this.fastify.log.warn(
           { err, userId, eventCount: events.length, attempt },
-          'Event retry exhausted, events dropped'
+          'Event batch retry exhausted, falling back to individual writes'
+        );
+        await this.writeEventsIndividually(userId, events);
+      }
+    }
+  }
+
+  /**
+   * イベントを1件ずつ個別に書き込む（最終フォールバック）
+   *
+   * バッチ全体のリトライが上限に達した場合に使用する。
+   * 1件の問題イベントがバッチ全体をドロップさせることを防ぐ。
+   */
+  private async writeEventsIndividually(
+    userId: string,
+    events: SessionEventJobPayload[]
+  ): Promise<void> {
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const event of events) {
+      try {
+        await withTimeout(
+          this.writeUserEvents(userId, [event], true),
+          WRITE_TIMEOUT_MS,
+          `individualWrite(${event.eventUuid})`
+        );
+        succeeded++;
+      } catch (err) {
+        failed++;
+        this.fastify.log.error(
+          { err, userId, eventUuid: event.eventUuid, sessionId: event.sessionId },
+          'Event permanently dropped'
         );
       }
     }
+
+    this.fastify.log.info(
+      { userId, succeeded, failed, total: events.length },
+      'Individual event write fallback completed'
+    );
   }
 }
 

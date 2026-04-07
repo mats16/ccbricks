@@ -88,9 +88,10 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   // SQLite クライアント作成
   const client = new Database(dbPath);
 
-  // WAL モード & 外部キー制約を有効化
+  // WAL モード & 外部キー制約を有効化 & ロック待機タイムアウト設定
   client.pragma('journal_mode = WAL');
   client.pragma('foreign_keys = ON');
+  client.pragma('busy_timeout = 5000');
 
   // テーブル作成（CREATE TABLE IF NOT EXISTS）
   client.exec(`

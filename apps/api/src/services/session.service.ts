@@ -251,9 +251,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     const mcpServers: Record<string, McpServerConfig> = {};
     const oboToken = ctx.oboAccessToken;
     if (sessionContext.mcp_config?.mcpServers && oboToken) {
-      for (const [serverId, serverConfig] of Object.entries(
-        sessionContext.mcp_config.mcpServers
-      )) {
+      for (const [serverId, serverConfig] of Object.entries(sessionContext.mcp_config.mcpServers)) {
         mcpServers[serverId] = {
           type: serverConfig.type,
           url: serverConfig.url,
