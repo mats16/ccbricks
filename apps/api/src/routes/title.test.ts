@@ -52,11 +52,11 @@ describe('title route', () => {
     // Reset mocks
     vi.clearAllMocks();
 
-    // Default: return PAT auth provider
-    mockGetAuthProvider.mockResolvedValue({
-      type: 'pat',
+    // Default: return SP auth provider
+    mockGetAuthProvider.mockReturnValue({
+      type: 'oauth-m2m',
       getEnvVars: vi.fn(),
-      getToken: vi.fn().mockResolvedValue('test-pat-token'),
+      getToken: vi.fn().mockResolvedValue('test-sp-token'),
     });
   });
 
@@ -164,7 +164,7 @@ describe('title route', () => {
 
     it('should return 401 when no token is available (SP token fetch fails)', async () => {
       // Mock: SP auth provider that throws on getToken
-      mockGetAuthProvider.mockResolvedValue({
+      mockGetAuthProvider.mockReturnValue({
         type: 'oauth-m2m',
         getEnvVars: vi.fn(),
         getToken: vi.fn().mockRejectedValue(new Error('Service Principal token is not available')),
@@ -188,7 +188,7 @@ describe('title route', () => {
 
     it('should use SP token when PAT is not available', async () => {
       // Mock: SP auth provider
-      mockGetAuthProvider.mockResolvedValue({
+      mockGetAuthProvider.mockReturnValue({
         type: 'oauth-m2m',
         getEnvVars: vi.fn(),
         getToken: vi.fn().mockResolvedValue('test-sp-token'),
@@ -220,10 +220,10 @@ describe('title route', () => {
     });
 
     it('should use PAT auth provider when available', async () => {
-      // Mock: PAT auth provider
-      const mockAccessToken = vi.fn().mockResolvedValue('test-pat-token');
-      mockGetAuthProvider.mockResolvedValue({
-        type: 'pat',
+      // Mock: SP auth provider (PAT is no longer used)
+      const mockAccessToken = vi.fn().mockResolvedValue('test-sp-token');
+      mockGetAuthProvider.mockReturnValue({
+        type: 'oauth-m2m',
         getEnvVars: vi.fn(),
         getToken: mockAccessToken,
       });

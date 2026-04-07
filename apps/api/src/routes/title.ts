@@ -27,7 +27,7 @@ const titleRoute: FastifyPluginAsync = async fastify => {
 
     // PAT を優先的に取得、なければ SP トークンにフォールバック
     const ctx = createUserContext(fastify, request);
-    const authProvider = await ctx.getAuthProvider();
+    const authProvider = ctx.getAuthProvider();
     let accessToken: string;
     try {
       accessToken = await authProvider.getToken();

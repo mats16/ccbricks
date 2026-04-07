@@ -4,6 +4,7 @@ import {
   isSDKUserMessageEvent,
   isSDKAssistantMessageEvent,
   isSDKSystemMessageEvent,
+  isSDKResultMessageEvent,
   isTextContentBlock,
   isToolUseContentBlock,
   isImageContentBlock,
@@ -167,9 +168,8 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
     }
 
     // result メッセージ: errors がある場合のみ表示
-    if (event.type === 'result') {
-      const resultEvent = event as Record<string, unknown>;
-      const errors = resultEvent.errors;
+    if (isSDKResultMessageEvent(event)) {
+      const { errors } = event;
       if (Array.isArray(errors) && errors.length > 0) {
         return {
           role: 'error' as const,

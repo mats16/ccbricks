@@ -34,7 +34,7 @@ vi.mock('../lib/user-context.js', () => ({
   createUserContext: vi.fn(() => ({
     userId: 'test-user',
     userHome: '/home/test-user',
-    getAuthProvider: vi.fn().mockResolvedValue({
+    getAuthProvider: vi.fn().mockReturnValue({
       type: 'oauth-m2m',
       getEnvVars: vi.fn(),
       getToken: vi.fn().mockResolvedValue('test-sp-token'),

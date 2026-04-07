@@ -101,13 +101,13 @@ describe('UserContext', () => {
       const ctx = new UserContext(fastify, request);
 
       // First call - fetches AuthProvider
-      const provider1 = await ctx.getAuthProvider();
+      const provider1 = ctx.getAuthProvider();
       expect(provider1).toBe(mockAuthProvider);
       expect(mockGetAuthProvider).toHaveBeenCalledTimes(1);
       expect(mockGetAuthProvider).toHaveBeenCalledWith(fastify);
 
       // Second call - should use cache
-      const provider2 = await ctx.getAuthProvider();
+      const provider2 = ctx.getAuthProvider();
       expect(provider2).toBe(mockAuthProvider);
       expect(mockGetAuthProvider).toHaveBeenCalledTimes(1); // Still only 1 call
     });
@@ -123,7 +123,7 @@ describe('UserContext', () => {
       const request = createMockRequest();
 
       const ctx = new UserContext(fastify, request);
-      const provider = await ctx.getAuthProvider();
+      const provider = ctx.getAuthProvider();
 
       expect(provider.type).toBe('oauth-m2m');
       const token = await provider.getToken();

@@ -66,7 +66,6 @@ const sessionAppRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
-    // 4. AuthProvider を取得してクライアントを作成
     const authProvider = getAuthProvider(fastify);
     const appsClient = new DatabricksAppsClient(authProvider);
 

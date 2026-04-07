@@ -53,7 +53,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
     if (!validatePath(request.query.path, reply)) return;
 
     const ctx = createUserContext(fastify, request);
-    const authProvider = await ctx.getAuthProvider();
+    const authProvider = ctx.getAuthProvider();
     const token = await authProvider.getToken();
 
     const url = new URL('/api/2.0/workspace/list', `https://${databricksHost}`);
@@ -78,7 +78,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
     if (!validatePath(request.query.path, reply)) return;
 
     const ctx = createUserContext(fastify, request);
-    const authProvider = await ctx.getAuthProvider();
+    const authProvider = ctx.getAuthProvider();
     const token = await authProvider.getToken();
 
     const url = new URL('/api/2.0/workspace/get-status', `https://${databricksHost}`);
@@ -103,7 +103,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
     if (!validatePath(request.body.path, reply)) return;
 
     const ctx = createUserContext(fastify, request);
-    const authProvider = await ctx.getAuthProvider();
+    const authProvider = ctx.getAuthProvider();
     const token = await authProvider.getToken();
 
     const url = new URL('/api/2.0/workspace/mkdirs', `https://${databricksHost}`);

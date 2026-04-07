@@ -29,7 +29,7 @@ const reposRoute: FastifyPluginAsync = async fastify => {
     }
 
     const ctx = createUserContext(fastify, request);
-    const authProvider = await ctx.getAuthProvider();
+    const authProvider = ctx.getAuthProvider();
     const token = await authProvider.getToken();
 
     const apiUrl = new URL('/api/2.0/repos', `https://${databricksHost}`);

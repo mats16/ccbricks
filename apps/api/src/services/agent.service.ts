@@ -830,7 +830,7 @@ export async function backupAgentsToWorkspace(ctx: UserContext): Promise<AgentBa
   const workspacePath = getWorkspaceAgentsPath(ctx.userName);
 
   // 認証情報を取得
-  const authProvider = await ctx.getAuthProvider();
+  const authProvider = ctx.getAuthProvider();
 
   // ローカルエージェントディレクトリが存在するか確認
   try {
@@ -881,7 +881,7 @@ export async function restoreAgentsFromWorkspace(ctx: UserContext): Promise<Agen
   const workspacePath = getWorkspaceAgentsPath(ctx.userName);
 
   // 認証情報を取得
-  const authProvider = await ctx.getAuthProvider();
+  const authProvider = ctx.getAuthProvider();
 
   // 1. ローカルの既存ディレクトリを削除
   // セキュリティ: ユーザーホーム配下であることを検証

@@ -66,7 +66,7 @@ export interface ObjectPermissions {
  * ```typescript
  * import { getAuthProvider } from './databricks-auth.js';
  *
- * const authProvider = await getAuthProvider(fastify, userId);
+ * const authProvider = getAuthProvider(fastify);
  * const client = new DatabricksAppsClient(authProvider);
  *
  * // アプリ作成

@@ -132,6 +132,7 @@ export interface SDKSystemMessageEvent {
  */
 export interface SDKResultMessageEvent {
   type: 'result';
+  errors?: string[];
 }
 
 /**
@@ -217,6 +218,15 @@ export function isSDKSystemMessageEvent(event: unknown): event is SDKSystemMessa
   if (typeof event !== 'object' || event === null) return false;
   const e = event as Record<string, unknown>;
   return e.type === 'system';
+}
+
+/**
+ * SDKResultMessageEvent の型ガード
+ */
+export function isSDKResultMessageEvent(event: unknown): event is SDKResultMessageEvent {
+  if (typeof event !== 'object' || event === null) return false;
+  const e = event as Record<string, unknown>;
+  return e.type === 'result';
 }
 
 /**

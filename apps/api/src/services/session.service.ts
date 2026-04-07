@@ -30,7 +30,6 @@ import { insertSessionEventInTx } from '../db/helpers.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
 import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
-import { getAuthProvider } from '../lib/databricks-auth.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -250,7 +249,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
 
     const systemPromptConfig = buildSystemPromptConfig(sessionContext.outcomes);
     const abortController = new AbortController();
-    const authProvider = await ctx.getAuthProvider();
+    const authProvider = ctx.getAuthProvider();
 
     // MCP サーバーを構築
     const mcpServers: Record<string, McpServerConfig> = {};
@@ -304,13 +303,6 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: '1',
           ...authProvider.getEnvVars(),
         },
-        //sandbox: {
-        //  enabled: true,
-        //  autoAllowBashIfSandboxed: true,
-        //  network: {
-        //    allowedDomains: ['*'],
-        //  },
-        //},
       },
     });
 
@@ -704,8 +696,7 @@ export async function archiveSession(
   // user_home を取得（ベースディレクトリとして使用）
   const { userHome } = ctx;
 
-  // AuthProvider をトランザクション外で取得
-  const authProvider = getAuthProvider(fastify);
+  const authProvider = ctx.getAuthProvider();
 
   return fastify.withUserContext(userId, async tx => {
     // 1. セッション情報を取得（cwd を取得するため）
