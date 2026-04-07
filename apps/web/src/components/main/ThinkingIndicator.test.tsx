@@ -50,7 +50,7 @@ describe('ThinkingIndicator', () => {
     expect(statusElement.getAttribute('aria-live')).toBe('polite');
   });
 
-  it('3つのToyBrickアイコンが表示される', () => {
+  it('3つのBinocularsアイコンが表示される', () => {
     const { container } = renderWithI18n(<ThinkingIndicator />);
 
     const icons = container.querySelectorAll('svg');

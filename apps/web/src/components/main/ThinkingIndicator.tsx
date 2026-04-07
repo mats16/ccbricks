@@ -1,4 +1,4 @@
-import { ToyBrick } from 'lucide-react';
+import { Binoculars } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTypewriter } from '@/hooks/useTypewriter';
 import { BRICK_COLORS } from '@/constants';
@@ -16,7 +16,7 @@ export function ThinkingIndicator() {
       <div className="flex items-center gap-2 text-sm">
         <div className="flex items-center gap-0.5" aria-hidden="true">
           {BRICK_COLORS.map((colorClass, i) => (
-            <ToyBrick
+            <Binoculars
               key={i}
               className={`h-4 w-4 animate-wave ${colorClass}`}
               style={{

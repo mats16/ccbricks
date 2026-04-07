@@ -1,4 +1,4 @@
-import { ToyBrick } from 'lucide-react';
+import { Binoculars } from 'lucide-react';
 import { BRICK_COLORS } from '@/constants';
 
 const BRICK_DEGREES = [0, 120, 240];
@@ -46,7 +46,7 @@ export function LoadingSpinner({ size = 'md', speed = 'normal' }: LoadingSpinner
               transform: `rotate(${deg}deg) translateY(-${radius}px) rotate(-${deg}deg)`,
             }}
           >
-            <ToyBrick
+            <Binoculars
               className={`${icon} ${BRICK_COLORS[i]}`}
               style={{ transform: 'translate(-50%, -50%)' }}
             />
