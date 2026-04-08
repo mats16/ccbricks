@@ -6,12 +6,11 @@ import type {
   SessionCreateRequest,
   UserMessageContentBlock,
   DatabricksWorkspaceSource,
-  McpConfig,
 } from '@repo/types';
 import { MainHeader } from './MainHeader';
 import { MessageArea } from './MessageArea';
 import { InputArea } from './InputArea';
-import { WelcomeScreen } from './WelcomeScreen';
+import { WelcomeScreen, type NewSessionParams } from './WelcomeScreen';
 import { SessionNotFound } from './SessionNotFound';
 import { FloatingButtons } from './FloatingButtons';
 import { useSessionEvents } from '@/hooks/useSessionEvents';
@@ -66,6 +65,12 @@ export function MainArea({
     return sessionStatus === 'init' || sessionStatus === 'running';
   }, [sessionStatus]);
 
+  // Workspace ソースがあり init 状態の場合、データ同期中
+  const isSyncing = useMemo(() => {
+    const sources = session?.session_context?.sources ?? [];
+    return sources.length > 0 && sessionStatus === 'init';
+  }, [session?.session_context?.sources, sessionStatus]);
+
   // session_context.outcomes から databricks_workspace のパスを取得
   const workspacePath = useMemo(() => {
     const outcomes = session?.session_context?.outcomes;
@@ -90,14 +95,15 @@ export function MainArea({
     onSessionArchived?.(sessionId);
   };
 
-  const handleNewSession = async (
-    content: UserMessageContentBlock[],
-    modelId: string,
-    enableDatabricksSqlWrite: boolean,
-    mcpConfig?: McpConfig,
-    allowedTools?: string[],
-    disallowedTools?: string[]
-  ) => {
+  const handleNewSession = async ({
+    content,
+    modelId,
+    enableDatabricksSqlWrite,
+    workspaceSelection,
+    mcpConfig,
+    allowedTools,
+    disallowedTools,
+  }: NewSessionParams) => {
     try {
       setCreateSessionError(null);
 
@@ -127,7 +133,15 @@ export function MainArea({
         ],
         session_context: {
           model: modelId as 'opus' | 'sonnet' | 'haiku',
-          sources: [],
+          sources: workspaceSelection
+            ? [
+                {
+                  type: 'databricks_workspace',
+                  path: workspaceSelection.path,
+                  id: workspaceSelection.object_id,
+                },
+              ]
+            : [],
           outcomes: [
             {
               type: 'databricks_workspace',
@@ -195,6 +209,7 @@ export function MainArea({
         isLoading={isLoading}
         error={error}
         isAgentThinking={isAgentThinking}
+        isSyncing={isSyncing}
         hasFloatingButton={!!workspacePath}
       />
       <InputArea

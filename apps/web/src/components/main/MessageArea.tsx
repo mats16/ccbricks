@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useCallback } from 'react';
 import type { SDKMessage } from '@repo/types';
 import { EventItem } from './EventItem';
 import { ThinkingIndicator } from './ThinkingIndicator';
+import { SyncingIndicator } from './SyncingIndicator';
 import { LoadingScreen } from '@/components/ui/loading-spinner';
 import { extractToolResults, groupChildEvents } from '@/lib/message-utils';
 import { cn, throttle } from '@/lib/utils';
@@ -11,6 +12,7 @@ interface MessageAreaProps {
   isLoading?: boolean;
   error?: Error | null;
   isAgentThinking?: boolean;
+  isSyncing?: boolean;
   hasFloatingButton?: boolean;
 }
 
@@ -22,6 +24,7 @@ export function MessageArea({
   isLoading,
   error,
   isAgentThinking,
+  isSyncing,
   hasFloatingButton,
 }: MessageAreaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,7 +107,8 @@ export function MessageArea({
             childEventsMap={childEventsMap}
           />
         ))}
-        {isAgentThinking && <ThinkingIndicator />}
+        {isSyncing && <SyncingIndicator />}
+        {isAgentThinking && !isSyncing && <ThinkingIndicator />}
         <div ref={bottomRef} />
       </div>
     </div>

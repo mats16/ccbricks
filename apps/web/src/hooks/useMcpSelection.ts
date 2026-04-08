@@ -119,12 +119,20 @@ export function useMcpSelection(): UseMcpSelectionReturn {
 
   const buildToolPatterns = useCallback(
     (enabled: boolean): string[] =>
-      items.filter(i => i.enabled === enabled && i.mcp_url).map(i => `mcp__${toServerKey(i.space_id)}__*`),
+      items
+        .filter(i => i.enabled === enabled && i.mcp_url)
+        .map(i => `mcp__${toServerKey(i.space_id)}__*`),
     [items]
   );
 
-  const buildAllowedTools = useCallback((): string[] => buildToolPatterns(true), [buildToolPatterns]);
-  const buildDisallowedTools = useCallback((): string[] => buildToolPatterns(false), [buildToolPatterns]);
+  const buildAllowedTools = useCallback(
+    (): string[] => buildToolPatterns(true),
+    [buildToolPatterns]
+  );
+  const buildDisallowedTools = useCallback(
+    (): string[] => buildToolPatterns(false),
+    [buildToolPatterns]
+  );
 
   return {
     items,

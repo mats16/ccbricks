@@ -1,4 +1,4 @@
-import { FastifyPluginAsync, FastifyReply } from 'fastify';
+import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type {
   WorkspaceListQuerystring,
   WorkspaceGetStatusQuerystring,
@@ -46,15 +46,31 @@ function validatePath(path: string, reply: FastifyReply): boolean {
 const workspaceRoute: FastifyPluginAsync = async fastify => {
   const databricksHost = fastify.config.DATABRICKS_HOST;
 
+  /**
+   * OBO トークンを取得する。取得できない場合は 401 を返す。
+   */
+  function getOboToken(request: FastifyRequest, reply: FastifyReply): string | undefined {
+    const ctx = createUserContext(fastify, request);
+    const token = ctx.oboAccessToken;
+    if (!token) {
+      reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'OBO access token is not available',
+        statusCode: 401,
+      });
+      return undefined;
+    }
+    return token;
+  }
+
   // GET /workspace/list
   fastify.get<{
     Querystring: WorkspaceListQuerystring;
   }>('/workspace/list', async (request, reply) => {
     if (!validatePath(request.query.path, reply)) return;
 
-    const ctx = createUserContext(fastify, request);
-    const authProvider = ctx.getAuthProvider();
-    const token = await authProvider.getToken();
+    const token = getOboToken(request, reply);
+    if (!token) return;
 
     const url = new URL('/api/2.0/workspace/list', `https://${databricksHost}`);
     url.searchParams.set('path', request.query.path);
@@ -77,9 +93,8 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
   }>('/workspace/get-status', async (request, reply) => {
     if (!validatePath(request.query.path, reply)) return;
 
-    const ctx = createUserContext(fastify, request);
-    const authProvider = ctx.getAuthProvider();
-    const token = await authProvider.getToken();
+    const token = getOboToken(request, reply);
+    if (!token) return;
 
     const url = new URL('/api/2.0/workspace/get-status', `https://${databricksHost}`);
     url.searchParams.set('path', request.query.path);
@@ -102,9 +117,8 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
   }>('/workspace/mkdirs', async (request, reply) => {
     if (!validatePath(request.body.path, reply)) return;
 
-    const ctx = createUserContext(fastify, request);
-    const authProvider = ctx.getAuthProvider();
-    const token = await authProvider.getToken();
+    const token = getOboToken(request, reply);
+    if (!token) return;
 
     const url = new URL('/api/2.0/workspace/mkdirs', `https://${databricksHost}`);
 

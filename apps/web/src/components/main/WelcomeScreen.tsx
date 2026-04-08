@@ -30,6 +30,7 @@ import { QuickstartCard } from './QuickstartCard';
 import { QuickstartModal, QuickstartType } from './QuickstartModal';
 import { ImagePreview } from './ImagePreview';
 import { DropZoneOverlay } from './DropZoneOverlay';
+import { WorkspaceSelector } from '@/components/workspace/WorkspaceSelector';
 import { useImageAttachment } from '@/hooks/useImageAttachment';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { buildMessageContent } from '@/lib/content-builder';
@@ -40,17 +41,20 @@ import {
   MCP_DBSQL_ID,
 } from '@/constants';
 import { useMcpSelection } from '@/hooks/useMcpSelection';
-import type { UserMessageContentBlock, McpConfig } from '@repo/types';
+import type { UserMessageContentBlock, McpConfig, WorkspaceSelection } from '@repo/types';
+
+export interface NewSessionParams {
+  content: UserMessageContentBlock[];
+  modelId: string;
+  enableDatabricksSqlWrite: boolean;
+  workspaceSelection: WorkspaceSelection | null;
+  mcpConfig?: McpConfig;
+  allowedTools?: string[];
+  disallowedTools?: string[];
+}
 
 interface WelcomeScreenProps {
-  onNewSession?: (
-    content: UserMessageContentBlock[],
-    modelId: string,
-    enableDatabricksSqlWrite: boolean,
-    mcpConfig?: McpConfig,
-    allowedTools?: string[],
-    disallowedTools?: string[]
-  ) => Promise<void> | void;
+  onNewSession?: (params: NewSessionParams) => Promise<void> | void;
   sessionError?: string | null;
 }
 
@@ -64,6 +68,7 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
     defaultValue: DEFAULT_SESSION_MODEL.id,
   });
   const selectedModel = SESSION_MODELS.find(m => m.id === selectedModelId) ?? DEFAULT_SESSION_MODEL;
+  const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceSelection | null>(null);
   const [enableDatabricksSqlWrite, setEnableDatabricksSqlWrite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
@@ -110,14 +115,15 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
       const mcpConfig = buildMcpConfig();
       const allowedTools = buildAllowedTools();
       const disallowedTools = buildDisallowedTools();
-      await onNewSession?.(
-        messageContent,
-        selectedModel.id,
+      await onNewSession?.({
+        content: messageContent,
+        modelId: selectedModel.id,
         enableDatabricksSqlWrite,
+        workspaceSelection: selectedWorkspace,
         mcpConfig,
         allowedTools,
-        disallowedTools
-      );
+        disallowedTools,
+      });
       setContent('');
       clearImages();
     } finally {
@@ -170,6 +176,15 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
       {/* Title */}
       <div className="w-full max-w-3xl mb-6 text-center">
         <h1 className="text-2xl font-semibold text-foreground">{t('welcome.heading')}</h1>
+      </div>
+
+      {/* Workspace Selector */}
+      <div className="w-full max-w-3xl mb-4">
+        <WorkspaceSelector
+          value={selectedWorkspace}
+          onChange={setSelectedWorkspace}
+          disabled={isSubmitting}
+        />
       </div>
 
       {/* Chat Input Area */}
