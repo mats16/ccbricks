@@ -1,6 +1,6 @@
 # デプロイガイド
 
-このガイドでは、LakeScout を Databricks Apps にデプロイする方法を説明します。
+このガイドでは、LakeBrownie を Databricks Apps にデプロイする方法を説明します。
 
 ## 前提条件
 
@@ -25,10 +25,10 @@ Databricks Lakebase または外部の PostgreSQL インスタンスを用意し
 
 ```sql
 -- アプリケーションユーザーを作成（RLS バイパスを明示的に無効化）
-CREATE ROLE lakescout_user WITH LOGIN PASSWORD 'your-secure-password' NOBYPASSRLS;
+CREATE ROLE lakebrownie_user WITH LOGIN PASSWORD 'your-secure-password' NOBYPASSRLS;
 
 -- 現在のユーザーにロールの権限を付与（データベース作成に必要）
-GRANT lakescout_user TO CURRENT_USER WITH SET TRUE;
+GRANT lakebrownie_user TO CURRENT_USER WITH SET TRUE;
 ```
 
 **重要:** このアプリケーションは Row-Level Security (RLS) を使用し、`current_setting('app.user_id', true)` でユーザーを識別します。アプリケーションは各リクエストでこのセッション変数を設定し、ユーザー分離を強制します。`NOBYPASSRLS` オプションにより、アプリケーションユーザーが RLS ポリシーをバイパスできないことが保証され、追加のセキュリティレイヤーが提供されます。
@@ -38,7 +38,7 @@ GRANT lakescout_user TO CURRENT_USER WITH SET TRUE;
 アプリケーション用のデータベースを作成し、オーナーを設定します。
 
 ```sql
-CREATE DATABASE lakescout OWNER lakescout_user;
+CREATE DATABASE lakebrownie OWNER lakebrownie_user;
 ```
 
 ### 1.4 データベースマイグレーション
@@ -53,7 +53,7 @@ CREATE DATABASE lakescout OWNER lakescout_user;
 
 ```bash
 # データベース URL を設定
-export DATABASE_URL="postgresql://lakescout_user:password@host:5432/lakescout"
+export DATABASE_URL="postgresql://lakebrownie_user:password@host:5432/lakebrownie"
 
 # api ディレクトリに移動
 cd apps/api
@@ -73,10 +73,10 @@ Databricks シークレットスコープを作成し、必要なシークレッ
 
 ```bash
 # 開発環境
-databricks secrets create-scope lakescout-dev
+databricks secrets create-scope lakebrownie-dev
 
 # 本番環境
-databricks secrets create-scope lakescout-prod
+databricks secrets create-scope lakebrownie-prod
 ```
 
 ### 2.2 必要なシークレットの追加
@@ -84,7 +84,7 @@ databricks secrets create-scope lakescout-prod
 **データベース URL:**
 
 ```bash
-databricks secrets put-secret lakescout-[dev|prod] database-url --string-value "postgresql://lakescout_user:password@host:5432/lakescout"
+databricks secrets put-secret lakebrownie-[dev|prod] database-url --string-value "postgresql://lakebrownie_user:password@host:5432/lakebrownie"
 ```
 
 **暗号化キー:**
@@ -93,7 +93,7 @@ databricks secrets put-secret lakescout-[dev|prod] database-url --string-value "
 
 ```bash
 ENCRYPTION_KEY=$(openssl rand -hex 32)
-databricks secrets put-secret lakescout-[dev|prod] encryption-key --string-value "$ENCRYPTION_KEY"
+databricks secrets put-secret lakebrownie-[dev|prod] encryption-key --string-value "$ENCRYPTION_KEY"
 ```
 
 ## 3. Asset Bundles によるデプロイ
@@ -117,7 +117,7 @@ databricks bundle deploy [--target prod]
 ### 3.3 アプリケーションの起動
 
 ```bash
-databricks bundle run lakescout_app [--target prod]
+databricks bundle run lakebrownie_app [--target prod]
 ```
 
 ### 3.4 デプロイの確認
@@ -129,7 +129,7 @@ databricks bundle run lakescout_app [--target prod]
 databricks apps list
 
 # アプリの詳細を取得
-databricks apps get lakescout-dev-<user-id>
+databricks apps get lakebrownie-dev-<user-id>
 ```
 
 ## トラブルシューティング
@@ -157,8 +157,8 @@ databricks apps get lakescout-dev-<user-id>
 | 設定 | 開発環境 | 本番環境 |
 |------|----------|----------|
 | バンドルターゲット | `dev` | `prod` |
-| シークレットスコープ | `lakescout-dev` | `lakescout-prod` |
-| アプリ名 | `lakescout-dev-<user-id>` | `lakescout-prod` |
+| シークレットスコープ | `lakebrownie-dev` | `lakebrownie-prod` |
+| アプリ名 | `lakebrownie-dev-<user-id>` | `lakebrownie-prod` |
 | ワークスペースパス | `/Workspace/Users/<user>/.bundle/...` | `/Workspace/Shared/.bundle/...` |
 
 ## セキュリティに関する考慮事項

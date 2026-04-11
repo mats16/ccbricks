@@ -83,7 +83,7 @@ describe('session.service', () => {
       },
       config: {
         DATABRICKS_HOST: 'test.databricks.com',
-        LAKESCOUT_BASE_DIR: '/home/app',
+        LAKEBROWNIE_BASE_DIR: '/home/app',
         PATH: '/usr/bin',
         ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'opus',

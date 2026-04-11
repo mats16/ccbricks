@@ -1,6 +1,6 @@
 # User Guide
 
-This guide explains the user-facing features and how LakeScout works.
+This guide explains the user-facing features and how LakeBrownie works.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This guide explains the user-facing features and how LakeScout works.
 
 ## Overview
 
-LakeScout is a Claude Code-like AI chat application running on Databricks Apps. Users can ask Claude to create code and perform Databricks workspace operations using natural language.
+LakeBrownie is a Claude Code-like AI chat application running on Databricks Apps. Users can ask Claude to create code and perform Databricks workspace operations using natural language.
 
 ### Architecture Overview
 
@@ -21,7 +21,7 @@ LakeScout is a Claude Code-like AI chat application running on Databricks Apps. 
 ┌─────────────────────────────────────────────────────────────┐
 │                    Databricks Apps                          │
 │  ┌─────────────┐         ┌─────────────────────────────┐   │
-│  │ Auth Proxy  │ headers │ LakeScout API               │   │
+│  │ Auth Proxy  │ headers │ LakeBrownie API               │   │
 │  │             │────────▶│ ├─ /api/* (API)             │   │
 │  │             │         │ └─ /*     (Frontend)        │   │
 │  └─────────────┘         └─────────────────────────────┘   │
@@ -32,10 +32,10 @@ LakeScout is a Claude Code-like AI chat application running on Databricks Apps. 
 
 ### User Environment Isolation
 
-In LakeScout, each user is assigned a dedicated file system area. This ensures data isolation between users.
+In LakeBrownie, each user is assigned a dedicated file system area. This ensures data isolation between users.
 
 ```
-${LAKESCOUT_BASE_DIR}/
+${LAKEBROWNIE_BASE_DIR}/
 ├── users/
 │   ├── user1/                          # User 1's home directory
 │   │   ├── .claude/
@@ -52,18 +52,18 @@ ${LAKESCOUT_BASE_DIR}/
 │   ├── session_xxx.../                 # Session working directory
 │   └── session_yyy.../
 └── db/
-    └── lakescout.sqlite                # SQLite database (dev fallback)
+    └── lakebrownie.sqlite                # SQLite database (dev fallback)
 ```
 
 ### Directory Roles
 
 | Directory | Description |
 |-----------|-------------|
-| `${LAKESCOUT_BASE_DIR}/users/${userId}` | User's home directory. User settings and skills are stored here |
+| `${LAKEBROWNIE_BASE_DIR}/users/${userId}` | User's home directory. User settings and skills are stored here |
 | `${userHome}/.claude/` | Claude-related configuration files |
 | `${userHome}/.claude/skills/` | Skills created or imported by the user |
-| `${LAKESCOUT_BASE_DIR}/sessions/${sessionId}` | Working directory for each session |
-| `${LAKESCOUT_BASE_DIR}/db/` | SQLite database directory (development) |
+| `${LAKEBROWNIE_BASE_DIR}/sessions/${sessionId}` | Working directory for each session |
+| `${LAKEBROWNIE_BASE_DIR}/db/` | SQLite database directory (development) |
 
 ### Skills and File System
 
@@ -75,7 +75,7 @@ Skills are stored on the file system, which provides the following characteristi
 
 ## Authentication and Permissions
 
-LakeScout uses different authentication methods depending on the type of operation.
+LakeBrownie uses different authentication methods depending on the type of operation.
 
 ### Authentication by Operation Type
 
@@ -106,7 +106,7 @@ A token that users generate in Databricks and register with the app.
 - **Permissions**: User's own Databricks permissions
 - **How to register**:
   1. Generate in Databricks UI → Settings → Developer → Access tokens
-  2. Register the token in LakeScout's settings screen
+  2. Register the token in LakeBrownie's settings screen
 
 **Note**: PAT must start with `dapi`.
 
@@ -234,7 +234,7 @@ This downloads Workspace files locally when the session starts.
 
 ### Workspace Operations Policy
 
-In LakeScout, we adopt the policy of **having Claude Code perform** Workspace and app operations:
+In LakeBrownie, we adopt the policy of **having Claude Code perform** Workspace and app operations:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -284,7 +284,7 @@ The database uses PostgreSQL RLS to restrict users to accessing only their own d
 
 #### File System Isolation
 
-- Each user's files are isolated under `${LAKESCOUT_BASE_DIR}/users/${userId}`
+- Each user's files are isolated under `${LAKEBROWNIE_BASE_DIR}/users/${userId}`
 - Validation implemented to prevent path traversal attacks
 - Session deletion only removes the corresponding directory
 

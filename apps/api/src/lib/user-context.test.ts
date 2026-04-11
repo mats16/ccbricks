@@ -15,7 +15,7 @@ describe('UserContext', () => {
   const createMockFastify = (): FastifyInstance => {
     return {
       config: {
-        LAKESCOUT_BASE_DIR: '/home/app',
+        LAKEBROWNIE_BASE_DIR: '/home/app',
         DATABRICKS_HOST: 'example.databricks.com',
         DATABRICKS_CLIENT_ID: 'test-client-id',
         DATABRICKS_CLIENT_SECRET: 'test-client-secret',

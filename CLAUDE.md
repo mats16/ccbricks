@@ -1,11 +1,11 @@
-# LakeScout - Log Exploration on Databricks
+# LakeBrownie - Log Exploration on Databricks
 
 A monorepo for a log exploration application running on Databricks Apps.
 
 ## Architecture
 
 ```
-lakescout/
+lakebrownie/
 ├── apps/
 │   ├── web/               # React 19 + Vite 7 + shadcn/ui
 │   └── api/               # Fastify 5 + Drizzle ORM + Claude Agent SDK

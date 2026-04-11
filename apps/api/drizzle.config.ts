@@ -30,9 +30,9 @@ export default databaseUrl
       dialect: 'sqlite',
       dbCredentials: {
         url: path.join(
-          process.env.LAKESCOUT_BASE_DIR || path.join(__dirname, '../../tmp'),
+          process.env.LAKEBROWNIE_BASE_DIR || path.join(__dirname, '../../tmp'),
           'db',
-          'lakescout.sqlite'
+          'lakebrownie.sqlite'
         ),
       },
       verbose: true,

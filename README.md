@@ -1,4 +1,4 @@
-# LakeScout
+# LakeBrownie
 
 [日本語](./README.ja.md)
 
@@ -23,7 +23,7 @@ Managed with Turborepo + npm workspaces, with type safety ensured through TypeSc
 ## Project Structure
 
 ```
-lakescout/
+lakebrownie/
 ├── apps/
 │   ├── web/               # React + Vite + shadcn/ui
 │   └── api/               # Fastify API + Drizzle ORM

@@ -78,11 +78,11 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   const sqliteSchema = await import('../db/schema.sqlite.js');
 
   // データディレクトリを確保
-  const dataDir = path.join(fastify.config.LAKESCOUT_BASE_DIR, 'db');
+  const dataDir = path.join(fastify.config.LAKEBROWNIE_BASE_DIR, 'db');
   const { mkdirSync } = await import('fs');
   mkdirSync(dataDir, { recursive: true });
 
-  const dbPath = path.join(dataDir, 'lakescout.sqlite');
+  const dbPath = path.join(dataDir, 'lakebrownie.sqlite');
   fastify.log.info({ dbPath }, 'Using SQLite database (DATABASE_URL not set)');
 
   // SQLite クライアント作成

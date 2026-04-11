@@ -29,7 +29,7 @@ export class UserContext {
     const user = request.ctx.user;
     this.userId = user.id;
     this.userName = user.name;
-    this.userHome = path.join(fastify.config.LAKESCOUT_BASE_DIR, 'users', user.id.split('@')[0]);
+    this.userHome = path.join(fastify.config.LAKEBROWNIE_BASE_DIR, 'users', user.id.split('@')[0]);
   }
 
   /**

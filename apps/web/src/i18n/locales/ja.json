@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "LakeScout",
+    "title": "LakeBrownie",
     "badge": "Unofficial"
   },
   "sidebar": {
@@ -253,7 +253,7 @@
   },
   "welcome": {
     "heading": "Explore the Lakehouse",
-    "title": "LakeScout へようこそ",
+    "title": "LakeBrownie へようこそ",
     "subtitle": "AI Agent で Databricks での開発を加速しましょう。\n下のクイックスタートか、メッセージを入力から始めてください。",
     "comingSoon": "この機能は近日公開予定です",
     "databricksSqlWriteToggle": "Databricks SQL の書き込み操作（INSERT/UPDATE/DELETE）を許可",

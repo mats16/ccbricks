@@ -234,7 +234,7 @@ DATABRICKS_HOST=your-workspace.databricks.com
 ```bash
 NODE_ENV=development          # development | production | test
 PORT=8000                     # Server port
-LAKESCOUT_BASE_DIR=/home/app  # Base directory (users/, sessions/, db/ inside)
+LAKEBROWNIE_BASE_DIR=/home/app  # Base directory (users/, sessions/, db/ inside)
 
 # Anthropic API
 ANTHROPIC_BASE_URL=https://your-workspace.databricks.com/serving-endpoints/anthropic
