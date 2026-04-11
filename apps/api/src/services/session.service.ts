@@ -119,6 +119,7 @@ async function processAllEvents(
   initialUserEvent?: SessionCreateEventData
 ): Promise<void> {
   let hasError = false;
+  let pendingSdkSessionId: string | null = null;
 
   try {
     for await (const message of response) {
@@ -128,6 +129,7 @@ async function processAllEvents(
       // init イベント時に status='running' に更新、sdkSessionId を設定、初回 user message を broadcast
       if (message.type === 'system' && message.subtype === 'init') {
         const initMessage = message as SDKSystemMessage;
+        pendingSdkSessionId = initMessage.session_id || null;
 
         // status='running' に更新 & sdkSessionId を設定
         try {
@@ -136,10 +138,11 @@ async function processAllEvents(
               .update(sessions)
               .set({
                 status: 'running',
-                sdkSessionId: initMessage.session_id || null,
+                sdkSessionId: pendingSdkSessionId,
               })
               .where(eq(sessions.id, sessionId.toUUID()));
           });
+          pendingSdkSessionId = null; // 成功したのでフォールバック不要
         } catch (updateError) {
           fastify.log.error(
             { sessionId: sessionId.toString(), updateError },
@@ -198,7 +201,10 @@ async function processAllEvents(
         await fastify.withUserContext(userId, async tx => {
           await tx
             .update(sessions)
-            .set({ status: 'idle' })
+            .set({
+              status: 'idle',
+              ...(pendingSdkSessionId != null && { sdkSessionId: pendingSdkSessionId }),
+            })
             .where(
               and(
                 eq(sessions.id, sessionId.toUUID()),

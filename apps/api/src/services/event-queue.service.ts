@@ -107,8 +107,9 @@ export class EventBatcher {
           );
         }
       })
-      .catch(() => {
-        // 予期しない例外（ロガーのシリアライズエラー等）でチェーンが永久停止するのを防ぐ
+      .catch((e: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('EventBatcher flush chain error (logger may be broken)', e);
       });
 
     await this.flushChain;
