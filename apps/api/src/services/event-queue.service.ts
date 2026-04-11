@@ -108,7 +108,6 @@ export class EventBatcher {
         }
       })
       .catch((e: unknown) => {
-        // eslint-disable-next-line no-console
         console.error('EventBatcher flush chain error (logger may be broken)', e);
       });
 
