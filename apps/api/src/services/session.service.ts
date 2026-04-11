@@ -61,6 +61,14 @@ const SESSION_SELECT_COLUMNS = {
 } as const;
 
 /**
+ * SDKMessage から UUID を安全に抽出する。有効な文字列でない場合はランダム UUID を生成する。
+ */
+function extractEventUuid(message: SDKMessage): string {
+  const raw = 'uuid' in message ? message.uuid : undefined;
+  return typeof raw === 'string' && raw ? raw : crypto.randomUUID();
+}
+
+/**
  * イベントをバッチバッファに追加し、WebSocket にブロードキャストする
  *
  * 1. バッチバッファに追加（非同期で DB 永続化）
@@ -74,7 +82,7 @@ function saveAndBroadcastEvent(
   sessionId: SessionId,
   message: SDKMessage
 ): void {
-  const eventUuid = 'uuid' in message ? (message.uuid as string) : crypto.randomUUID();
+  const eventUuid = extractEventUuid(message);
   const eventSubtype = 'subtype' in message ? (message.subtype as string | undefined) : undefined;
 
   // 1. バッチバッファに追加（バッチサイズ到達 or インターバル経過で DB 永続化）
@@ -111,6 +119,7 @@ async function processAllEvents(
   initialUserEvent?: SessionCreateEventData
 ): Promise<void> {
   let hasError = false;
+  let pendingSdkSessionId: string | null = null;
 
   try {
     for await (const message of response) {
@@ -120,17 +129,26 @@ async function processAllEvents(
       // init イベント時に status='running' に更新、sdkSessionId を設定、初回 user message を broadcast
       if (message.type === 'system' && message.subtype === 'init') {
         const initMessage = message as SDKSystemMessage;
+        pendingSdkSessionId = initMessage.session_id || null;
 
         // status='running' に更新 & sdkSessionId を設定
-        await fastify.withUserContext(userId, async tx => {
-          await tx
-            .update(sessions)
-            .set({
-              status: 'running',
-              sdkSessionId: initMessage.session_id || null,
-            })
-            .where(eq(sessions.id, sessionId.toUUID()));
-        });
+        try {
+          await fastify.withUserContext(userId, async tx => {
+            await tx
+              .update(sessions)
+              .set({
+                status: 'running',
+                sdkSessionId: pendingSdkSessionId,
+              })
+              .where(eq(sessions.id, sessionId.toUUID()));
+          });
+          pendingSdkSessionId = null; // 成功したのでフォールバック不要
+        } catch (updateError) {
+          fastify.log.error(
+            { sessionId: sessionId.toString(), updateError },
+            'Failed to update session status to running (continuing event processing)'
+          );
+        }
 
         // 初回 user message を SDKUserMessageReplay として broadcast & DB 保存
         if (initialUserEvent) {
@@ -183,7 +201,10 @@ async function processAllEvents(
         await fastify.withUserContext(userId, async tx => {
           await tx
             .update(sessions)
-            .set({ status: 'idle' })
+            .set({
+              status: 'idle',
+              ...(pendingSdkSessionId != null && { sdkSessionId: pendingSdkSessionId }),
+            })
             .where(
               and(
                 eq(sessions.id, sessionId.toUUID()),
@@ -683,7 +704,7 @@ export async function sendMessageToSession(
   const sessionContext = sessionRow.context as SessionContextResponse;
 
   // 4. user message を DB に保存し、status を running に更新
-  const eventUuid = userMessage.uuid ?? crypto.randomUUID();
+  const eventUuid = extractEventUuid(userMessage);
   await fastify.withUserContext(userId, async tx => {
     // user message を session_events に INSERT
     await insertSessionEventInTx(tx, {
