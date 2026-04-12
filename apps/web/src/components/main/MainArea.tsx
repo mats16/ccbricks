@@ -72,23 +72,18 @@ export function MainArea({
     return sources.length > 0 && sessionStatus === 'init';
   }, [session?.session_context?.sources, sessionStatus]);
 
-  // session_context.outcomes から databricks_workspace を取得
-  const databricksWorkspaceOutcome = useMemo(() => {
+  // session_context.outcomes から workspace / apps outcome を取得
+  const { databricksWorkspaceOutcome, databricksAppsOutcome } = useMemo(() => {
     const outcomes = session?.session_context?.outcomes;
-    if (!outcomes) return null;
-    return (
-      outcomes.find((o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace') ??
-      null
-    );
-  }, [session?.session_context?.outcomes]);
-
-  // session_context.outcomes から databricks_apps を取得
-  const databricksAppsOutcome = useMemo(() => {
-    const outcomes = session?.session_context?.outcomes;
-    if (!outcomes) return null;
-    return (
-      outcomes.find((o): o is DatabricksAppsOutcome => o.type === 'databricks_apps') ?? null
-    );
+    if (!outcomes) return { databricksWorkspaceOutcome: null, databricksAppsOutcome: null };
+    return {
+      databricksWorkspaceOutcome:
+        outcomes.find(
+          (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
+        ) ?? null,
+      databricksAppsOutcome:
+        outcomes.find((o): o is DatabricksAppsOutcome => o.type === 'databricks_apps') ?? null,
+    };
   }, [session?.session_context?.outcomes]);
 
   // フローティングボタンを表示するかどうか

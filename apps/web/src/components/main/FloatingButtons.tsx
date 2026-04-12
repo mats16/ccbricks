@@ -14,7 +14,45 @@ interface FloatingButtonsProps {
   workspaceObjectId?: number;
 }
 
-type AppStateType = 'RUNNING' | 'DEPLOYING' | 'CRASHED' | 'UNAVAILABLE' | 'UNKNOWN' | string;
+type AppStateType = 'RUNNING' | 'DEPLOYING' | 'CRASHED' | 'UNAVAILABLE' | 'UNKNOWN';
+
+interface AppStateStyle {
+  iconClass: string;
+  badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline';
+  badgeClass: string;
+}
+
+const APP_STATE_STYLES: Record<AppStateType, AppStateStyle> = {
+  RUNNING: {
+    iconClass: 'text-green-500',
+    badgeVariant: 'default',
+    badgeClass: 'bg-green-500 hover:bg-green-500',
+  },
+  DEPLOYING: {
+    iconClass: 'text-yellow-500 animate-spin',
+    badgeVariant: 'secondary',
+    badgeClass: 'bg-yellow-500 hover:bg-yellow-500 text-black',
+  },
+  CRASHED: {
+    iconClass: 'text-red-500',
+    badgeVariant: 'destructive',
+    badgeClass: 'bg-red-500 hover:bg-red-500',
+  },
+  UNAVAILABLE: {
+    iconClass: 'text-red-500',
+    badgeVariant: 'destructive',
+    badgeClass: 'bg-red-500 hover:bg-red-500',
+  },
+  UNKNOWN: {
+    iconClass: 'text-foreground',
+    badgeVariant: 'secondary',
+    badgeClass: '',
+  },
+};
+
+function getAppStateStyle(state: string | undefined): AppStateStyle {
+  return APP_STATE_STYLES[(state as AppStateType) ?? 'UNKNOWN'] ?? APP_STATE_STYLES.UNKNOWN;
+}
 
 export function FloatingButtons({
   sessionId,
@@ -32,13 +70,18 @@ export function FloatingButtons({
     try {
       const response = await fetch(`/api/sessions/${sessionId}/app`);
       if (!response.ok) {
-        setAppInfo(null);
+        setAppInfo(prev => (prev === null ? prev : null));
         return;
       }
       const data: DatabricksApp = await response.json();
-      setAppInfo(data);
+      setAppInfo(prev => {
+        if (prev?.app_status?.state === data.app_status?.state && prev?.url === data.url) {
+          return prev;
+        }
+        return data;
+      });
     } catch {
-      setAppInfo(null);
+      setAppInfo(prev => (prev === null ? prev : null));
     }
   }, [sessionId, showAppButton]);
 
@@ -58,47 +101,8 @@ export function FloatingButtons({
     return () => clearInterval(intervalId);
   }, [showAppButton]);
 
-  const appState: AppStateType = appInfo?.app_status?.state ?? 'UNKNOWN';
-
-  const getRocketIconClass = () => {
-    switch (appState) {
-      case 'RUNNING':
-        return 'text-green-500';
-      case 'DEPLOYING':
-        return 'text-yellow-500 animate-spin';
-      case 'CRASHED':
-      case 'UNAVAILABLE':
-        return 'text-red-500';
-      default:
-        return 'text-foreground';
-    }
-  };
-
-  const getBadgeVariant = (): 'default' | 'secondary' | 'destructive' | 'outline' => {
-    switch (appState) {
-      case 'RUNNING':
-        return 'default';
-      case 'CRASHED':
-      case 'UNAVAILABLE':
-        return 'destructive';
-      default:
-        return 'secondary';
-    }
-  };
-
-  const getBadgeClass = () => {
-    switch (appState) {
-      case 'RUNNING':
-        return 'bg-green-500 hover:bg-green-500';
-      case 'DEPLOYING':
-        return 'bg-yellow-500 hover:bg-yellow-500 text-black';
-      case 'CRASHED':
-      case 'UNAVAILABLE':
-        return 'bg-red-500 hover:bg-red-500';
-      default:
-        return '';
-    }
-  };
+  const appState = appInfo?.app_status?.state ?? 'UNKNOWN';
+  const style = getAppStateStyle(appState);
 
   const handleOpenApp = () => {
     if (appInfo?.url) {
@@ -141,12 +145,12 @@ export function FloatingButtons({
                 onClick={handleOpenApp}
                 disabled={!appInfo?.url}
               >
-                <Rocket className={cn('h-4 w-4', getRocketIconClass())} />
+                <Rocket className={cn('h-4 w-4', style.iconClass)} />
                 <span className="text-sm font-medium">{t('databricksApp.app')}</span>
               </button>
               <Badge
-                variant={getBadgeVariant()}
-                className={cn('text-xs px-1.5 py-0', getBadgeClass())}
+                variant={style.badgeVariant}
+                className={cn('text-xs px-1.5 py-0', style.badgeClass)}
               >
                 {appState}
               </Badge>
