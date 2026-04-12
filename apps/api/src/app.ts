@@ -8,6 +8,7 @@ import staticPlugin from './plugins/static.js';
 import healthRoute from './routes/health.js';
 import userRoute from './routes/user.js';
 import sessionRoute from './routes/session.js';
+import sessionAppRoute from './routes/session-app.js';
 import titleRoute from './routes/title.js';
 import workspaceRoute from './routes/workspace.js';
 import reposRoute from './routes/repos.js';
@@ -46,6 +47,7 @@ export async function build() {
   await app.register(healthRoute, { prefix: '/api' });
   await app.register(userRoute, { prefix: '/api' });
   await app.register(sessionRoute, { prefix: '/api' });
+  await app.register(sessionAppRoute, { prefix: '/api' });
   await app.register(titleRoute, { prefix: '/api' });
   await app.register(workspaceRoute, { prefix: '/api/databricks' });
   await app.register(reposRoute, { prefix: '/api/databricks' });

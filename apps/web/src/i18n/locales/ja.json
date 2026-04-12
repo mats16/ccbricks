@@ -280,7 +280,10 @@
     }
   },
   "databricksApp": {
-    "workspace": "ワークスペース"
+    "workspace": "ワークスペース",
+    "app": "アプリ",
+    "logs": "ログ",
+    "enableApps": "Databricks Apps にデプロイ"
   },
   "mcp": {
     "title": "MCP サーバー管理",

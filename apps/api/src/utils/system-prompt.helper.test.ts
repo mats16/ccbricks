@@ -3,6 +3,7 @@ import type { SessionOutcome } from '@repo/types';
 import {
   buildSystemPromptConfig,
   createWorkspacePushInstruction,
+  createDatabricksAppsInstruction,
   type SystemPromptConfig,
 } from './system-prompt.helper.js';
 
@@ -81,6 +82,69 @@ describe('buildSystemPromptConfig', () => {
     if ('append' in result) {
       expect(result.append).toContain('/Workspace/first');
     }
+  });
+
+  it('should return config with Apps instruction for apps-only outcome', () => {
+    const outcomes: SessionOutcome[] = [{ type: 'databricks_apps', name: 'app-abc123' }];
+
+    const result = buildSystemPromptConfig(outcomes);
+
+    expect(result.type).toBe('preset');
+    expect(result.preset).toBe('claude_code');
+    expect(result.append).toBeDefined();
+    expect(result.append).toContain('Databricks Apps Deployment');
+    expect(result.append).toContain('app-abc123');
+  });
+
+  it('should return config with both instructions for workspace + apps outcomes', () => {
+    const outcomes: SessionOutcome[] = [
+      { type: 'databricks_workspace', path: '/Workspace/test', id: 12345 },
+      { type: 'databricks_apps', name: 'app-xyz789' },
+    ];
+
+    const result = buildSystemPromptConfig(outcomes);
+
+    expect(result.append).toBeDefined();
+    expect(result.append).toContain('Databricks Workspace Push Requirements');
+    expect(result.append).toContain('Databricks Apps Deployment');
+    expect(result.append).toContain('app-xyz789');
+  });
+
+  it('should not include apps instruction when name is not set', () => {
+    const outcomes: SessionOutcome[] = [{ type: 'databricks_apps' }];
+
+    const result = buildSystemPromptConfig(outcomes);
+
+    expect(result).toEqual({
+      type: 'preset',
+      preset: 'claude_code',
+    });
+  });
+});
+
+describe('createDatabricksAppsInstruction', () => {
+  it('should generate instruction with app name', () => {
+    const result = createDatabricksAppsInstruction('app-abc123');
+
+    expect(result).toContain('Databricks Apps Deployment');
+    expect(result).toContain('app-abc123');
+    expect(result).toContain('databricks apps create app-abc123');
+    expect(result).toContain('databricks apps deploy app-abc123');
+    expect(result).toContain('databricks apps get app-abc123');
+  });
+
+  it('should include environment variable reference', () => {
+    const result = createDatabricksAppsInstruction('app-test');
+
+    expect(result).toContain('DATABRICKS_APP_NAME_SESSION');
+  });
+
+  it('should include workflow steps', () => {
+    const result = createDatabricksAppsInstruction('app-test');
+
+    expect(result).toContain('DEVELOP');
+    expect(result).toContain('DEPLOY');
+    expect(result).toContain('VERIFY');
   });
 });
 

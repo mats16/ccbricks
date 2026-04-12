@@ -21,6 +21,7 @@ import type {
   SessionCreateEventData,
   SessionUpdateRequest,
   DatabricksWorkspaceSource,
+  DatabricksAppsOutcome,
 } from '@repo/types';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessions } from '../db/schema.js';
@@ -290,6 +291,9 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     const workspacePath = sessionContext.outcomes.find(
       (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
     )?.path;
+    const appsOutcomeName = sessionContext.outcomes.find(
+      (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps'
+    )?.name;
 
     const response = query({
       prompt,
@@ -317,6 +321,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ...(sdkSessionId ? { CLAUDE_CODE_SESSION_ID: sdkSessionId } : {}),
           SESSION_ID: sessionId.toString(),
           ...(workspacePath ? { DATABRICKS_WORKSPACE_PATH: workspacePath } : {}),
+          ...(appsOutcomeName ? { DATABRICKS_APP_NAME_SESSION: appsOutcomeName } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
           ANTHROPIC_DEFAULT_OPUS_MODEL: fastify.config.ANTHROPIC_DEFAULT_OPUS_MODEL,
@@ -400,11 +405,22 @@ export async function createSession(
       return true;
     });
 
-  // 5. outcomes のパス内変数を解決（{session_id} → 実際のセッションID）
-  const resolvedOutcomes = session_context.outcomes.map(outcome => ({
-    ...outcome,
-    path: outcome.path.replace('{session_id}', sessionId.toString()),
-  }));
+  // 5. outcomes の変数を解決（{session_id} → 実際のセッションID、apps にはアプリ名を割当）
+  const resolvedOutcomes = session_context.outcomes.map(outcome => {
+    if (outcome.type === 'databricks_workspace') {
+      return {
+        ...outcome,
+        path: outcome.path.replace('{session_id}', sessionId.toString()),
+      };
+    }
+    if (outcome.type === 'databricks_apps') {
+      return {
+        ...outcome,
+        name: `app-${sessionId.getSuffix()}`,
+      };
+    }
+    return outcome;
+  });
 
   // 6. context オブジェクトの構築
   const sessionContext: SessionContextResponse = {

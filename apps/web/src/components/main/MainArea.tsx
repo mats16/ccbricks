@@ -6,6 +6,7 @@ import type {
   SessionCreateRequest,
   UserMessageContentBlock,
   DatabricksWorkspaceSource,
+  DatabricksAppsOutcome,
 } from '@repo/types';
 import { MainHeader } from './MainHeader';
 import { MessageArea } from './MessageArea';
@@ -71,15 +72,27 @@ export function MainArea({
     return sources.length > 0 && sessionStatus === 'init';
   }, [session?.session_context?.sources, sessionStatus]);
 
-  // session_context.outcomes から databricks_workspace のパスを取得
-  const workspacePath = useMemo(() => {
+  // session_context.outcomes から databricks_workspace を取得
+  const databricksWorkspaceOutcome = useMemo(() => {
     const outcomes = session?.session_context?.outcomes;
     if (!outcomes) return null;
-    const outcome = outcomes.find(
-      (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
+    return (
+      outcomes.find((o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace') ??
+      null
     );
-    return outcome?.path ?? null;
   }, [session?.session_context?.outcomes]);
+
+  // session_context.outcomes から databricks_apps を取得
+  const databricksAppsOutcome = useMemo(() => {
+    const outcomes = session?.session_context?.outcomes;
+    if (!outcomes) return null;
+    return (
+      outcomes.find((o): o is DatabricksAppsOutcome => o.type === 'databricks_apps') ?? null
+    );
+  }, [session?.session_context?.outcomes]);
+
+  // フローティングボタンを表示するかどうか
+  const hasFloatingButtons = !!databricksAppsOutcome || !!databricksWorkspaceOutcome;
 
   const handleSend = (content: UserMessageContentBlock[]) => {
     onSendMessage?.(content);
@@ -99,6 +112,7 @@ export function MainArea({
     content,
     modelId,
     enableDatabricksSqlWrite,
+    enableDatabricksApps,
     workspaceSelection,
     mcpConfig,
     allowedTools,
@@ -148,6 +162,9 @@ export function MainArea({
               path: '/Workspace/Shared/LakeBrownie/sessions/{session_id}',
               id: 0,
             },
+            ...(enableDatabricksApps
+              ? [{ type: 'databricks_apps' as const }]
+              : []),
           ],
           allowed_tools: allowedTools,
           disallowed_tools: [
@@ -210,7 +227,7 @@ export function MainArea({
         error={error}
         isAgentThinking={isAgentThinking}
         isSyncing={isSyncing}
-        hasFloatingButton={!!workspacePath}
+        hasFloatingButton={hasFloatingButtons}
       />
       <InputArea
         sessionId={sessionId}
@@ -219,7 +236,13 @@ export function MainArea({
         isAgentThinking={isAgentThinking}
         disabled={session?.session_status === 'archived'}
       />
-      {workspacePath && <FloatingButtons workspacePath={workspacePath} />}
+      {hasFloatingButtons && (
+        <FloatingButtons
+          sessionId={sessionId}
+          showAppButton={!!databricksAppsOutcome}
+          workspaceObjectId={databricksWorkspaceOutcome?.id}
+        />
+      )}
     </div>
   );
 }

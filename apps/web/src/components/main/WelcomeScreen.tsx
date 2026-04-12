@@ -13,6 +13,7 @@ import {
   DatabaseSearch,
   Cable,
   Sparkle,
+  Rocket,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,6 +48,7 @@ export interface NewSessionParams {
   content: UserMessageContentBlock[];
   modelId: string;
   enableDatabricksSqlWrite: boolean;
+  enableDatabricksApps: boolean;
   workspaceSelection: WorkspaceSelection | null;
   mcpConfig?: McpConfig;
   allowedTools?: string[];
@@ -70,6 +72,7 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
   const selectedModel = SESSION_MODELS.find(m => m.id === selectedModelId) ?? DEFAULT_SESSION_MODEL;
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceSelection | null>(null);
   const [enableDatabricksSqlWrite, setEnableDatabricksSqlWrite] = useState(false);
+  const [enableDatabricksApps, setEnableDatabricksApps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
     items: mcpItems,
@@ -119,6 +122,7 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
         content: messageContent,
         modelId: selectedModel.id,
         enableDatabricksSqlWrite,
+        enableDatabricksApps,
         workspaceSelection: selectedWorkspace,
         mcpConfig,
         allowedTools,
@@ -253,6 +257,35 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{t('welcome.databricksSqlWriteToggle')}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        'h-8 w-8 shrink-0',
+                        enableDatabricksApps && 'bg-red-500/10'
+                      )}
+                      onClick={() => setEnableDatabricksApps(prev => !prev)}
+                      disabled={isSubmitting}
+                    >
+                      <Rocket
+                        className={cn(
+                          'h-4 w-4',
+                          enableDatabricksApps
+                            ? 'text-red-500 stroke-[2.5]'
+                            : 'text-muted-foreground'
+                        )}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t('databricksApp.enableApps')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

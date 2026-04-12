@@ -280,7 +280,10 @@
     }
   },
   "databricksApp": {
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "app": "App",
+    "logs": "Logs",
+    "enableApps": "Deploy to Databricks Apps"
   },
   "mcp": {
     "title": "MCP Server Management",

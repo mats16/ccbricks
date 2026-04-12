@@ -14,8 +14,13 @@ export interface DatabricksWorkspaceSource {
   id: number;
 }
 
+export interface DatabricksAppsOutcome {
+  type: 'databricks_apps';
+  name?: string;
+}
+
 export type SessionSource = DatabricksWorkspaceSource;
-export type SessionOutcome = DatabricksWorkspaceSource;
+export type SessionOutcome = DatabricksWorkspaceSource | DatabricksAppsOutcome;
 
 // =====================================================
 // Session Context Types
