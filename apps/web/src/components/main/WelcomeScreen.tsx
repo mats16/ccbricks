@@ -267,10 +267,7 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={cn(
-                        'h-8 w-8 shrink-0',
-                        enableDatabricksApps && 'bg-red-500/10'
-                      )}
+                      className={cn('h-8 w-8 shrink-0', enableDatabricksApps && 'bg-red-500/10')}
                       onClick={() => setEnableDatabricksApps(prev => !prev)}
                       disabled={isSubmitting}
                     >

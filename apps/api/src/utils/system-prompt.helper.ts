@@ -1,8 +1,4 @@
-import type {
-  DatabricksWorkspaceSource,
-  DatabricksAppsOutcome,
-  SessionOutcome,
-} from '@repo/types';
+import type { DatabricksWorkspaceSource, DatabricksAppsOutcome, SessionOutcome } from '@repo/types';
 
 /** systemPrompt の設定型 */
 export interface SystemPromptConfig {

@@ -78,9 +78,8 @@ export function MainArea({
     if (!outcomes) return { databricksWorkspaceOutcome: null, databricksAppsOutcome: null };
     return {
       databricksWorkspaceOutcome:
-        outcomes.find(
-          (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
-        ) ?? null,
+        outcomes.find((o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace') ??
+        null,
       databricksAppsOutcome:
         outcomes.find((o): o is DatabricksAppsOutcome => o.type === 'databricks_apps') ?? null,
     };
@@ -157,9 +156,7 @@ export function MainArea({
               path: '/Workspace/Shared/LakePixie/sessions/{session_id}',
               id: 0,
             },
-            ...(enableDatabricksApps
-              ? [{ type: 'databricks_apps' as const }]
-              : []),
+            ...(enableDatabricksApps ? [{ type: 'databricks_apps' as const }] : []),
           ],
           allowed_tools: allowedTools,
           disallowed_tools: [
