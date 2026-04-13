@@ -5,6 +5,7 @@ import { useUser } from '@/hooks/useUser';
 import {
   buildDbsqlMcpUrl,
   buildGenieMcpUrl,
+  CLAUDE_CODE_PRESET_TOOLS,
   MCP_DBSQL_ID,
   STORAGE_KEY_ENABLED_MCP_SERVERS,
 } from '@/constants';
@@ -23,7 +24,7 @@ interface UseMcpSelectionReturn {
   toggleItem: (spaceId: string) => void;
   /** グローバルで有効な全 MCP サーバーの設定（session_context.mcp_config 用） */
   buildMcpConfig: () => McpConfig | undefined;
-  /** セッションで選択された MCP のツールパターン（session_context.allowed_tools 用） */
+  /** CLAUDE_CODE_PRESET_TOOLS + セッションで選択された MCP のツールパターン（session_context.allowed_tools 用） */
   buildAllowedTools: () => string[];
   /** セッションで無効化された MCP のツールパターン（session_context.disallowed_tools 用） */
   buildDisallowedTools: () => string[];
@@ -126,7 +127,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
   );
 
   const buildAllowedTools = useCallback(
-    (): string[] => buildToolPatterns(true),
+    (): string[] => [...CLAUDE_CODE_PRESET_TOOLS, ...buildToolPatterns(true)],
     [buildToolPatterns]
   );
   const buildDisallowedTools = useCallback(

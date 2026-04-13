@@ -1,6 +1,6 @@
 resources:
   apps:
-    lakebrownie_app:
+    lakepixie_app:
       name: ${var.app_name}
       description: Log exploration on Databricks
       source_code_path: ../
@@ -8,7 +8,7 @@ resources:
       #  - name: database-url-secret
       #    description: Database connection string
       #    secret:
-      #      scope: lakebrownie-${bundle.target}
+      #      scope: lakepixie-${bundle.target}
       #      key: database-url
       #      permission: READ
       user_api_scopes:

@@ -19,6 +19,13 @@ vi.mock('openai', () => {
   return { default: MockOpenAI };
 });
 
+// Mock typeid-js for deterministic fallback
+vi.mock('typeid-js', () => ({
+  typeid: vi.fn(() => ({
+    toString: () => 'app_01abc2def3ghi4jkl5mno6pqrs',
+  })),
+}));
+
 // Mock UserContext
 const mockGetAuthProvider = vi.fn();
 
@@ -30,6 +37,19 @@ vi.mock('../lib/user-context.js', () => ({
     oboAccessToken: undefined,
   })),
 }));
+
+/** Helper to create a structured output response from the mock LLM */
+function createStructuredResponse(data: { title: string; app_name: string }) {
+  return {
+    choices: [
+      {
+        message: {
+          content: JSON.stringify(data),
+        },
+      },
+    ],
+  };
+}
 
 describe('title route', () => {
   let app: FastifyInstance;
@@ -76,16 +96,13 @@ describe('title route', () => {
   }
 
   describe('POST /generate_title', () => {
-    it('should return generated title from LLM', async () => {
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: 'React Component Development',
-            },
-          },
-        ],
-      });
+    it('should return generated title and app_name from LLM', async () => {
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: 'React Component Development',
+          app_name: 'react-component-dev',
+        })
+      );
 
       await registerPlugins();
 
@@ -100,18 +117,28 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('React Component Development');
+      expect(body.app_name).toBe('react-component-dev');
 
-      // Verify OpenAI was called with correct parameters
-      expect(mockCreate).toHaveBeenCalledWith({
-        model: 'databricks-claude-haiku-4-5',
-        max_tokens: 50,
-        messages: [
-          {
-            role: 'user',
-            content: expect.stringContaining('Help me create a React component'),
-          },
-        ],
-      });
+      // Verify OpenAI was called with response_format
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'databricks-claude-haiku-4-5',
+          max_tokens: 150,
+          response_format: expect.objectContaining({
+            type: 'json_schema',
+            json_schema: expect.objectContaining({
+              name: 'title_response',
+              strict: true,
+            }),
+          }),
+          messages: [
+            {
+              role: 'user',
+              content: expect.stringContaining('Help me create a React component'),
+            },
+          ],
+        })
+      );
     });
 
     it('should return 400 with ApiError when first_session_message is missing', async () => {
@@ -194,15 +221,12 @@ describe('title route', () => {
         getToken: vi.fn().mockResolvedValue('test-sp-token'),
       });
 
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: 'SP Token Test',
-            },
-          },
-        ],
-      });
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: 'SP Token Test',
+          app_name: 'sp-token-test',
+        })
+      );
 
       await registerPlugins();
 
@@ -217,6 +241,7 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('SP Token Test');
+      expect(body.app_name).toBe('sp-token-test');
     });
 
     it('should use PAT auth provider when available', async () => {
@@ -228,15 +253,12 @@ describe('title route', () => {
         getToken: mockAccessToken,
       });
 
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: 'PAT Priority Test',
-            },
-          },
-        ],
-      });
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: 'PAT Priority Test',
+          app_name: 'pat-priority-test',
+        })
+      );
 
       await registerPlugins();
 
@@ -251,6 +273,7 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('PAT Priority Test');
+      expect(body.app_name).toBe('pat-priority-test');
 
       // Verify that getToken was called
       expect(mockAccessToken).toHaveBeenCalled();
@@ -276,7 +299,7 @@ describe('title route', () => {
       expect(body.statusCode).toBe(500);
     });
 
-    it('should return fallback title when LLM returns empty content', async () => {
+    it('should return fallback title and typeid app_name when LLM returns empty content', async () => {
       mockCreate.mockResolvedValue({
         choices: [
           {
@@ -300,9 +323,11 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('General coding session');
+      // Fallback uses typeid mock
+      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
     });
 
-    it('should return fallback title when LLM returns null choices', async () => {
+    it('should return fallback when LLM returns null choices', async () => {
       mockCreate.mockResolvedValue({
         choices: [],
       });
@@ -320,18 +345,91 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('General coding session');
+      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
     });
 
-    it('should clean up LLM artifacts - remove surrounding quotes', async () => {
+    it('should return fallback app_name when LLM returns invalid app_name', async () => {
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: 'Valid Title',
+          app_name: 'INVALID_APP_NAME!!',
+        })
+      );
+
+      await registerPlugins();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/generate_title',
+        payload: {
+          first_session_message: 'Test message',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.title).toBe('Valid Title');
+      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+    });
+
+    it('should return fallback app_name when app_name exceeds 30 characters', async () => {
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: 'Valid Title',
+          app_name: 'this-is-a-very-long-app-name-that-exceeds-thirty-chars',
+        })
+      );
+
+      await registerPlugins();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/generate_title',
+        payload: {
+          first_session_message: 'Test message',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.title).toBe('Valid Title');
+      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+    });
+
+    it('should return fallback when LLM returns invalid JSON', async () => {
       mockCreate.mockResolvedValue({
         choices: [
           {
             message: {
-              content: '"Python Data Analysis"',
+              content: 'not valid json',
             },
           },
         ],
       });
+
+      await registerPlugins();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/generate_title',
+        payload: {
+          first_session_message: 'Test message',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.title).toBe('General coding session');
+      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+    });
+
+    it('should clean up LLM artifacts - remove surrounding quotes from title', async () => {
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: '"Python Data Analysis"',
+          app_name: 'python-data-analysis',
+        })
+      );
 
       await registerPlugins();
 
@@ -346,18 +444,16 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('Python Data Analysis');
+      expect(body.app_name).toBe('python-data-analysis');
     });
 
-    it('should clean up LLM artifacts - remove markdown formatting', async () => {
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: '**React Component** Development',
-            },
-          },
-        ],
-      });
+    it('should clean up LLM artifacts - remove markdown formatting from title', async () => {
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: '**React Component** Development',
+          app_name: 'react-component-dev',
+        })
+      );
 
       await registerPlugins();
 
@@ -374,16 +470,13 @@ describe('title route', () => {
       expect(body.title).toBe('React Component Development');
     });
 
-    it('should clean up LLM artifacts - remove backticks', async () => {
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: '`API Integration`',
-            },
-          },
-        ],
-      });
+    it('should clean up LLM artifacts - remove backticks from title', async () => {
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: '`API Integration`',
+          app_name: 'api-integration',
+        })
+      );
 
       await registerPlugins();
 
@@ -401,15 +494,12 @@ describe('title route', () => {
     });
 
     it('should trim whitespace from generated title', async () => {
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: '  Python Data Analysis  ',
-            },
-          },
-        ],
-      });
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: '  Python Data Analysis  ',
+          app_name: 'python-data-analysis',
+        })
+      );
 
       await registerPlugins();
 
@@ -427,15 +517,12 @@ describe('title route', () => {
     });
 
     it('should handle Japanese messages', async () => {
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: 'React Component Implementation',
-            },
-          },
-        ],
-      });
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: 'React Component Implementation',
+          app_name: 'react-component-impl',
+        })
+      );
 
       await registerPlugins();
 
@@ -450,6 +537,7 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('React Component Implementation');
+      expect(body.app_name).toBe('react-component-impl');
 
       // Verify the Japanese message was passed to the LLM
       expect(mockCreate).toHaveBeenCalledWith(
@@ -465,15 +553,12 @@ describe('title route', () => {
     });
 
     it('should use correct model from config', async () => {
-      mockCreate.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: 'Test Title',
-            },
-          },
-        ],
-      });
+      mockCreate.mockResolvedValue(
+        createStructuredResponse({
+          title: 'Test Title',
+          app_name: 'test-title',
+        })
+      );
 
       await registerPlugins();
 

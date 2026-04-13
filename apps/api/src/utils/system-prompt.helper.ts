@@ -1,4 +1,8 @@
-import type { DatabricksWorkspaceSource, SessionOutcome } from '@repo/types';
+import type {
+  DatabricksWorkspaceSource,
+  ResolvedDatabricksAppsOutcome,
+  ResolvedSessionOutcome,
+} from '@repo/types';
 
 /** systemPrompt の設定型 */
 export interface SystemPromptConfig {
@@ -19,18 +23,30 @@ export interface SystemPromptConfig {
  * // Use in query() options: systemPrompt: config
  * ```
  */
-export function buildSystemPromptConfig(outcomes: SessionOutcome[] = []): SystemPromptConfig {
+export function buildSystemPromptConfig(
+  outcomes: ResolvedSessionOutcome[] = []
+): SystemPromptConfig {
   const workspaceOutcome = outcomes.find(
     (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
   );
+  const appsOutcome = outcomes.find(
+    (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
+  );
 
-  const workspacePath = workspaceOutcome?.path;
+  const instructions: string[] = [];
 
-  if (workspacePath) {
+  if (workspaceOutcome?.path) {
+    instructions.push(createWorkspacePushInstruction(workspaceOutcome.path));
+  }
+  if (appsOutcome?.name) {
+    instructions.push(createDatabricksAppsInstruction(appsOutcome.name));
+  }
+
+  if (instructions.length > 0) {
     return {
       type: 'preset',
       preset: 'claude_code',
-      append: createWorkspacePushInstruction(workspacePath),
+      append: instructions.join('\n\n'),
     };
   }
   return { type: 'preset', preset: 'claude_code' };
@@ -58,7 +74,7 @@ Instructions:
 
 ## Databricks Workspace Push Requirements
 
-The workspace path is provided via the \`DATABRICKS_WORKSPACE_PATH\` environment variable: \`${workspacePath}\`
+The workspace path is provided via the \`SESSION_WORKSPACE_PATH\` environment variable: \`${workspacePath}\`
 
 ### Important Instructions:
 
@@ -69,8 +85,41 @@ The workspace path is provided via the \`DATABRICKS_WORKSPACE_PATH\` environment
 ### CLI Reference:
 
 - To push all files from the session directory to workspace:
-  \`databricks sync --include "*" --exclude .claude/settings.local.json . "$DATABRICKS_WORKSPACE_PATH"\`
+  \`databricks sync --include "*" --exclude .claude/settings.local.json . "$SESSION_WORKSPACE_PATH"\`
 - To check the upload result:
-  \`databricks workspace list "$DATABRICKS_WORKSPACE_PATH"\`
+  \`databricks workspace list "$SESSION_WORKSPACE_PATH"\`
+`.trim();
+}
+
+/**
+ * Databricks Apps へのデプロイ用 systemPrompt 追加指示を生成（CLI ベース）
+ *
+ * @param appName - 割り当て済みの Databricks App 名
+ * @returns systemPrompt に追加する指示文字列
+ */
+export function createDatabricksAppsInstruction(appName: string): string {
+  return `
+## Databricks Apps Deployment
+
+You have been assigned the app name: \`${appName}\`
+The app name is also available via the \`SESSION_APP_NAME\` environment variable.
+
+### Workflow:
+
+1. **DEVELOP** your application in the current working directory
+2. **PUSH** your code to the Workspace path (if configured)
+3. **CREATE** the app (if it doesn't exist yet):
+   \`databricks apps create ${appName}\`
+4. **DEPLOY** the app from the Workspace source:
+   \`databricks apps deploy ${appName} --source-code-path "$SESSION_WORKSPACE_PATH"\`
+5. **VERIFY** deployment status:
+   \`databricks apps get ${appName}\`
+
+### Important:
+
+- The app name \`${appName}\` is pre-assigned. Always use this exact name.
+- Ensure your app has a valid \`app.yaml\` configuration file before deploying.
+- After deploying, verify the app status shows \`RUNNING\` before reporting success.
+- Do not consider the work done until the app is successfully deployed and verified.
 `.trim();
 }

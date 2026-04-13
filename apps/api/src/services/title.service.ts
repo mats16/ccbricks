@@ -1,13 +1,42 @@
 import OpenAI from 'openai';
+import { typeid } from 'typeid-js';
+import type { GenerateTitleResponse } from '@repo/types';
 
 // Constants for title generation
-const TITLE_GENERATION_PROMPT = `Generate a short, concise title (3-6 words) for a coding session based on the following first message. Respond with only the title, no quotes, markdown, or extra text.
+const TITLE_GENERATION_PROMPT = `Generate a short, concise title (3-6 words) and a Databricks Apps app_name for a coding session based on the following first message.
+
+Rules for app_name:
+- Lowercase alphanumeric characters and hyphens only (regex: /^[a-z0-9][a-z0-9-]*$/)
+- Maximum 30 characters
+- Descriptive and derived from the title
+
+Respond in the specified JSON format.
 
 Message: `;
 
-const MAX_TOKENS = 50;
+const MAX_TOKENS = 150;
 const FALLBACK_TITLE = 'General coding session';
 const REQUEST_TIMEOUT_MS = 30000; // 30 seconds
+
+const APP_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+const APP_NAME_MAX_LENGTH = 30;
+
+const RESPONSE_FORMAT: OpenAI.ChatCompletionCreateParams['response_format'] = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'title_response',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        app_name: { type: 'string' },
+      },
+      required: ['title', 'app_name'],
+      additionalProperties: false,
+    },
+  },
+};
 
 /**
  * Cleans up the generated title by removing common LLM artifacts.
@@ -36,6 +65,23 @@ function cleanTitle(rawTitle: string): string {
   return cleaned.trim();
 }
 
+/**
+ * Validates that app_name matches the required pattern and length.
+ */
+function isValidAppName(appName: string): boolean {
+  return (
+    appName.length > 0 && appName.length <= APP_NAME_MAX_LENGTH && APP_NAME_PATTERN.test(appName)
+  );
+}
+
+/**
+ * Generates a fallback app_name using typeid with 'app' prefix.
+ * Format: app-{base32_uuidv7} (exactly 30 characters)
+ */
+function generateFallbackAppName(): string {
+  return typeid('app').toString().replaceAll('_', '-');
+}
+
 export interface TitleServiceConfig {
   databricksHost: string;
   model: string;
@@ -54,10 +100,11 @@ export class TitleService {
   }
 
   /**
-   * Generates a title for a coding session based on the first message.
+   * Generates a title and app_name for a coding session based on the first message.
+   * Uses structured output (JSON schema) for reliable parsing.
    * @throws Error if the LLM call fails
    */
-  async generateTitle(params: GenerateTitleParams): Promise<string> {
+  async generateTitle(params: GenerateTitleParams): Promise<GenerateTitleResponse> {
     const { firstSessionMessage, accessToken } = params;
 
     const client = new OpenAI({
@@ -69,6 +116,7 @@ export class TitleService {
     const response = await client.chat.completions.create({
       model: this.config.model,
       max_tokens: MAX_TOKENS,
+      response_format: RESPONSE_FORMAT,
       messages: [
         {
           role: 'user',
@@ -77,9 +125,24 @@ export class TitleService {
       ],
     });
 
-    const rawTitle = response.choices[0]?.message?.content;
-    const generatedTitle = rawTitle ? cleanTitle(rawTitle) : FALLBACK_TITLE;
+    const rawContent = response.choices[0]?.message?.content;
 
-    return generatedTitle || FALLBACK_TITLE;
+    if (!rawContent) {
+      return { title: FALLBACK_TITLE, app_name: generateFallbackAppName() };
+    }
+
+    try {
+      const parsed = JSON.parse(rawContent) as { title?: string; app_name?: string };
+
+      const title = parsed.title ? cleanTitle(parsed.title) : '';
+      const appName = parsed.app_name ?? '';
+
+      return {
+        title: title || FALLBACK_TITLE,
+        app_name: isValidAppName(appName) ? appName : generateFallbackAppName(),
+      };
+    } catch {
+      return { title: FALLBACK_TITLE, app_name: generateFallbackAppName() };
+    }
   }
 }

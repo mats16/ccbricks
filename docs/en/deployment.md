@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide explains how to deploy LakeBrownie to Databricks Apps.
+This guide explains how to deploy LakePixie to Databricks Apps.
 
 ## Prerequisites
 
@@ -25,10 +25,10 @@ Create a dedicated database user for the application.
 
 ```sql
 -- Create application user with RLS bypass explicitly disabled
-CREATE ROLE lakebrownie_user WITH LOGIN PASSWORD 'your-secure-password' NOBYPASSRLS;
+CREATE ROLE lakepixie_user WITH LOGIN PASSWORD 'your-secure-password' NOBYPASSRLS;
 
 -- Grant role privileges to current user (required for database creation)
-GRANT lakebrownie_user TO CURRENT_USER WITH SET TRUE;
+GRANT lakepixie_user TO CURRENT_USER WITH SET TRUE;
 ```
 
 **Important:** The application uses Row-Level Security (RLS) with `current_setting('app.user_id', true)`. The application sets this session variable for each request to enforce user isolation. The `NOBYPASSRLS` option ensures the application user cannot bypass RLS policies, providing an additional layer of security.
@@ -38,7 +38,7 @@ GRANT lakebrownie_user TO CURRENT_USER WITH SET TRUE;
 Create the application database and set the owner.
 
 ```sql
-CREATE DATABASE lakebrownie OWNER lakebrownie_user;
+CREATE DATABASE lakepixie OWNER lakepixie_user;
 ```
 
 ### 1.4 Database Migrations
@@ -53,7 +53,7 @@ Automatic migrations are disabled in the following cases:
 
 ```bash
 # Set database URL
-export DATABASE_URL="postgresql://lakebrownie_user:password@host:5432/lakebrownie"
+export DATABASE_URL="postgresql://lakepixie_user:password@host:5432/lakepixie"
 
 # Navigate to api directory
 cd apps/api
@@ -73,10 +73,10 @@ Create a Databricks secret scope and add required secrets.
 
 ```bash
 # Development
-databricks secrets create-scope lakebrownie-dev
+databricks secrets create-scope lakepixie-dev
 
 # Production
-databricks secrets create-scope lakebrownie-prod
+databricks secrets create-scope lakepixie-prod
 ```
 
 ### 2.2 Add Required Secrets
@@ -84,7 +84,7 @@ databricks secrets create-scope lakebrownie-prod
 **Database URL:**
 
 ```bash
-databricks secrets put-secret lakebrownie-[dev|prod] database-url --string-value "postgresql://lakebrownie_user:password@host:5432/lakebrownie"
+databricks secrets put-secret lakepixie-[dev|prod] database-url --string-value "postgresql://lakepixie_user:password@host:5432/lakepixie"
 ```
 
 **Encryption Key:**
@@ -93,7 +93,7 @@ Generate a secure encryption key for encrypting sensitive data (OAuth tokens, et
 
 ```bash
 ENCRYPTION_KEY=$(openssl rand -hex 32)
-databricks secrets put-secret lakebrownie-[dev|prod] encryption-key --string-value "$ENCRYPTION_KEY"
+databricks secrets put-secret lakepixie-[dev|prod] encryption-key --string-value "$ENCRYPTION_KEY"
 ```
 
 ## 3. Deploy with Asset Bundles
@@ -117,7 +117,7 @@ databricks bundle deploy [--target prod]
 ### 3.3 Start Application
 
 ```bash
-databricks bundle run lakebrownie_app [--target prod]
+databricks bundle run lakepixie_app [--target prod]
 ```
 
 ### 3.4 Verify Deployment
@@ -129,7 +129,7 @@ After deployment, check the application status:
 databricks apps list
 
 # Get app details
-databricks apps get lakebrownie-dev-<user-id>
+databricks apps get lakepixie-dev-<user-id>
 ```
 
 ## Troubleshooting
@@ -157,8 +157,8 @@ databricks apps get lakebrownie-dev-<user-id>
 | Setting | Development | Production |
 |---------|-------------|------------|
 | Bundle Target | `dev` | `prod` |
-| Secret Scope | `lakebrownie-dev` | `lakebrownie-prod` |
-| App Name | `lakebrownie-dev-<user-id>` | `lakebrownie-prod` |
+| Secret Scope | `lakepixie-dev` | `lakepixie-prod` |
+| App Name | `lakepixie-dev-<user-id>` | `lakepixie-prod` |
 | Workspace Path | `/Workspace/Users/<user>/.bundle/...` | `/Workspace/Shared/.bundle/...` |
 
 ## Security Considerations

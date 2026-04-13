@@ -14,8 +14,20 @@ export interface DatabricksWorkspaceSource {
   id: number;
 }
 
+export interface DatabricksAppsOutcome {
+  type: 'databricks_apps';
+  name?: string;
+}
+
+/** resolveAppsOutcomeName() 通過後の DatabricksAppsOutcome（name は必ず存在） */
+export interface ResolvedDatabricksAppsOutcome {
+  type: 'databricks_apps';
+  name: string;
+}
+
 export type SessionSource = DatabricksWorkspaceSource;
-export type SessionOutcome = DatabricksWorkspaceSource;
+export type SessionOutcome = DatabricksWorkspaceSource | DatabricksAppsOutcome;
+export type ResolvedSessionOutcome = DatabricksWorkspaceSource | ResolvedDatabricksAppsOutcome;
 
 // =====================================================
 // Session Context Types
@@ -44,7 +56,7 @@ export interface SessionContextResponse {
   cwd: string;
   model: string;
   sources: SessionSource[];
-  outcomes: SessionOutcome[];
+  outcomes: ResolvedSessionOutcome[];
   mcp_config?: McpConfig;
 }
 

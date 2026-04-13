@@ -21,12 +21,17 @@ import type {
   SessionCreateEventData,
   SessionUpdateRequest,
   DatabricksWorkspaceSource,
+  DatabricksAppsOutcome,
+  ResolvedDatabricksAppsOutcome,
 } from '@repo/types';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessions } from '../db/schema.js';
 import { insertSessionEventInTx } from '../db/helpers.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
+import { fromUUID } from 'typeid-js';
+import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
+import { getAuthProvider } from '../lib/databricks-auth.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -290,6 +295,9 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     const workspacePath = sessionContext.outcomes.find(
       (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
     )?.path;
+    const appsOutcomeName = sessionContext.outcomes.find(
+      (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
+    )?.name;
 
     const response = query({
       prompt,
@@ -316,7 +324,8 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           CLAUDE_CONFIG_DIR: path.join(userHome, '.claude'),
           ...(sdkSessionId ? { CLAUDE_CODE_SESSION_ID: sdkSessionId } : {}),
           SESSION_ID: sessionId.toString(),
-          ...(workspacePath ? { DATABRICKS_WORKSPACE_PATH: workspacePath } : {}),
+          ...(workspacePath ? { SESSION_WORKSPACE_PATH: workspacePath } : {}),
+          ...(appsOutcomeName ? { SESSION_APP_NAME: appsOutcomeName } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
           ANTHROPIC_DEFAULT_OPUS_MODEL: fastify.config.ANTHROPIC_DEFAULT_OPUS_MODEL,
@@ -345,6 +354,45 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     });
     throw error;
   }
+}
+
+/**
+ * Databricks Apps outcome のアプリ名を解決する
+ *
+ * フロントエンドから提供された名前を使用し、重複がある場合はフォールバック名を生成する。
+ * フォールバック名は session UUID から typeid を生成して決定的に作成する。
+ */
+async function resolveAppsOutcomeName(
+  outcome: DatabricksAppsOutcome,
+  sessionId: SessionId,
+  fastify: FastifyInstance
+): Promise<ResolvedDatabricksAppsOutcome> {
+  const frontendName = outcome.name?.trim();
+
+  if (frontendName) {
+    try {
+      const authProvider = getAuthProvider(fastify);
+      const appsClient = new DatabricksAppsClient(authProvider);
+      const existingApp = await appsClient.get(frontendName);
+
+      if (!existingApp) {
+        return { ...outcome, name: frontendName };
+      }
+
+      fastify.log.info(
+        { appName: frontendName, sessionId: sessionId.toString() },
+        'App name already exists, generating fallback name'
+      );
+    } catch (error) {
+      fastify.log.warn(
+        { appName: frontendName, sessionId: sessionId.toString(), error },
+        'Failed to check app name availability, using fallback name'
+      );
+    }
+  }
+
+  const fallbackName = fromUUID(sessionId.toUUID(), 'app').toString().replaceAll('_', '-');
+  return { ...outcome, name: fallbackName };
 }
 
 /**
@@ -380,9 +428,9 @@ export async function createSession(
   const userEvent = events[0];
   const userContent = userEvent?.data.message.content ?? '';
 
-  // 3. cwd の生成（LAKEBROWNIE_BASE_DIR/sessions/sessionId）
+  // 3. cwd の生成（LAKEPIXIE_BASE_DIR/sessions/sessionId）
   /** Claude Code Working Directory  (e.g. /home/app/sessions/session_xxx) */
-  const cwd = path.join(fastify.config.LAKEBROWNIE_BASE_DIR, 'sessions', sessionId.toString());
+  const cwd = path.join(fastify.config.LAKEPIXIE_BASE_DIR, 'sessions', sessionId.toString());
 
   await ensureDirectory(cwd);
 
@@ -400,11 +448,21 @@ export async function createSession(
       return true;
     });
 
-  // 5. outcomes のパス内変数を解決（{session_id} → 実際のセッションID）
-  const resolvedOutcomes = session_context.outcomes.map(outcome => ({
-    ...outcome,
-    path: outcome.path.replace('{session_id}', sessionId.toString()),
-  }));
+  // 5. outcomes の変数を解決（{session_id} → 実際のセッションID、apps にはアプリ名を割当）
+  const resolvedOutcomes = await Promise.all(
+    session_context.outcomes.map(async outcome => {
+      if (outcome.type === 'databricks_workspace') {
+        return {
+          ...outcome,
+          path: outcome.path.replace('{session_id}', sessionId.toString()),
+        };
+      }
+      if (outcome.type === 'databricks_apps') {
+        return resolveAppsOutcomeName(outcome, sessionId, fastify);
+      }
+      return outcome;
+    })
+  );
 
   // 6. context オブジェクトの構築
   const sessionContext: SessionContextResponse = {
@@ -751,7 +809,7 @@ export async function archiveSession(
   userId: string,
   sessionId: SessionId
 ): Promise<SessionResponse | null> {
-  const sessionsBaseDir = path.join(fastify.config.LAKEBROWNIE_BASE_DIR, 'sessions');
+  const sessionsBaseDir = path.join(fastify.config.LAKEPIXIE_BASE_DIR, 'sessions');
 
   return fastify.withUserContext(userId, async tx => {
     // 1. セッション情報を取得（cwd を取得するため）
@@ -785,6 +843,21 @@ export async function archiveSession(
             'Failed to remove working directory'
           );
         });
+    }
+
+    // 4. Databricks App を削除（outcomes に databricks_apps がある場合、トランザクション外で非同期実行）
+    const appsOutcome = context?.outcomes?.find(
+      (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
+    );
+    if (appsOutcome) {
+      const authProvider = getAuthProvider(fastify);
+      const appsClient = new DatabricksAppsClient(authProvider);
+      appsClient.delete(appsOutcome.name).catch(error => {
+        fastify.log.error(
+          { sessionId: sessionId.toString(), appName: appsOutcome.name, error },
+          'Failed to delete Databricks App'
+        );
+      });
     }
 
     return toSessionResponse(rows[0]);

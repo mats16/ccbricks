@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import type { SessionOutcome } from '@repo/types';
+import type { ResolvedSessionOutcome } from '@repo/types';
 import {
   buildSystemPromptConfig,
   createWorkspacePushInstruction,
+  createDatabricksAppsInstruction,
   type SystemPromptConfig,
 } from './system-prompt.helper.js';
 
@@ -19,10 +20,10 @@ describe('createWorkspacePushInstruction', () => {
     const result = createWorkspacePushInstruction('/Workspace/test');
 
     expect(result).toContain('CLI Reference');
-    expect(result).toContain('DATABRICKS_WORKSPACE_PATH');
-    expect(result).toContain('databricks workspace list "$DATABRICKS_WORKSPACE_PATH"');
+    expect(result).toContain('SESSION_WORKSPACE_PATH');
+    expect(result).toContain('databricks workspace list "$SESSION_WORKSPACE_PATH"');
     expect(result).toContain(
-      'databricks sync --include "*" --exclude .claude/settings.local.json . "$DATABRICKS_WORKSPACE_PATH"'
+      'databricks sync --include "*" --exclude .claude/settings.local.json . "$SESSION_WORKSPACE_PATH"'
     );
   });
 
@@ -55,7 +56,7 @@ describe('buildSystemPromptConfig', () => {
   });
 
   it('should return config with Workspace instruction for workspace-only outcome', () => {
-    const outcomes: SessionOutcome[] = [
+    const outcomes: ResolvedSessionOutcome[] = [
       { type: 'databricks_workspace', path: '/Workspace/test', id: 12345 },
     ];
 
@@ -70,7 +71,7 @@ describe('buildSystemPromptConfig', () => {
   });
 
   it('should use first workspace path when multiple workspaces exist', () => {
-    const outcomes: SessionOutcome[] = [
+    const outcomes: ResolvedSessionOutcome[] = [
       { type: 'databricks_workspace', path: '/Workspace/first', id: 12345 },
       { type: 'databricks_workspace', path: '/Workspace/second', id: 67890 },
     ];
@@ -81,6 +82,58 @@ describe('buildSystemPromptConfig', () => {
     if ('append' in result) {
       expect(result.append).toContain('/Workspace/first');
     }
+  });
+
+  it('should return config with Apps instruction for apps-only outcome', () => {
+    const outcomes: ResolvedSessionOutcome[] = [{ type: 'databricks_apps', name: 'app-abc123' }];
+
+    const result = buildSystemPromptConfig(outcomes);
+
+    expect(result.type).toBe('preset');
+    expect(result.preset).toBe('claude_code');
+    expect(result.append).toBeDefined();
+    expect(result.append).toContain('Databricks Apps Deployment');
+    expect(result.append).toContain('app-abc123');
+  });
+
+  it('should return config with both instructions for workspace + apps outcomes', () => {
+    const outcomes: ResolvedSessionOutcome[] = [
+      { type: 'databricks_workspace', path: '/Workspace/test', id: 12345 },
+      { type: 'databricks_apps', name: 'app-xyz789' },
+    ];
+
+    const result = buildSystemPromptConfig(outcomes);
+
+    expect(result.append).toBeDefined();
+    expect(result.append).toContain('Databricks Workspace Push Requirements');
+    expect(result.append).toContain('Databricks Apps Deployment');
+    expect(result.append).toContain('app-xyz789');
+  });
+});
+
+describe('createDatabricksAppsInstruction', () => {
+  it('should generate instruction with app name', () => {
+    const result = createDatabricksAppsInstruction('app-abc123');
+
+    expect(result).toContain('Databricks Apps Deployment');
+    expect(result).toContain('app-abc123');
+    expect(result).toContain('databricks apps create app-abc123');
+    expect(result).toContain('databricks apps deploy app-abc123');
+    expect(result).toContain('databricks apps get app-abc123');
+  });
+
+  it('should include environment variable reference', () => {
+    const result = createDatabricksAppsInstruction('app-test');
+
+    expect(result).toContain('SESSION_APP_NAME');
+  });
+
+  it('should include workflow steps', () => {
+    const result = createDatabricksAppsInstruction('app-test');
+
+    expect(result).toContain('DEVELOP');
+    expect(result).toContain('DEPLOY');
+    expect(result).toContain('VERIFY');
   });
 });
 
