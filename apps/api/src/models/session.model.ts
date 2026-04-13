@@ -91,13 +91,4 @@ export class SessionId {
   toUUID(): string {
     return this.uuid;
   }
-
-  /**
-   * UUID からハイフンを除去したサフィックスを返す。
-   * Databricks App 名のサフィックスとして使用。
-   * 例: "0188a5eb-4b84-7095-bae8-084200ae0295" → "0188a5eb4b847095bae8084200ae0295"
-   */
-  getSuffix(): string {
-    return this.uuid.replace(/-/g, '');
-  }
 }

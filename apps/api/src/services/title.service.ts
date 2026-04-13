@@ -70,9 +70,7 @@ function cleanTitle(rawTitle: string): string {
  */
 function isValidAppName(appName: string): boolean {
   return (
-    appName.length > 0 &&
-    appName.length <= APP_NAME_MAX_LENGTH &&
-    APP_NAME_PATTERN.test(appName)
+    appName.length > 0 && appName.length <= APP_NAME_MAX_LENGTH && APP_NAME_PATTERN.test(appName)
   );
 }
 
