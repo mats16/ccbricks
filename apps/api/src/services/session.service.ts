@@ -22,6 +22,7 @@ import type {
   SessionUpdateRequest,
   DatabricksWorkspaceSource,
   DatabricksAppsOutcome,
+  ResolvedDatabricksAppsOutcome,
 } from '@repo/types';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessions } from '../db/schema.js';
@@ -295,7 +296,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
       (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
     )?.path;
     const appsOutcomeName = sessionContext.outcomes.find(
-      (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps'
+      (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
     )?.name;
 
     const response = query({
@@ -365,7 +366,7 @@ async function resolveAppsOutcomeName(
   outcome: DatabricksAppsOutcome,
   sessionId: SessionId,
   fastify: FastifyInstance
-): Promise<DatabricksAppsOutcome> {
+): Promise<ResolvedDatabricksAppsOutcome> {
   const frontendName = outcome.name?.trim();
 
   if (frontendName) {
@@ -390,7 +391,7 @@ async function resolveAppsOutcomeName(
     }
   }
 
-  const fallbackName = fromUUID(sessionId.toUUID(), 'app').toString().replace('_', '-');
+  const fallbackName = fromUUID(sessionId.toUUID(), 'app').toString().replaceAll('_', '-');
   return { ...outcome, name: fallbackName };
 }
 
@@ -846,9 +847,9 @@ export async function archiveSession(
 
     // 4. Databricks App を削除（outcomes に databricks_apps がある場合、トランザクション外で非同期実行）
     const appsOutcome = context?.outcomes?.find(
-      (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps'
+      (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
     );
-    if (appsOutcome?.name) {
+    if (appsOutcome) {
       const authProvider = getAuthProvider(fastify);
       const appsClient = new DatabricksAppsClient(authProvider);
       appsClient.delete(appsOutcome.name).catch(error => {

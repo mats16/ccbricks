@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { SessionOutcome } from '@repo/types';
+import type { ResolvedSessionOutcome } from '@repo/types';
 import {
   buildSystemPromptConfig,
   createWorkspacePushInstruction,
@@ -56,7 +56,7 @@ describe('buildSystemPromptConfig', () => {
   });
 
   it('should return config with Workspace instruction for workspace-only outcome', () => {
-    const outcomes: SessionOutcome[] = [
+    const outcomes: ResolvedSessionOutcome[] = [
       { type: 'databricks_workspace', path: '/Workspace/test', id: 12345 },
     ];
 
@@ -71,7 +71,7 @@ describe('buildSystemPromptConfig', () => {
   });
 
   it('should use first workspace path when multiple workspaces exist', () => {
-    const outcomes: SessionOutcome[] = [
+    const outcomes: ResolvedSessionOutcome[] = [
       { type: 'databricks_workspace', path: '/Workspace/first', id: 12345 },
       { type: 'databricks_workspace', path: '/Workspace/second', id: 67890 },
     ];
@@ -85,7 +85,7 @@ describe('buildSystemPromptConfig', () => {
   });
 
   it('should return config with Apps instruction for apps-only outcome', () => {
-    const outcomes: SessionOutcome[] = [{ type: 'databricks_apps', name: 'app-abc123' }];
+    const outcomes: ResolvedSessionOutcome[] = [{ type: 'databricks_apps', name: 'app-abc123' }];
 
     const result = buildSystemPromptConfig(outcomes);
 
@@ -97,7 +97,7 @@ describe('buildSystemPromptConfig', () => {
   });
 
   it('should return config with both instructions for workspace + apps outcomes', () => {
-    const outcomes: SessionOutcome[] = [
+    const outcomes: ResolvedSessionOutcome[] = [
       { type: 'databricks_workspace', path: '/Workspace/test', id: 12345 },
       { type: 'databricks_apps', name: 'app-xyz789' },
     ];
@@ -108,17 +108,6 @@ describe('buildSystemPromptConfig', () => {
     expect(result.append).toContain('Databricks Workspace Push Requirements');
     expect(result.append).toContain('Databricks Apps Deployment');
     expect(result.append).toContain('app-xyz789');
-  });
-
-  it('should not include apps instruction when name is not set', () => {
-    const outcomes: SessionOutcome[] = [{ type: 'databricks_apps' }];
-
-    const result = buildSystemPromptConfig(outcomes);
-
-    expect(result).toEqual({
-      type: 'preset',
-      preset: 'claude_code',
-    });
   });
 });
 

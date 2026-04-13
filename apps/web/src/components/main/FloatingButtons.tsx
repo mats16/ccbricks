@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Rocket, FolderCode, Settings, Logs } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { APP_STATUS_POLLING_INTERVAL_MS } from '@/constants';
+import { APP_STATUS_POLLING_INTERVAL_MS, APP_STATUS_POLLING_STABLE_INTERVAL_MS } from '@/constants';
 import { useUser } from '@/hooks/useUser';
 import type { DatabricksApp } from '@repo/types';
 
@@ -54,6 +54,14 @@ function getAppStateStyle(state: string | undefined): AppStateStyle {
   return APP_STATE_STYLES[(state as AppStateType) ?? 'UNKNOWN'] ?? APP_STATE_STYLES.UNKNOWN;
 }
 
+const STABLE_STATES = new Set<string>(['RUNNING', 'CRASHED', 'UNAVAILABLE']);
+
+function getPollingInterval(state: string | undefined): number {
+  return state && STABLE_STATES.has(state)
+    ? APP_STATUS_POLLING_STABLE_INTERVAL_MS
+    : APP_STATUS_POLLING_INTERVAL_MS;
+}
+
 export function FloatingButtons({
   sessionId,
   showAppButton,
@@ -64,23 +72,32 @@ export function FloatingButtons({
   const { databricksHost } = useUser();
   const [appInfo, setAppInfo] = useState<DatabricksApp | null>(null);
   const fetchAppInfoRef = useRef<() => Promise<void>>(undefined);
+  const appStateRef = useRef<string | undefined>(undefined);
 
   const fetchAppInfo = useCallback(async () => {
     if (!showAppButton) return;
     try {
       const response = await fetch(`/api/sessions/${sessionId}/app`);
       if (!response.ok) {
+        console.warn(`[FloatingButtons] App info fetch failed with status ${response.status}`);
         setAppInfo(prev => (prev === null ? prev : null));
         return;
       }
-      const data: DatabricksApp = await response.json();
+      const data: unknown = await response.json();
+      if (!data || typeof data !== 'object' || !('name' in data)) {
+        setAppInfo(prev => (prev === null ? prev : null));
+        return;
+      }
+      const app = data as DatabricksApp;
+      appStateRef.current = app.app_status?.state;
       setAppInfo(prev => {
-        if (prev?.app_status?.state === data.app_status?.state && prev?.url === data.url) {
+        if (prev?.app_status?.state === app.app_status?.state && prev?.url === app.url) {
           return prev;
         }
-        return data;
+        return app;
       });
-    } catch {
+    } catch (error) {
+      console.warn('[FloatingButtons] Failed to fetch app info:', error);
       setAppInfo(prev => (prev === null ? prev : null));
     }
   }, [sessionId, showAppButton]);
@@ -92,13 +109,16 @@ export function FloatingButtons({
   useEffect(() => {
     if (!showAppButton) return;
 
-    fetchAppInfoRef.current?.();
-
-    const intervalId = setInterval(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const poll = () => {
       fetchAppInfoRef.current?.();
-    }, APP_STATUS_POLLING_INTERVAL_MS);
+      timeoutId = setTimeout(poll, getPollingInterval(appStateRef.current));
+    };
 
-    return () => clearInterval(intervalId);
+    fetchAppInfoRef.current?.();
+    timeoutId = setTimeout(poll, getPollingInterval(appStateRef.current));
+
+    return () => clearTimeout(timeoutId);
   }, [showAppButton]);
 
   const appState = appInfo?.app_status?.state ?? 'UNKNOWN';

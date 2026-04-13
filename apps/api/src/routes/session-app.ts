@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
-import type { DatabricksAppsOutcome } from '@repo/types';
+import type { ResolvedDatabricksAppsOutcome } from '@repo/types';
 import { SessionId } from '../models/session.model.js';
 import { getSession } from '../services/session.service.js';
-import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
+import { DatabricksAppsClient, DatabricksApiError } from '../lib/databricks-apps-client.js';
 import { getAuthProvider } from '../lib/databricks-auth.js';
 
 function sendError(
@@ -47,7 +47,7 @@ const sessionAppRoute: FastifyPluginAsync = async fastify => {
     }
 
     const appsOutcome = session.session_context?.outcomes?.find(
-      (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps'
+      (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
     );
     if (!appsOutcome?.name) {
       return sendError(
@@ -68,15 +68,17 @@ const sessionAppRoute: FastifyPluginAsync = async fastify => {
       }
       return reply.send(app);
     } catch (error) {
+      if (error instanceof DatabricksApiError) {
+        const code = error.statusCode === 404 ? 404 : 500;
+        return sendError(
+          reply,
+          code,
+          code === 404 ? 'NotFound' : 'InternalServerError',
+          error.message
+        );
+      }
       const message = error instanceof Error ? error.message : 'Unknown error';
-      const statusMatch = message.match(/\((\d+)\)/);
-      const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : 500;
-      return sendError(
-        reply,
-        statusCode === 404 ? 404 : 500,
-        statusCode === 404 ? 'NotFound' : 'InternalServerError',
-        message
-      );
+      return sendError(reply, 500, 'InternalServerError', message);
     }
   });
 };

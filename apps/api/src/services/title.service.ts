@@ -79,7 +79,7 @@ function isValidAppName(appName: string): boolean {
  * Format: app-{base32_uuidv7} (exactly 30 characters)
  */
 function generateFallbackAppName(): string {
-  return typeid('app').toString().replace('_', '-');
+  return typeid('app').toString().replaceAll('_', '-');
 }
 
 export interface TitleServiceConfig {

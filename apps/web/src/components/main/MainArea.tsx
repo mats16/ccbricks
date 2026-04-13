@@ -6,7 +6,7 @@ import type {
   SessionCreateRequest,
   UserMessageContentBlock,
   DatabricksWorkspaceSource,
-  DatabricksAppsOutcome,
+  ResolvedDatabricksAppsOutcome,
 } from '@repo/types';
 import { MainHeader } from './MainHeader';
 import { MessageArea } from './MessageArea';
@@ -81,7 +81,8 @@ export function MainArea({
         outcomes.find((o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace') ??
         null,
       databricksAppsOutcome:
-        outcomes.find((o): o is DatabricksAppsOutcome => o.type === 'databricks_apps') ?? null,
+        outcomes.find((o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps') ??
+        null,
     };
   }, [session?.session_context?.outcomes]);
 

@@ -1,4 +1,8 @@
-import type { DatabricksWorkspaceSource, DatabricksAppsOutcome, SessionOutcome } from '@repo/types';
+import type {
+  DatabricksWorkspaceSource,
+  ResolvedDatabricksAppsOutcome,
+  ResolvedSessionOutcome,
+} from '@repo/types';
 
 /** systemPrompt の設定型 */
 export interface SystemPromptConfig {
@@ -19,12 +23,14 @@ export interface SystemPromptConfig {
  * // Use in query() options: systemPrompt: config
  * ```
  */
-export function buildSystemPromptConfig(outcomes: SessionOutcome[] = []): SystemPromptConfig {
+export function buildSystemPromptConfig(
+  outcomes: ResolvedSessionOutcome[] = []
+): SystemPromptConfig {
   const workspaceOutcome = outcomes.find(
     (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
   );
   const appsOutcome = outcomes.find(
-    (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps'
+    (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
   );
 
   const instructions: string[] = [];

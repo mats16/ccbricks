@@ -8,6 +8,16 @@
 import type { DatabricksApp } from '@repo/types';
 import type { AuthProvider } from './databricks-auth.js';
 
+export class DatabricksApiError extends Error {
+  constructor(
+    public readonly statusCode: number,
+    message: string
+  ) {
+    super(message);
+    this.name = 'DatabricksApiError';
+  }
+}
+
 export class DatabricksAppsClient {
   private readonly host: string;
 
@@ -26,7 +36,10 @@ export class DatabricksAppsClient {
 
     if (!response.ok && response.status !== 404) {
       const errorText = await response.text();
-      throw new Error(`Databricks API error (${response.status}): ${errorText}`);
+      throw new DatabricksApiError(
+        response.status,
+        `Databricks API error (${response.status}): ${errorText}`
+      );
     }
 
     return response;
@@ -41,7 +54,19 @@ export class DatabricksAppsClient {
   async get(appName: string): Promise<DatabricksApp | null> {
     const response = await this.request('GET', appName);
     if (response.status === 404) return null;
-    return response.json() as Promise<DatabricksApp>;
+    const data: unknown = await response.json();
+    if (
+      !data ||
+      typeof data !== 'object' ||
+      !('name' in data) ||
+      typeof (data as Record<string, unknown>).name !== 'string'
+    ) {
+      throw new DatabricksApiError(
+        502,
+        "Invalid response from Databricks Apps API: missing 'name' field"
+      );
+    }
+    return data as DatabricksApp;
   }
 
   /**
