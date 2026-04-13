@@ -20,10 +20,10 @@ describe('createWorkspacePushInstruction', () => {
     const result = createWorkspacePushInstruction('/Workspace/test');
 
     expect(result).toContain('CLI Reference');
-    expect(result).toContain('DATABRICKS_WORKSPACE_PATH');
-    expect(result).toContain('databricks workspace list "$DATABRICKS_WORKSPACE_PATH"');
+    expect(result).toContain('SESSION_WORKSPACE_PATH');
+    expect(result).toContain('databricks workspace list "$SESSION_WORKSPACE_PATH"');
     expect(result).toContain(
-      'databricks sync --include "*" --exclude .claude/settings.local.json . "$DATABRICKS_WORKSPACE_PATH"'
+      'databricks sync --include "*" --exclude .claude/settings.local.json . "$SESSION_WORKSPACE_PATH"'
     );
   });
 
@@ -136,7 +136,7 @@ describe('createDatabricksAppsInstruction', () => {
   it('should include environment variable reference', () => {
     const result = createDatabricksAppsInstruction('app-test');
 
-    expect(result).toContain('DATABRICKS_APP_NAME_SESSION');
+    expect(result).toContain('SESSION_APP_NAME');
   });
 
   it('should include workflow steps', () => {

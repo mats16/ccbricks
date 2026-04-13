@@ -28,6 +28,9 @@ import { sessions } from '../db/schema.js';
 import { insertSessionEventInTx } from '../db/helpers.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
+import { fromUUID } from 'typeid-js';
+import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
+import { getAuthProvider } from '../lib/databricks-auth.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -320,8 +323,8 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           CLAUDE_CONFIG_DIR: path.join(userHome, '.claude'),
           ...(sdkSessionId ? { CLAUDE_CODE_SESSION_ID: sdkSessionId } : {}),
           SESSION_ID: sessionId.toString(),
-          ...(workspacePath ? { DATABRICKS_WORKSPACE_PATH: workspacePath } : {}),
-          ...(appsOutcomeName ? { DATABRICKS_APP_NAME_SESSION: appsOutcomeName } : {}),
+          ...(workspacePath ? { SESSION_WORKSPACE_PATH: workspacePath } : {}),
+          ...(appsOutcomeName ? { SESSION_APP_NAME: appsOutcomeName } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
           ANTHROPIC_DEFAULT_OPUS_MODEL: fastify.config.ANTHROPIC_DEFAULT_OPUS_MODEL,
@@ -350,6 +353,45 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     });
     throw error;
   }
+}
+
+/**
+ * Databricks Apps outcome のアプリ名を解決する
+ *
+ * フロントエンドから提供された名前を使用し、重複がある場合はフォールバック名を生成する。
+ * フォールバック名は session UUID から typeid を生成して決定的に作成する。
+ */
+async function resolveAppsOutcomeName(
+  outcome: DatabricksAppsOutcome,
+  sessionId: SessionId,
+  fastify: FastifyInstance
+): Promise<DatabricksAppsOutcome> {
+  const frontendName = outcome.name?.trim();
+
+  if (frontendName) {
+    try {
+      const authProvider = getAuthProvider(fastify);
+      const appsClient = new DatabricksAppsClient(authProvider);
+      const existingApp = await appsClient.get(frontendName);
+
+      if (!existingApp) {
+        return { ...outcome, name: frontendName };
+      }
+
+      fastify.log.info(
+        { appName: frontendName, sessionId: sessionId.toString() },
+        'App name already exists, generating fallback name'
+      );
+    } catch (error) {
+      fastify.log.warn(
+        { appName: frontendName, sessionId: sessionId.toString(), error },
+        'Failed to check app name availability, using fallback name'
+      );
+    }
+  }
+
+  const fallbackName = fromUUID(sessionId.toUUID(), 'app').toString().replace('_', '-');
+  return { ...outcome, name: fallbackName };
 }
 
 /**
@@ -406,21 +448,20 @@ export async function createSession(
     });
 
   // 5. outcomes の変数を解決（{session_id} → 実際のセッションID、apps にはアプリ名を割当）
-  const resolvedOutcomes = session_context.outcomes.map(outcome => {
-    if (outcome.type === 'databricks_workspace') {
-      return {
-        ...outcome,
-        path: outcome.path.replace('{session_id}', sessionId.toString()),
-      };
-    }
-    if (outcome.type === 'databricks_apps') {
-      return {
-        ...outcome,
-        name: `app-${sessionId.getSuffix()}`,
-      };
-    }
-    return outcome;
-  });
+  const resolvedOutcomes = await Promise.all(
+    session_context.outcomes.map(async outcome => {
+      if (outcome.type === 'databricks_workspace') {
+        return {
+          ...outcome,
+          path: outcome.path.replace('{session_id}', sessionId.toString()),
+        };
+      }
+      if (outcome.type === 'databricks_apps') {
+        return resolveAppsOutcomeName(outcome, sessionId, fastify);
+      }
+      return outcome;
+    })
+  );
 
   // 6. context オブジェクトの構築
   const sessionContext: SessionContextResponse = {

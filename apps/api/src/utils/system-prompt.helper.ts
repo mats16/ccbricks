@@ -68,7 +68,7 @@ Instructions:
 
 ## Databricks Workspace Push Requirements
 
-The workspace path is provided via the \`DATABRICKS_WORKSPACE_PATH\` environment variable: \`${workspacePath}\`
+The workspace path is provided via the \`SESSION_WORKSPACE_PATH\` environment variable: \`${workspacePath}\`
 
 ### Important Instructions:
 
@@ -79,9 +79,9 @@ The workspace path is provided via the \`DATABRICKS_WORKSPACE_PATH\` environment
 ### CLI Reference:
 
 - To push all files from the session directory to workspace:
-  \`databricks sync --include "*" --exclude .claude/settings.local.json . "$DATABRICKS_WORKSPACE_PATH"\`
+  \`databricks sync --include "*" --exclude .claude/settings.local.json . "$SESSION_WORKSPACE_PATH"\`
 - To check the upload result:
-  \`databricks workspace list "$DATABRICKS_WORKSPACE_PATH"\`
+  \`databricks workspace list "$SESSION_WORKSPACE_PATH"\`
 `.trim();
 }
 
@@ -96,7 +96,7 @@ export function createDatabricksAppsInstruction(appName: string): string {
 ## Databricks Apps Deployment
 
 You have been assigned the app name: \`${appName}\`
-The app name is also available via the \`DATABRICKS_APP_NAME_SESSION\` environment variable.
+The app name is also available via the \`SESSION_APP_NAME\` environment variable.
 
 ### Workflow:
 
@@ -105,7 +105,7 @@ The app name is also available via the \`DATABRICKS_APP_NAME_SESSION\` environme
 3. **CREATE** the app (if it doesn't exist yet):
    \`databricks apps create ${appName}\`
 4. **DEPLOY** the app from the Workspace source:
-   \`databricks apps deploy ${appName} --source-code-path "$DATABRICKS_WORKSPACE_PATH"\`
+   \`databricks apps deploy ${appName} --source-code-path "$SESSION_WORKSPACE_PATH"\`
 5. **VERIFY** deployment status:
    \`databricks apps get ${appName}\`
 

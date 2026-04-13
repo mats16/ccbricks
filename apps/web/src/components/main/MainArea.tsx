@@ -120,10 +120,10 @@ export function MainArea({
 
       // タイトル生成用にテキストを抽出
       const textContent = extractTextFromContent(content);
-      const title = await sessionService.generateTitle(textContent);
+      const titleResult = await sessionService.generateTitle(textContent);
 
       const request: SessionCreateRequest = {
-        title: title ?? undefined,
+        title: titleResult?.title ?? undefined,
         events: [
           {
             type: 'event',
@@ -156,7 +156,9 @@ export function MainArea({
               path: '/Workspace/Shared/LakePixie/sessions/{session_id}',
               id: 0,
             },
-            ...(enableDatabricksApps ? [{ type: 'databricks_apps' as const }] : []),
+            ...(enableDatabricksApps
+              ? [{ type: 'databricks_apps' as const, name: titleResult?.app_name }]
+              : []),
           ],
           allowed_tools: allowedTools,
           disallowed_tools: [

@@ -50,11 +50,11 @@ describe('ThinkingIndicator', () => {
     expect(statusElement.getAttribute('aria-live')).toBe('polite');
   });
 
-  it('3つのBinocularsアイコンが表示される', () => {
+  it('4つのアイコンが表示される', () => {
     const { container } = renderWithI18n(<ThinkingIndicator />);
 
     const icons = container.querySelectorAll('svg');
-    expect(icons.length).toBe(3);
+    expect(icons.length).toBe(4);
   });
 
   it('アイコンにaria-hidden="true"が設定されたコンテナがある', () => {
@@ -68,7 +68,7 @@ describe('ThinkingIndicator', () => {
     const { container } = renderWithI18n(<ThinkingIndicator />);
 
     const icons = container.querySelectorAll('svg.animate-wave');
-    expect(icons.length).toBe(3);
+    expect(icons.length).toBe(4);
   });
 
   it('各アイコンに異なる色クラスがある', () => {
@@ -77,6 +77,7 @@ describe('ThinkingIndicator', () => {
     expect(container.querySelector('.text-purple-500')).toBeTruthy();
     expect(container.querySelector('.text-pink-500')).toBeTruthy();
     expect(container.querySelector('.text-blue-500')).toBeTruthy();
+    expect(container.querySelector('.text-amber-500')).toBeTruthy();
   });
 
   it('各アイコンに異なるanimationDelayが設定される', () => {
@@ -86,6 +87,7 @@ describe('ThinkingIndicator', () => {
     expect((icons[0] as SVGSVGElement).style.animationDelay).toBe('0ms');
     expect((icons[1] as SVGSVGElement).style.animationDelay).toBe('120ms');
     expect((icons[2] as SVGSVGElement).style.animationDelay).toBe('240ms');
+    expect((icons[3] as SVGSVGElement).style.animationDelay).toBe('360ms');
   });
 
   it('タイプライターエフェクトで文字が表示される', () => {
