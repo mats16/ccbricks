@@ -15,6 +15,7 @@ import reposRoute from './routes/repos.js';
 import jobsRoute from './routes/jobs.js';
 import userSkillsRoute from './routes/user-skills.js';
 import userAgentsRoute from './routes/user-agents.js';
+import userSettingsRoute from './routes/user-settings.js';
 import genieRoute from './routes/genie.js';
 import { startEventBatcher } from './services/event-queue.service.js';
 
@@ -54,6 +55,7 @@ export async function build() {
   await app.register(jobsRoute, { prefix: '/api/databricks' });
   await app.register(userSkillsRoute, { prefix: '/api' });
   await app.register(userAgentsRoute, { prefix: '/api' });
+  await app.register(userSettingsRoute, { prefix: '/api' });
   await app.register(genieRoute, { prefix: '/api/databricks' });
 
   // APIルートのキャッシュ制御

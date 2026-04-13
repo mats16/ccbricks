@@ -40,6 +40,7 @@
     "emptyChat": "会話を開始",
     "renameSession": "セッション名を変更",
     "archiveSession": "アーカイブ",
+    "downloadSettings": "設定をダウンロード",
     "archiveSessionError": "セッションのアーカイブに失敗しました",
     "sessionTitlePlaceholder": "セッション名",
     "sessionNotFound": "セッションが見つかりませんでした",
