@@ -41,6 +41,7 @@
     "renameSession": "セッション名を変更",
     "archiveSession": "アーカイブ",
     "downloadSettings": "設定をダウンロード",
+    "downloadSettingsError": "設定のダウンロードに失敗しました",
     "archiveSessionError": "セッションのアーカイブに失敗しました",
     "sessionTitlePlaceholder": "セッション名",
     "sessionNotFound": "セッションが見つかりませんでした",

@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 import { downloadSessionSettings } from '@/lib/download-settings';
 
 interface MainHeaderProps {
@@ -68,6 +69,7 @@ export function MainHeader({
       await downloadSessionSettings(sessionId, title);
     } catch (error) {
       console.error('Failed to download settings:', error);
+      toast.error(t('main.downloadSettingsError'));
     }
   };
 
