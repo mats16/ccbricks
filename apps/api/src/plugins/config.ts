@@ -33,11 +33,11 @@ const schema = {
       default: false,
       description: 'Disable automatic database migration on startup',
     },
-    // LakeBrownie base directory (optional)
-    LAKEBROWNIE_BASE_DIR: {
+    // LakePixie base directory (optional)
+    LAKEPIXIE_BASE_DIR: {
       type: 'string',
       default: path.join(__dirname, '../../../../tmp'), // -> project root tmp/
-      description: 'The base directory for LakeBrownie data (users/, sessions/, db/).',
+      description: 'The base directory for LakePixie data (users/, sessions/, db/).',
     },
     // Databricks Apps defaults
     DATABRICKS_APP_NAME: {
@@ -125,8 +125,8 @@ declare module 'fastify' {
       DATABASE_URL: string;
       /** Disable automatic database migration on startup. */
       DISABLE_AUTO_MIGRATION: boolean;
-      /** The base directory for LakeBrownie data (e.g. /home/app). */
-      LAKEBROWNIE_BASE_DIR: string;
+      /** The base directory for LakePixie data (e.g. /home/app). */
+      LAKEPIXIE_BASE_DIR: string;
       /** The name of the running app. */
       DATABRICKS_APP_NAME: string;
       /** The unique ID for the Databricks workspace the app belongs to. */

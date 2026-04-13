@@ -1,6 +1,6 @@
 # Local Development Guide
 
-This guide explains how to set up and run LakeBrownie locally for development.
+This guide explains how to set up and run LakePixie locally for development.
 
 ## Prerequisites
 
@@ -33,8 +33,8 @@ In local development, the application runs with two servers:
 ### 1.1 Clone the Repository
 
 ```bash
-git clone https://github.com/mats16/lakebrownie.git
-cd lakebrownie
+git clone https://github.com/mats16/lakepixie.git
+cd lakepixie
 ```
 
 ### 1.2 Install Dependencies
@@ -53,10 +53,10 @@ This installs dependencies for all workspaces (apps and packages).
 
 ```bash
 docker run -d \
-  --name lakebrownie-postgres \
-  -e POSTGRES_USER=lakebrownie_user \
+  --name lakepixie-postgres \
+  -e POSTGRES_USER=lakepixie_user \
   -e POSTGRES_PASSWORD=localdev \
-  -e POSTGRES_DB=lakebrownie \
+  -e POSTGRES_DB=lakepixie \
   -p 5432:5432 \
   postgres:16
 ```
@@ -65,13 +65,13 @@ docker run -d \
 
 ```sql
 -- Create user
-CREATE ROLE lakebrownie_user WITH LOGIN PASSWORD 'localdev' NOBYPASSRLS;
+CREATE ROLE lakepixie_user WITH LOGIN PASSWORD 'localdev' NOBYPASSRLS;
 
 -- Grant role to current user
-GRANT lakebrownie_user TO CURRENT_USER WITH SET TRUE;
+GRANT lakepixie_user TO CURRENT_USER WITH SET TRUE;
 
 -- Create database
-CREATE DATABASE lakebrownie OWNER lakebrownie_user;
+CREATE DATABASE lakepixie OWNER lakepixie_user;
 ```
 
 ### 2.2 Database Migrations
@@ -111,7 +111,7 @@ PORT=8003
 NODE_ENV=development
 
 # Database (required)
-DATABASE_URL=postgresql://lakebrownie_user:localdev@localhost:5432/lakebrownie
+DATABASE_URL=postgresql://lakepixie_user:localdev@localhost:5432/lakepixie
 
 # Encryption (required - generate with: openssl rand -hex 32)
 ENCRYPTION_KEY=your-64-character-hex-key
@@ -138,8 +138,8 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=databricks-claude-opus-4-6
 ANTHROPIC_DEFAULT_SONNET_MODEL=databricks-claude-sonnet-4-6
 ANTHROPIC_DEFAULT_HAIKU_MODEL=databricks-claude-haiku-4-5
 
-# LakeBrownie base directory
-LAKEBROWNIE_BASE_DIR=/path/to/base/directory
+# LakePixie base directory
+LAKEPIXIE_BASE_DIR=/path/to/base/directory
 ```
 
 ### 3.4 Generate Encryption Key
@@ -235,7 +235,7 @@ In production, Databricks Apps proxy handles authentication and forwards user in
 ## 7. Project Structure
 
 ```
-lakebrownie/
+lakepixie/
 ├── apps/
 │   ├── web/               # React 19 + Vite 7 + shadcn/ui
 │   │   ├── src/
@@ -292,7 +292,7 @@ kill -9 <PID>
 
 3. Ensure database exists:
    ```bash
-   psql -h localhost -U lakebrownie_user -d lakebrownie -c "SELECT 1"
+   psql -h localhost -U lakepixie_user -d lakepixie -c "SELECT 1"
    ```
 
 ### Turborepo Cache Issues
