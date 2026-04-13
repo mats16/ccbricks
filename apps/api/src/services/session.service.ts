@@ -844,6 +844,21 @@ export async function archiveSession(
         });
     }
 
+    // 4. Databricks App を削除（outcomes に databricks_apps がある場合、トランザクション外で非同期実行）
+    const appsOutcome = context?.outcomes?.find(
+      (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps'
+    );
+    if (appsOutcome?.name) {
+      const authProvider = getAuthProvider(fastify);
+      const appsClient = new DatabricksAppsClient(authProvider);
+      appsClient.delete(appsOutcome.name).catch(error => {
+        fastify.log.error(
+          { sessionId: sessionId.toString(), appName: appsOutcome.name, error },
+          'Failed to delete Databricks App'
+        );
+      });
+    }
+
     return toSessionResponse(rows[0]);
   });
 }

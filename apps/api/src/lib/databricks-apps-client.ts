@@ -16,31 +16,40 @@ export class DatabricksAppsClient {
   }
 
   /**
+   * 認証付きリクエストを送信し、404 以外のエラーを throw する
+   */
+  private async request(method: string, appName: string): Promise<Response> {
+    const token = await this.authProvider.getToken();
+    const url = new URL(`/api/2.0/apps/${encodeURIComponent(appName)}`, this.host);
+
+    const response = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` } });
+
+    if (!response.ok && response.status !== 404) {
+      const errorText = await response.text();
+      throw new Error(`Databricks API error (${response.status}): ${errorText}`);
+    }
+
+    return response;
+  }
+
+  /**
    * Databricks App の情報を取得
    *
    * @param appName - アプリ名
    * @returns アプリ情報（見つからない場合は null）
    */
   async get(appName: string): Promise<DatabricksApp | null> {
-    const token = await this.authProvider.getToken();
-    const url = new URL(`/api/2.0/apps/${encodeURIComponent(appName)}`, this.host);
-
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (response.status === 404) {
-      return null;
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Databricks API error (${response.status}): ${errorText}`);
-    }
-
+    const response = await this.request('GET', appName);
+    if (response.status === 404) return null;
     return response.json() as Promise<DatabricksApp>;
+  }
+
+  /**
+   * Databricks App を削除
+   *
+   * @param appName - アプリ名
+   */
+  async delete(appName: string): Promise<void> {
+    await this.request('DELETE', appName);
   }
 }
