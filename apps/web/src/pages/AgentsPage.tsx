@@ -49,6 +49,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { CLAUDE_CODE_PRESET_TOOLS } from '@/constants';
 import { agentService } from '@/services';
 import { useUser } from '@/hooks/useUser';
 import type { AgentInfo, AgentDetail } from '@repo/types';
@@ -73,22 +74,7 @@ const PRESET_REPOS: PresetRepo[] = [
 
 /** 利用可能なツール一覧 */
 const AVAILABLE_TOOLS = [
-  'Task',
-  'TaskOutput',
-  'Bash',
-  'Glob',
-  'Grep',
-  'ExitPlanMode',
-  'Read',
-  'Edit',
-  'Write',
-  'NotebookEdit',
-  'WebFetch',
-  'TodoWrite',
-  'KillShell',
-  'AskUserQuestion',
-  'Skill',
-  'EnterPlanMode',
+  ...CLAUDE_CODE_PRESET_TOOLS,
   'mcp__dbsql__execute_sql',
   'mcp__dbsql__execute_sql_read_only',
   'mcp__dbsql__poll_sql_result',
