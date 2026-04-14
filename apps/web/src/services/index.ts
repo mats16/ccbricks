@@ -8,3 +8,4 @@ export { agentService } from './agent.service';
 export { jobsService } from './jobs.service';
 export { reposService } from './repos.service';
 export { genieService } from './genie.service';
+export { mcpServerService } from './mcp-server.service';

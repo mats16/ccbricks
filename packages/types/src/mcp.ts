@@ -23,12 +23,15 @@ export interface McpToolPermission {
   permission_policy: string;
 }
 
-export type McpServerType = 'http';
+export type McpServerType = 'http' | 'sse' | 'stdio';
 
 export interface McpServerEntry {
   type: McpServerType;
-  url: string;
+  url?: string;
   headers?: Record<string, string>;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
   tools?: McpToolPermission[];
 }
 
@@ -63,4 +66,30 @@ export interface UpdateOutcomeRequest {
 export interface UpdateOutcomeResponse {
   success: boolean;
   outcomes: SessionOutcome[];
+}
+
+// =====================================================
+// Custom MCP Server Types (管理者が登録するカスタムサーバー)
+// =====================================================
+
+export interface McpServerRecord {
+  id: string;
+  display_name: string;
+  type: McpServerType;
+  url?: string;
+  headers?: Record<string, string>;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type McpServerCreateRequest = Omit<McpServerRecord, 'created_by' | 'created_at' | 'updated_at'>;
+
+export type McpServerUpdateRequest = Partial<Omit<McpServerRecord, 'id' | 'created_by' | 'created_at' | 'updated_at'>>;
+
+export interface McpServerListResponse {
+  mcp_servers: McpServerRecord[];
 }

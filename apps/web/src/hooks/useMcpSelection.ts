@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import useLocalStorageState from 'use-local-storage-state';
-import { genieService } from '@/services';
+import { genieService, mcpServerService } from '@/services';
 import { useUser } from '@/hooks/useUser';
 import {
   buildDbsqlMcpUrl,
@@ -9,7 +9,7 @@ import {
   MCP_DBSQL_ID,
   STORAGE_KEY_ENABLED_MCP_SERVERS,
 } from '@/constants';
-import type { GenieSpace, McpConfig } from '@repo/types';
+import type { GenieSpace, McpConfig, McpServerEntry, McpServerRecord } from '@repo/types';
 
 export interface McpSelectionItem {
   space_id: string;
@@ -34,6 +34,7 @@ interface UseMcpSelectionReturn {
 export function useMcpSelection(): UseMcpSelectionReturn {
   const { databricksHost } = useUser();
   const [spaces, setSpaces] = useState<GenieSpace[]>([]);
+  const [customServers, setCustomServers] = useState<McpServerRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // グローバル設定（MCP 設定ページで管理）
@@ -49,12 +50,14 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     let cancelled = false;
     (async () => {
       try {
-        const response = await genieService.listGenieSpaces();
+        const [genieRes, customRes] = await Promise.all([
+          genieService.listGenieSpaces().catch(() => ({ spaces: [] as GenieSpace[] })),
+          mcpServerService.list().catch(() => ({ mcp_servers: [] as McpServerRecord[] })),
+        ]);
         if (!cancelled) {
-          setSpaces(response.spaces ?? []);
+          setSpaces(genieRes.spaces ?? []);
+          setCustomServers(customRes.mcp_servers ?? []);
         }
-      } catch {
-        // エラー時は空で続行
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -80,6 +83,22 @@ export function useMcpSelection(): UseMcpSelectionReturn {
       });
     }
 
+    // Custom MCP Servers (id をそのまま MCP キーとして使用)
+    for (const server of customServers) {
+      if (globalEnabled[server.id]) {
+        const displayUrl =
+          server.type === 'stdio'
+            ? [server.command, ...(server.args ?? [])].join(' ')
+            : (server.url ?? '');
+        result.push({
+          space_id: server.id,
+          title: server.display_name,
+          mcp_url: displayUrl,
+          enabled: sessionOverrides[server.id] ?? true,
+        });
+      }
+    }
+
     // Genie Spaces
     for (const s of spaces.filter(s => globalEnabled[s.space_id])) {
       result.push({
@@ -91,7 +110,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     }
 
     return result;
-  }, [spaces, globalEnabled, sessionOverrides, databricksHost]);
+  }, [spaces, customServers, globalEnabled, sessionOverrides, databricksHost]);
 
   const enabledCount = useMemo(() => items.filter(i => i.enabled).length, [items]);
 
@@ -102,9 +121,44 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     }));
   }, []);
 
+  const customServerMap = useMemo(
+    () => new Map(customServers.map(s => [s.id, s])),
+    [customServers]
+  );
+
   /** サーバー ID を MCP サーバーキーに変換 */
-  const toServerKey = (spaceId: string) =>
-    spaceId === MCP_DBSQL_ID ? MCP_DBSQL_ID : `genie_${spaceId}`;
+  const toServerKey = useCallback(
+    (spaceId: string) => {
+      if (spaceId === MCP_DBSQL_ID) return MCP_DBSQL_ID;
+      if (customServerMap.has(spaceId)) return spaceId;
+      return `genie_${spaceId}`;
+    },
+    [customServerMap]
+  );
+
+  /** カスタムサーバー ID から McpServerEntry を構築 */
+  const buildCustomEntry = useCallback(
+    (serverName: string): McpServerEntry | undefined => {
+      const server = customServerMap.get(serverName);
+      if (!server) return undefined;
+
+      if (server.type === 'stdio') {
+        return {
+          type: 'stdio',
+          command: server.command,
+          args: server.args,
+          env: server.env,
+        };
+      }
+
+      return {
+        type: server.type,
+        url: server.url,
+        headers: server.headers,
+      };
+    },
+    [customServerMap]
+  );
 
   // グローバルで有効な全サーバーを mcpServers に含める（常に接続）
   const buildMcpConfig = useCallback((): McpConfig | undefined => {
@@ -113,17 +167,23 @@ export function useMcpSelection(): UseMcpSelectionReturn {
 
     const mcpServers: McpConfig['mcpServers'] = {};
     for (const item of allItems) {
-      mcpServers[toServerKey(item.space_id)] = { type: 'http', url: item.mcp_url };
+      const key = toServerKey(item.space_id);
+      const customEntry = buildCustomEntry(item.space_id);
+      if (customEntry) {
+        mcpServers[key] = customEntry;
+      } else {
+        mcpServers[key] = { type: 'http', url: item.mcp_url };
+      }
     }
     return { mcpServers };
-  }, [items]);
+  }, [items, toServerKey, buildCustomEntry]);
 
   const buildToolPatterns = useCallback(
     (enabled: boolean): string[] =>
       items
         .filter(i => i.enabled === enabled && i.mcp_url)
         .map(i => `mcp__${toServerKey(i.space_id)}__*`),
-    [items]
+    [items, toServerKey]
   );
 
   const buildAllowedTools = useCallback(

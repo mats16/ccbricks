@@ -280,16 +280,27 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     // MCP サーバーを構築（フロントエンドの mcp_config から、OBO トークンを注入）
     const mcpServers: Record<string, McpServerConfig> = {};
     const oboToken = ctx.oboAccessToken;
-    if (sessionContext.mcp_config?.mcpServers && oboToken) {
+    if (sessionContext.mcp_config?.mcpServers) {
       for (const [serverId, serverConfig] of Object.entries(sessionContext.mcp_config.mcpServers)) {
-        mcpServers[serverId] = {
-          type: serverConfig.type,
-          url: serverConfig.url,
-          headers: {
-            ...serverConfig.headers,
-            Authorization: `Bearer ${oboToken}`,
-          },
-        };
+        if (serverConfig.type === 'stdio') {
+          // stdio: ローカルコマンド実行（OBO トークン不要）
+          mcpServers[serverId] = {
+            type: 'stdio',
+            command: serverConfig.command!,
+            args: serverConfig.args,
+            env: serverConfig.env,
+          };
+        } else if (oboToken) {
+          // http / sse: OBO トークンを注入
+          mcpServers[serverId] = {
+            type: serverConfig.type,
+            url: serverConfig.url!,
+            headers: {
+              ...serverConfig.headers,
+              Authorization: `Bearer ${oboToken}`,
+            },
+          };
+        }
       }
     }
     const workspacePath = sessionContext.outcomes.find(

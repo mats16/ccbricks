@@ -155,6 +155,32 @@ export const appSettings = pgTable('app_settings', {
     .$onUpdate(() => new Date()),
 });
 
+/**
+ * mcp_servers テーブル
+ * 管理者が登録するカスタム MCP サーバー（全ユーザーが参照可能）
+ * id が PK — そのまま MCP 設定キーとして使用
+ */
+export const mcpServers = pgTable('mcp_servers', {
+  id: text('id').primaryKey(),
+  displayName: text('display_name').notNull(),
+  type: text('type').notNull(), // 'stdio' | 'http' | 'sse'
+  url: text('url'),
+  headers: jsonb('headers'), // Record<string, string>
+  command: text('command'),
+  args: jsonb('args'), // string[]
+  env: jsonb('env'), // Record<string, string>
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp('created_at', { mode: 'date' })
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .notNull()
+    .default(sql`now()`)
+    .$onUpdate(() => new Date()),
+});
+
 // =====================================================
 // Type Exports
 // =====================================================
@@ -165,6 +191,7 @@ export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type InsertSession = typeof sessions.$inferInsert;
 export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
 export type InsertAppSettings = typeof appSettings.$inferInsert;
+export type InsertMcpServer = typeof mcpServers.$inferInsert;
 
 // Select types (for querying records)
 export type User = typeof users.$inferSelect;
@@ -172,3 +199,4 @@ export type UserSettings = typeof userSettings.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
+export type McpServer = typeof mcpServers.$inferSelect;

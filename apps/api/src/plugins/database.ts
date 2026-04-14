@@ -131,6 +131,19 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "value" TEXT NOT NULL,
       "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
     );
+    CREATE TABLE IF NOT EXISTS "mcp_servers" (
+      "id" TEXT PRIMARY KEY,
+      "display_name" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "url" TEXT,
+      "headers" TEXT,
+      "command" TEXT,
+      "args" TEXT,
+      "env" TEXT,
+      "created_by" TEXT NOT NULL REFERENCES "users"("id"),
+      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+    );
     INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_new_user_is_admin', 'true');
     CREATE INDEX IF NOT EXISTS "sessions_user_id_idx" ON "sessions" ("user_id");
     CREATE INDEX IF NOT EXISTS "sessions_updated_at_idx" ON "sessions" ("updated_at");
