@@ -12,5 +12,3 @@ export function buildGenieMcpUrl(
 ): string {
   return databricksHost ? `https://${databricksHost}${MCP_GENIE_URL_PREFIX}/${spaceId}` : '';
 }
-
-export const STORAGE_KEY_ENABLED_MCP_SERVERS = 'enabled-mcp-servers';

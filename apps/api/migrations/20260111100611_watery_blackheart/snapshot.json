@@ -37,6 +37,12 @@
       "schema": "public"
     },
     {
+      "isRlsEnabled": false,
+      "name": "app_settings",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
       "type": "text",
       "typeSchema": null,
       "notNull": true,
@@ -388,6 +394,32 @@
       "table": "users"
     },
     {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "email",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "is_admin",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
       "type": "timestamp",
       "typeSchema": null,
       "notNull": true,
@@ -412,6 +444,45 @@
       "entityType": "columns",
       "schema": "public",
       "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "key",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "app_settings"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "value",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "app_settings"
+    },
+    {
+      "type": "timestamp",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "app_settings"
     },
     {
       "nameExplicit": true,
@@ -671,6 +742,16 @@
       "name": "users_pkey",
       "schema": "public",
       "table": "users",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "key"
+      ],
+      "nameExplicit": false,
+      "name": "app_settings_pkey",
+      "schema": "public",
+      "table": "app_settings",
       "entityType": "pks"
     },
     {

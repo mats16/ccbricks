@@ -154,7 +154,7 @@ export function MainArea({
           outcomes: [
             {
               type: 'databricks_workspace',
-              path: '/Workspace/Shared/LakePixie/sessions/{session_id}',
+              path: '/Workspace/Shared/ccbricks/sessions/{session_id}',
               id: 0,
             },
             ...(enableDatabricksApps

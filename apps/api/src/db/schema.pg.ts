@@ -1,5 +1,15 @@
 // apps/api/src/db/schema.ts
-import { pgTable, uuid, timestamp, text, index, pgPolicy, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  timestamp,
+  text,
+  boolean,
+  index,
+  pgPolicy,
+  jsonb,
+  primaryKey,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // =====================================================
@@ -17,6 +27,8 @@ import { sql } from 'drizzle-orm';
  */
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
+  email: text('email'),
+  isAdmin: boolean('is_admin').notNull().default(true),
   createdAt: timestamp('created_at', { mode: 'date' })
     .notNull()
     .default(sql`now()`),
@@ -131,6 +143,81 @@ export const sessionEvents = pgTable(
   })
 );
 
+/**
+ * app_settings テーブル
+ * アプリケーション全体のグローバル設定を管理（key-value）
+ */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .notNull()
+    .default(sql`now()`)
+    .$onUpdate(() => new Date()),
+});
+
+/**
+ * mcp_servers テーブル
+ * 管理者が登録するカスタム MCP サーバー（全ユーザーが参照可能）
+ * id が PK — そのまま MCP 設定キーとして使用
+ */
+export const mcpServers = pgTable('mcp_servers', {
+  id: text('id').primaryKey(),
+  displayName: text('display_name').notNull(),
+  type: text('type').notNull(), // 'stdio' | 'http' | 'sse'
+  url: text('url'),
+  headers: jsonb('headers'), // Record<string, string>
+  command: text('command'),
+  args: jsonb('args'), // string[]
+  env: jsonb('env'), // Record<string, string>
+  managedType: text('managed_type'), // null = custom, 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search'
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp('created_at', { mode: 'date' })
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .notNull()
+    .default(sql`now()`)
+    .$onUpdate(() => new Date()),
+});
+
+/**
+ * user_settings_mcp テーブル
+ * ユーザーごとの MCP サーバー有効/無効設定を管理
+ */
+export const userSettingsMcp = pgTable(
+  'user_settings_mcp',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    serverId: text('server_id')
+      .notNull()
+      .references(() => mcpServers.id, { onDelete: 'cascade' }),
+    enabled: boolean('enabled').notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .notNull()
+      .default(sql`now()`)
+      .$onUpdate(() => new Date()),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.userId, table.serverId] }),
+  })
+).enableRLS();
+
+/**
+ * user_settings_mcp の RLS ポリシー
+ * ユーザーは自分のデータのみアクセス可能
+ */
+export const userSettingsMcpPolicy = pgPolicy('user_settings_mcp_user_isolation_policy', {
+  for: 'all',
+  to: 'public',
+  using: sql`user_id = current_setting('app.user_id', true)`,
+  withCheck: sql`user_id = current_setting('app.user_id', true)`,
+}).link(userSettingsMcp);
+
 // =====================================================
 // Type Exports
 // =====================================================
@@ -140,9 +227,15 @@ export type InsertUser = typeof users.$inferInsert;
 export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type InsertSession = typeof sessions.$inferInsert;
 export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
+export type InsertAppSettings = typeof appSettings.$inferInsert;
+export type InsertMcpServer = typeof mcpServers.$inferInsert;
+export type InsertUserSettingMcp = typeof userSettingsMcp.$inferInsert;
 
 // Select types (for querying records)
 export type User = typeof users.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
+export type AppSettings = typeof appSettings.$inferSelect;
+export type McpServer = typeof mcpServers.$inferSelect;
+export type UserSettingMcp = typeof userSettingsMcp.$inferSelect;

@@ -12,6 +12,7 @@ export interface GenieSpace {
 
 export interface GenieSpaceListResponse {
   spaces: GenieSpace[];
+  next_page_token?: string;
 }
 
 // =====================================================
@@ -23,12 +24,15 @@ export interface McpToolPermission {
   permission_policy: string;
 }
 
-export type McpServerType = 'http';
+export type McpServerType = 'http' | 'sse' | 'stdio';
 
 export interface McpServerEntry {
   type: McpServerType;
-  url: string;
+  url?: string;
   headers?: Record<string, string>;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
   tools?: McpToolPermission[];
 }
 
@@ -63,4 +67,54 @@ export interface UpdateOutcomeRequest {
 export interface UpdateOutcomeResponse {
   success: boolean;
   outcomes: SessionOutcome[];
+}
+
+// =====================================================
+// Custom MCP Server Types (管理者が登録するカスタムサーバー)
+// =====================================================
+
+/** Databricks managed MCP サーバーの種別 */
+export type ManagedMcpType = 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search';
+
+export interface McpServerRecord {
+  id: string;
+  display_name: string;
+  type: McpServerType;
+  managed_type?: ManagedMcpType;
+  url?: string;
+  headers?: Record<string, string>;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  /** ユーザーごとの有効/無効設定（未設定時は undefined） */
+  enabled?: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type McpServerCreateRequest = Omit<
+  McpServerRecord,
+  'enabled' | 'created_by' | 'created_at' | 'updated_at'
+>;
+
+export type McpServerUpdateRequest = Partial<
+  Omit<McpServerRecord, 'id' | 'enabled' | 'created_by' | 'created_at' | 'updated_at'>
+>;
+
+export interface McpServerListResponse {
+  mcp_servers: McpServerRecord[];
+}
+
+// =====================================================
+// User MCP Settings Types (ユーザーごとの MCP 有効/無効設定)
+// =====================================================
+
+export interface UserSettingsMcpUpdateRequest {
+  enabled: boolean;
+}
+
+export interface UserSettingsMcpUpdateResponse {
+  server_id: string;
+  enabled: boolean;
 }

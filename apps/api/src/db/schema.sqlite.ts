@@ -1,5 +1,5 @@
 // apps/api/src/db/schema.sqlite.ts
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // =====================================================
@@ -12,6 +12,8 @@ import { sql } from 'drizzle-orm';
  */
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
+  email: text('email'),
+  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -93,6 +95,70 @@ export const sessionEvents = sqliteTable(
   })
 );
 
+/**
+ * app_settings テーブル
+ * アプリケーション全体のグローバル設定を管理（key-value）
+ */
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`)
+    .$onUpdate(() => new Date()),
+});
+
+/**
+ * mcp_servers テーブル
+ * 管理者が登録するカスタム MCP サーバー（全ユーザーが参照可能）
+ * id が PK — そのまま MCP 設定キーとして使用
+ */
+export const mcpServers = sqliteTable('mcp_servers', {
+  id: text('id').primaryKey(),
+  displayName: text('display_name').notNull(),
+  type: text('type').notNull(), // 'stdio' | 'http' | 'sse'
+  url: text('url'),
+  headers: text('headers', { mode: 'json' }), // Record<string, string>
+  command: text('command'),
+  args: text('args', { mode: 'json' }), // string[]
+  env: text('env', { mode: 'json' }), // Record<string, string>
+  managedType: text('managed_type'), // null = custom, 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search'
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`)
+    .$onUpdate(() => new Date()),
+});
+
+/**
+ * user_settings_mcp テーブル
+ * ユーザーごとの MCP サーバー有効/無効設定を管理
+ */
+export const userSettingsMcp = sqliteTable(
+  'user_settings_mcp',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    serverId: text('server_id')
+      .notNull()
+      .references(() => mcpServers.id, { onDelete: 'cascade' }),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`)
+      .$onUpdate(() => new Date()),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.userId, table.serverId] }),
+  })
+);
+
 // =====================================================
 // Type Exports
 // =====================================================
@@ -101,8 +167,14 @@ export type InsertUser = typeof users.$inferInsert;
 export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type InsertSession = typeof sessions.$inferInsert;
 export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
+export type InsertAppSettings = typeof appSettings.$inferInsert;
+export type InsertMcpServer = typeof mcpServers.$inferInsert;
+export type InsertUserSettingMcp = typeof userSettingsMcp.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
+export type AppSettings = typeof appSettings.$inferSelect;
+export type McpServer = typeof mcpServers.$inferSelect;
+export type UserSettingMcp = typeof userSettingsMcp.$inferSelect;

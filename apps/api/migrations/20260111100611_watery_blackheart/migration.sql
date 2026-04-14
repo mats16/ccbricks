@@ -42,9 +42,19 @@ CREATE TABLE "user_settings" (
 ALTER TABLE "user_settings" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" text PRIMARY KEY,
+	"email" text,
+	"is_admin" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
+--> statement-breakpoint
+CREATE TABLE "app_settings" (
+	"key" text PRIMARY KEY,
+	"value" text NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+INSERT INTO "app_settings" ("key", "value") VALUES ('new_user_role_default', 'admin');
 --> statement-breakpoint
 CREATE INDEX "oauth_tokens_user_id_idx" ON "oauth_tokens" ("user_id");--> statement-breakpoint
 CREATE INDEX "session_events_session_created_at_idx" ON "session_events" ("session_id","created_at");--> statement-breakpoint

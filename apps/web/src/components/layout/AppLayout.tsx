@@ -11,6 +11,7 @@ import { MainArea } from '@/components/main/MainArea';
 import { SkillsContent } from '@/pages/SkillsPage';
 import { AgentsContent } from '@/pages/AgentsPage';
 import { McpContent } from '@/pages/McpPage';
+import { AdminContent } from '@/pages/AdminPage';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from '@/constants';
@@ -23,6 +24,7 @@ export function AppLayout() {
   const isSkillsPage = location.pathname === '/skills';
   const isAgentsPage = location.pathname === '/agents';
   const isMcpPage = location.pathname === '/mcp';
+  const isAdminPage = location.pathname === '/admin';
   const {
     sessions,
     isLoading: isSessionsLoading,
@@ -97,7 +99,9 @@ export function AppLayout() {
                 <SidebarTrigger />
               </div>
               <div className="flex-1 min-h-0">
-                {isSkillsPage ? (
+                {isAdminPage ? (
+                  <AdminContent />
+                ) : isSkillsPage ? (
                   <SkillsContent />
                 ) : isAgentsPage ? (
                   <AgentsContent />
@@ -134,7 +138,9 @@ export function AppLayout() {
 
           {/* Main Area */}
           <div className="flex-1 h-full min-w-0">
-            {isSkillsPage ? (
+            {isAdminPage ? (
+              <AdminContent />
+            ) : isSkillsPage ? (
               <SkillsContent />
             ) : isAgentsPage ? (
               <AgentsContent />

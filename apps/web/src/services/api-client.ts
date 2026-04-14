@@ -10,12 +10,14 @@ export class ApiClientError extends Error {
 }
 
 export async function apiClient<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { ...(options?.headers as Record<string, string>) };
+  if (options?.body) {
+    headers['Content-Type'] ??= 'application/json';
+  }
+
   const response = await fetch(endpoint, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {

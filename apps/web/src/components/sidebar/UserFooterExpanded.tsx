@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Globe, Check, ExternalLink, Puzzle, Bot, Cable } from 'lucide-react';
+import { Globe, Check, ExternalLink, Puzzle, Bot, Cable, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -13,6 +13,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useUser } from '@/hooks/useUser';
 
 interface UserFooterExpandedProps {
   displayName: string;
@@ -25,6 +26,7 @@ export function UserFooterExpanded({
   initials,
   databricksHost,
 }: UserFooterExpandedProps) {
+  const { isAdmin } = useUser();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
@@ -64,6 +66,15 @@ export function UserFooterExpanded({
             <Cable className="h-4 w-4 mr-2" />
             {t('user.mcp')}
           </DropdownMenuItem>
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/admin')}>
+                <ShieldCheck className="h-4 w-4 mr-2" />
+                {t('user.admin')}
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>

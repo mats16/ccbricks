@@ -1,8 +1,8 @@
-# LakePixie
+# Claude Code on Databricks (ccbricks)
 
 [日本語](./README.ja.md)
 
-A log exploration application running on Databricks Apps - React + Fastify monorepo.
+A Claude Code application running on Databricks Apps - React + Fastify monorepo.
 
 ## Overview
 
@@ -23,7 +23,7 @@ Managed with Turborepo + npm workspaces, with type safety ensured through TypeSc
 ## Project Structure
 
 ```
-lakepixie/
+ccbricks/
 ├── apps/
 │   ├── web/               # React + Vite + shadcn/ui
 │   └── api/               # Fastify API + Drizzle ORM

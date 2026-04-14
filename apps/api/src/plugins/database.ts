@@ -78,11 +78,11 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   const sqliteSchema = await import('../db/schema.sqlite.js');
 
   // データディレクトリを確保
-  const dataDir = path.join(fastify.config.LAKEPIXIE_BASE_DIR, 'db');
+  const dataDir = path.join(fastify.config.CCBRICKS_BASE_DIR, 'db');
   const { mkdirSync } = await import('fs');
   mkdirSync(dataDir, { recursive: true });
 
-  const dbPath = path.join(dataDir, 'lakepixie.sqlite');
+  const dbPath = path.join(dataDir, 'ccbricks.sqlite');
   fastify.log.info({ dbPath }, 'Using SQLite database (DATABASE_URL not set)');
 
   // SQLite クライアント作成
@@ -97,6 +97,8 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   client.exec(`
     CREATE TABLE IF NOT EXISTS "users" (
       "id" TEXT PRIMARY KEY,
+      "email" TEXT,
+      "is_admin" INTEGER NOT NULL DEFAULT 1,
       "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
       "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -123,6 +125,33 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "subtype" TEXT,
       "message" TEXT NOT NULL,
       "created_at" INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE TABLE IF NOT EXISTS "app_settings" (
+      "key" TEXT PRIMARY KEY,
+      "value" TEXT NOT NULL,
+      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE TABLE IF NOT EXISTS "mcp_servers" (
+      "id" TEXT PRIMARY KEY,
+      "display_name" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "url" TEXT,
+      "headers" TEXT,
+      "command" TEXT,
+      "args" TEXT,
+      "env" TEXT,
+      "managed_type" TEXT,
+      "created_by" TEXT NOT NULL REFERENCES "users"("id"),
+      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('new_user_role_default', 'admin');
+    CREATE TABLE IF NOT EXISTS "user_settings_mcp" (
+      "user_id" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+      "server_id" TEXT NOT NULL REFERENCES "mcp_servers"("id") ON DELETE CASCADE,
+      "enabled" INTEGER NOT NULL,
+      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      PRIMARY KEY ("user_id", "server_id")
     );
     CREATE INDEX IF NOT EXISTS "sessions_user_id_idx" ON "sessions" ("user_id");
     CREATE INDEX IF NOT EXISTS "sessions_updated_at_idx" ON "sessions" ("updated_at");

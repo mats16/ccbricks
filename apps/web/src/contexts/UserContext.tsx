@@ -6,6 +6,7 @@ export interface UserContextValue {
   user: UserInfo | null;
   databricksHost: string | null;
   isLoading: boolean;
+  isAdmin: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
 }
@@ -47,7 +48,16 @@ export function UserProvider({ children }: UserProviderProps) {
   }, [fetchUser]);
 
   return (
-    <UserContext.Provider value={{ user, databricksHost, isLoading, error, refetch: fetchUser }}>
+    <UserContext.Provider
+      value={{
+        user,
+        databricksHost,
+        isLoading,
+        isAdmin: user?.is_admin ?? false,
+        error,
+        refetch: fetchUser,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

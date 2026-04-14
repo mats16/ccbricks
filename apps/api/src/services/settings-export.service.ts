@@ -36,11 +36,21 @@ export function generateSettingsZip(
   if (sessionContext.mcp_config?.mcpServers) {
     const mcpConfig: McpConfig = { mcpServers: {} };
     for (const [name, entry] of Object.entries(sessionContext.mcp_config.mcpServers)) {
-      mcpConfig.mcpServers[name] = {
-        type: entry.type,
-        url: entry.url,
-        ...(entry.tools ? { tools: entry.tools } : {}),
-      };
+      if (entry.type === 'stdio') {
+        mcpConfig.mcpServers[name] = {
+          type: 'stdio',
+          command: entry.command,
+          args: entry.args,
+          env: entry.env,
+          ...(entry.tools ? { tools: entry.tools } : {}),
+        };
+      } else {
+        mcpConfig.mcpServers[name] = {
+          type: entry.type,
+          url: entry.url,
+          ...(entry.tools ? { tools: entry.tools } : {}),
+        };
+      }
     }
     archive.append(JSON.stringify(mcpConfig, null, 2), { name: 'mcp.json' });
   }

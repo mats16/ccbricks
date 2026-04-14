@@ -65,8 +65,8 @@ interface PresetRepo {
 const PRESET_REPOS: PresetRepo[] = [
   {
     label: 'Databricks',
-    url: 'https://github.com/databricks-solutions/ai-dev-kit',
-    defaultPath: 'databricks-skills',
+    url: 'https://github.com/databricks/databricks-agent-skills',
+    defaultPath: 'skills',
     defaultBranch: 'main',
   },
   {

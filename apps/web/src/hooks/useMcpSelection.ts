@@ -1,15 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import useLocalStorageState from 'use-local-storage-state';
-import { genieService } from '@/services';
-import { useUser } from '@/hooks/useUser';
-import {
-  buildDbsqlMcpUrl,
-  buildGenieMcpUrl,
-  CLAUDE_CODE_PRESET_TOOLS,
-  MCP_DBSQL_ID,
-  STORAGE_KEY_ENABLED_MCP_SERVERS,
-} from '@/constants';
-import type { GenieSpace, McpConfig } from '@repo/types';
+import { mcpServerService } from '@/services';
+import { CLAUDE_CODE_PRESET_TOOLS } from '@/constants';
+import type { McpConfig, McpServerEntry, McpServerRecord } from '@repo/types';
 
 export interface McpSelectionItem {
   space_id: string;
@@ -32,15 +24,8 @@ interface UseMcpSelectionReturn {
 }
 
 export function useMcpSelection(): UseMcpSelectionReturn {
-  const { databricksHost } = useUser();
-  const [spaces, setSpaces] = useState<GenieSpace[]>([]);
+  const [servers, setServers] = useState<McpServerRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // グローバル設定（MCP 設定ページで管理）
-  const [globalEnabled] = useLocalStorageState<Record<string, boolean>>(
-    STORAGE_KEY_ENABLED_MCP_SERVERS,
-    { defaultValue: {} }
-  );
 
   // セッションレベルのトグル状態
   const [sessionOverrides, setSessionOverrides] = useState<Record<string, boolean>>({});
@@ -49,12 +34,12 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     let cancelled = false;
     (async () => {
       try {
-        const response = await genieService.listGenieSpaces();
+        const res = await mcpServerService
+          .list()
+          .catch(() => ({ mcp_servers: [] as McpServerRecord[] }));
         if (!cancelled) {
-          setSpaces(response.spaces ?? []);
+          setServers(res.mcp_servers ?? []);
         }
-      } catch {
-        // エラー時は空で続行
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -66,32 +51,32 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     };
   }, []);
 
+  const serverMap = useMemo(() => new Map(servers.map(s => [s.id, s])), [servers]);
+
   // グローバルで有効な全 MCP をセッションドロップダウン用にリスト化
   const items: McpSelectionItem[] = useMemo(() => {
     const result: McpSelectionItem[] = [];
 
-    // Databricks SQL
-    if ((globalEnabled[MCP_DBSQL_ID] ?? true) && databricksHost) {
-      result.push({
-        space_id: MCP_DBSQL_ID,
-        title: 'Databricks SQL',
-        mcp_url: buildDbsqlMcpUrl(databricksHost),
-        enabled: sessionOverrides[MCP_DBSQL_ID] ?? true,
-      });
-    }
+    for (const server of servers) {
+      // managed サーバーはデフォルト有効、custom サーバーはデフォルト無効
+      const defaultEnabled = server.managed_type != null;
+      if (!(server.enabled ?? defaultEnabled)) continue;
 
-    // Genie Spaces
-    for (const s of spaces.filter(s => globalEnabled[s.space_id])) {
+      const displayUrl =
+        server.type === 'stdio'
+          ? [server.command, ...(server.args ?? [])].join(' ')
+          : (server.url ?? '');
+
       result.push({
-        space_id: s.space_id,
-        title: s.title,
-        mcp_url: buildGenieMcpUrl(databricksHost, s.space_id),
-        enabled: sessionOverrides[s.space_id] ?? true,
+        space_id: server.id,
+        title: server.display_name,
+        mcp_url: displayUrl,
+        enabled: sessionOverrides[server.id] ?? true,
       });
     }
 
     return result;
-  }, [spaces, globalEnabled, sessionOverrides, databricksHost]);
+  }, [servers, sessionOverrides]);
 
   const enabledCount = useMemo(() => items.filter(i => i.enabled).length, [items]);
 
@@ -102,9 +87,29 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     }));
   }, []);
 
-  /** サーバー ID を MCP サーバーキーに変換 */
-  const toServerKey = (spaceId: string) =>
-    spaceId === MCP_DBSQL_ID ? MCP_DBSQL_ID : `genie_${spaceId}`;
+  /** サーバー ID から McpServerEntry を構築 */
+  const buildServerEntry = useCallback(
+    (serverId: string): McpServerEntry | undefined => {
+      const server = serverMap.get(serverId);
+      if (!server) return undefined;
+
+      if (server.type === 'stdio') {
+        return {
+          type: 'stdio',
+          command: server.command,
+          args: server.args,
+          env: server.env,
+        };
+      }
+
+      return {
+        type: server.type,
+        url: server.url,
+        headers: server.headers,
+      };
+    },
+    [serverMap]
+  );
 
   // グローバルで有効な全サーバーを mcpServers に含める（常に接続）
   const buildMcpConfig = useCallback((): McpConfig | undefined => {
@@ -113,16 +118,19 @@ export function useMcpSelection(): UseMcpSelectionReturn {
 
     const mcpServers: McpConfig['mcpServers'] = {};
     for (const item of allItems) {
-      mcpServers[toServerKey(item.space_id)] = { type: 'http', url: item.mcp_url };
+      const entry = buildServerEntry(item.space_id);
+      if (entry) {
+        mcpServers[item.space_id] = entry;
+      } else {
+        mcpServers[item.space_id] = { type: 'http', url: item.mcp_url };
+      }
     }
     return { mcpServers };
-  }, [items]);
+  }, [items, buildServerEntry]);
 
   const buildToolPatterns = useCallback(
     (enabled: boolean): string[] =>
-      items
-        .filter(i => i.enabled === enabled && i.mcp_url)
-        .map(i => `mcp__${toServerKey(i.space_id)}__*`),
+      items.filter(i => i.enabled === enabled && i.mcp_url).map(i => `mcp__${i.space_id}__*`),
     [items]
   );
 

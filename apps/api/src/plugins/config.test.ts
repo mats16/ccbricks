@@ -158,21 +158,21 @@ describe('config plugin', () => {
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.HOME = '/test/home';
       // Note: Default paths are evaluated at module load time, so we need to set them explicitly
-      process.env.LAKEPIXIE_BASE_DIR = '/test/home/users';
+      process.env.CCBRICKS_BASE_DIR = '/test/home/users';
 
       await app.register(configPlugin);
 
-      expect(app.config.LAKEPIXIE_BASE_DIR).toBe('/test/home/users');
+      expect(app.config.CCBRICKS_BASE_DIR).toBe('/test/home/users');
     });
 
-    it('should allow custom LAKEPIXIE_BASE_DIR', async () => {
+    it('should allow custom CCBRICKS_BASE_DIR', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
       process.env.DATABRICKS_HOST = 'test.databricks.com';
-      process.env.LAKEPIXIE_BASE_DIR = '/custom/users';
+      process.env.CCBRICKS_BASE_DIR = '/custom/users';
 
       await app.register(configPlugin);
 
-      expect(app.config.LAKEPIXIE_BASE_DIR).toBe('/custom/users');
+      expect(app.config.CCBRICKS_BASE_DIR).toBe('/custom/users');
     });
   });
 

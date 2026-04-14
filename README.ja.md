@@ -1,8 +1,8 @@
-# LakePixie
+# Claude Code on Databricks (ccbricks)
 
 [English](./README.md)
 
-Databricks Apps 上で動作するログ探索アプリケーション - React + Fastify モノレポ
+Databricks Apps 上で動作する Claude Code アプリケーション - React + Fastify モノレポ
 
 ## 概要
 
@@ -23,7 +23,7 @@ Turborepo + npm workspaces で管理され、TypeScript により型安全性を
 ## プロジェクト構造
 
 ```
-lakepixie/
+ccbricks/
 ├── apps/
 │   ├── web/               # React + Vite + shadcn/ui
 │   └── api/               # Fastify API + Drizzle ORM
