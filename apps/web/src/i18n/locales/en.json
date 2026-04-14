@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "LakePixie",
+    "title": "ccbricks",
     "badge": "Unofficial"
   },
   "sidebar": {
@@ -258,7 +258,7 @@
   },
   "welcome": {
     "heading": "Explore the Lakehouse",
-    "title": "Welcome to LakePixie",
+    "title": "Welcome to ccbricks",
     "subtitle": "Accelerate your Databricks development with AI Agent.\nStart with a quickstart below or type a message.",
     "comingSoon": "This feature is coming soon",
     "databricksSqlWriteToggle": "Allow write operations (INSERT/UPDATE/DELETE) on Databricks SQL",

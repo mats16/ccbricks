@@ -1,8 +1,8 @@
 {
-  "name": "lakepixie",
+  "name": "ccbricks",
   "private": true,
   "version": "1.0.0",
-  "description": "Log exploration application on Databricks Apps",
+  "description": "Claude Code on Databricks",
   "workspaces": [
     "apps/*",
     "packages/*"

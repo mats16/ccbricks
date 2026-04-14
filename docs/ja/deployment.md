@@ -1,6 +1,6 @@
 # デプロイガイド
 
-このガイドでは、LakePixie を Databricks Apps にデプロイする方法を説明します。
+このガイドでは、ccbricks を Databricks Apps にデプロイする方法を説明します。
 
 ## 前提条件
 
@@ -25,10 +25,10 @@ Databricks Lakebase または外部の PostgreSQL インスタンスを用意し
 
 ```sql
 -- アプリケーションユーザーを作成（RLS バイパスを明示的に無効化）
-CREATE ROLE lakepixie_user WITH LOGIN PASSWORD 'your-secure-password' NOBYPASSRLS;
+CREATE ROLE ccbricks_user WITH LOGIN PASSWORD 'your-secure-password' NOBYPASSRLS;
 
 -- 現在のユーザーにロールの権限を付与（データベース作成に必要）
-GRANT lakepixie_user TO CURRENT_USER WITH SET TRUE;
+GRANT ccbricks_user TO CURRENT_USER WITH SET TRUE;
 ```
 
 **重要:** このアプリケーションは Row-Level Security (RLS) を使用し、`current_setting('app.user_id', true)` でユーザーを識別します。アプリケーションは各リクエストでこのセッション変数を設定し、ユーザー分離を強制します。`NOBYPASSRLS` オプションにより、アプリケーションユーザーが RLS ポリシーをバイパスできないことが保証され、追加のセキュリティレイヤーが提供されます。
@@ -38,7 +38,7 @@ GRANT lakepixie_user TO CURRENT_USER WITH SET TRUE;
 アプリケーション用のデータベースを作成し、オーナーを設定します。
 
 ```sql
-CREATE DATABASE lakepixie OWNER lakepixie_user;
+CREATE DATABASE ccbricks OWNER ccbricks_user;
 ```
 
 ### 1.4 データベースマイグレーション
@@ -53,7 +53,7 @@ CREATE DATABASE lakepixie OWNER lakepixie_user;
 
 ```bash
 # データベース URL を設定
-export DATABASE_URL="postgresql://lakepixie_user:password@host:5432/lakepixie"
+export DATABASE_URL="postgresql://ccbricks_user:password@host:5432/ccbricks"
 
 # api ディレクトリに移動
 cd apps/api
@@ -73,10 +73,10 @@ Databricks シークレットスコープを作成し、必要なシークレッ
 
 ```bash
 # 開発環境
-databricks secrets create-scope lakepixie-dev
+databricks secrets create-scope ccbricks-dev
 
 # 本番環境
-databricks secrets create-scope lakepixie-prod
+databricks secrets create-scope ccbricks-prod
 ```
 
 ### 2.2 必要なシークレットの追加
@@ -84,7 +84,7 @@ databricks secrets create-scope lakepixie-prod
 **データベース URL:**
 
 ```bash
-databricks secrets put-secret lakepixie-[dev|prod] database-url --string-value "postgresql://lakepixie_user:password@host:5432/lakepixie"
+databricks secrets put-secret ccbricks-[dev|prod] database-url --string-value "postgresql://ccbricks_user:password@host:5432/ccbricks"
 ```
 
 **暗号化キー:**
@@ -93,7 +93,7 @@ databricks secrets put-secret lakepixie-[dev|prod] database-url --string-value "
 
 ```bash
 ENCRYPTION_KEY=$(openssl rand -hex 32)
-databricks secrets put-secret lakepixie-[dev|prod] encryption-key --string-value "$ENCRYPTION_KEY"
+databricks secrets put-secret ccbricks-[dev|prod] encryption-key --string-value "$ENCRYPTION_KEY"
 ```
 
 ## 3. Asset Bundles によるデプロイ
@@ -117,7 +117,7 @@ databricks bundle deploy [--target prod]
 ### 3.3 アプリケーションの起動
 
 ```bash
-databricks bundle run lakepixie_app [--target prod]
+databricks bundle run ccbricks_app [--target prod]
 ```
 
 ### 3.4 デプロイの確認
@@ -129,7 +129,7 @@ databricks bundle run lakepixie_app [--target prod]
 databricks apps list
 
 # アプリの詳細を取得
-databricks apps get lakepixie-dev-<user-id>
+databricks apps get ccbricks-dev-<user-id>
 ```
 
 ## トラブルシューティング
@@ -157,8 +157,8 @@ databricks apps get lakepixie-dev-<user-id>
 | 設定 | 開発環境 | 本番環境 |
 |------|----------|----------|
 | バンドルターゲット | `dev` | `prod` |
-| シークレットスコープ | `lakepixie-dev` | `lakepixie-prod` |
-| アプリ名 | `lakepixie-dev-<user-id>` | `lakepixie-prod` |
+| シークレットスコープ | `ccbricks-dev` | `ccbricks-prod` |
+| アプリ名 | `ccbricks-dev-<user-id>` | `ccbricks-prod` |
 | ワークスペースパス | `/Workspace/Users/<user>/.bundle/...` | `/Workspace/Shared/.bundle/...` |
 
 ## セキュリティに関する考慮事項

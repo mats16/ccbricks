@@ -1,14 +1,14 @@
 resources:
   apps:
-    lakepixie_app:
+    ccbricks_app:
       name: ${var.app_name}
-      description: Log exploration on Databricks
+      description: Claude Code on Databricks
       source_code_path: ../
       #resources:
       #  - name: database-url-secret
       #    description: Database connection string
       #    secret:
-      #      scope: lakepixie-${bundle.target}
+      #      scope: ccbricks-${bundle.target}
       #      key: database-url
       #      permission: READ
       user_api_scopes:

@@ -30,9 +30,9 @@ export default databaseUrl
       dialect: 'sqlite',
       dbCredentials: {
         url: path.join(
-          process.env.LAKEPIXIE_BASE_DIR || path.join(__dirname, '../../tmp'),
+          process.env.CCBRICKS_BASE_DIR || path.join(__dirname, '../../tmp'),
           'db',
-          'lakepixie.sqlite'
+          'ccbricks.sqlite'
         ),
       },
       verbose: true,

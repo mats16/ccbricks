@@ -1,6 +1,6 @@
 # ローカル開発ガイド
 
-このガイドでは、LakePixie をローカルで開発するためのセットアップと実行方法を説明します。
+このガイドでは、ccbricks をローカルで開発するためのセットアップと実行方法を説明します。
 
 ## 前提条件
 
@@ -33,8 +33,8 @@
 ### 1.1 リポジトリのクローン
 
 ```bash
-git clone https://github.com/mats16/lakepixie.git
-cd lakepixie
+git clone https://github.com/mats16/ccbricks.git
+cd ccbricks
 ```
 
 ### 1.2 依存関係のインストール
@@ -53,10 +53,10 @@ npm install
 
 ```bash
 docker run -d \
-  --name lakepixie-postgres \
-  -e POSTGRES_USER=lakepixie_user \
+  --name ccbricks-postgres \
+  -e POSTGRES_USER=ccbricks_user \
   -e POSTGRES_PASSWORD=localdev \
-  -e POSTGRES_DB=lakepixie \
+  -e POSTGRES_DB=ccbricks \
   -p 5432:5432 \
   postgres:16
 ```
@@ -65,13 +65,13 @@ docker run -d \
 
 ```sql
 -- ユーザーの作成
-CREATE ROLE lakepixie_user WITH LOGIN PASSWORD 'localdev' NOBYPASSRLS;
+CREATE ROLE ccbricks_user WITH LOGIN PASSWORD 'localdev' NOBYPASSRLS;
 
 -- 現在のユーザーにロールを付与
-GRANT lakepixie_user TO CURRENT_USER WITH SET TRUE;
+GRANT ccbricks_user TO CURRENT_USER WITH SET TRUE;
 
 -- データベースの作成
-CREATE DATABASE lakepixie OWNER lakepixie_user;
+CREATE DATABASE ccbricks OWNER ccbricks_user;
 ```
 
 ### 2.2 データベースマイグレーション
@@ -111,7 +111,7 @@ PORT=8003
 NODE_ENV=development
 
 # データベース（必須）
-DATABASE_URL=postgresql://lakepixie_user:localdev@localhost:5432/lakepixie
+DATABASE_URL=postgresql://ccbricks_user:localdev@localhost:5432/ccbricks
 
 # 暗号化（必須 - 生成コマンド: openssl rand -hex 32）
 ENCRYPTION_KEY=your-64-character-hex-key
@@ -138,8 +138,8 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=databricks-claude-opus-4-6
 ANTHROPIC_DEFAULT_SONNET_MODEL=databricks-claude-sonnet-4-6
 ANTHROPIC_DEFAULT_HAIKU_MODEL=databricks-claude-haiku-4-5
 
-# LakePixie ベースディレクトリ
-LAKEPIXIE_BASE_DIR=/path/to/base/directory
+# ccbricks ベースディレクトリ
+CCBRICKS_BASE_DIR=/path/to/base/directory
 ```
 
 ### 3.4 暗号化キーの生成
@@ -235,7 +235,7 @@ npm run db:studio     # Drizzle Studio を開く（データベース GUI）
 ## 7. プロジェクト構成
 
 ```
-lakepixie/
+ccbricks/
 ├── apps/
 │   ├── web/               # React 19 + Vite 7 + shadcn/ui
 │   │   ├── src/
@@ -292,7 +292,7 @@ kill -9 <PID>
 
 3. データベースが存在することを確認:
    ```bash
-   psql -h localhost -U lakepixie_user -d lakepixie -c "SELECT 1"
+   psql -h localhost -U ccbricks_user -d ccbricks -c "SELECT 1"
    ```
 
 ### Turborepo キャッシュの問題

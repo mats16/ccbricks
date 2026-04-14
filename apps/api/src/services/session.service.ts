@@ -439,9 +439,9 @@ export async function createSession(
   const userEvent = events[0];
   const userContent = userEvent?.data.message.content ?? '';
 
-  // 3. cwd の生成（LAKEPIXIE_BASE_DIR/sessions/sessionId）
+  // 3. cwd の生成（CCBRICKS_BASE_DIR/sessions/sessionId）
   /** Claude Code Working Directory  (e.g. /home/app/sessions/session_xxx) */
-  const cwd = path.join(fastify.config.LAKEPIXIE_BASE_DIR, 'sessions', sessionId.toString());
+  const cwd = path.join(fastify.config.CCBRICKS_BASE_DIR, 'sessions', sessionId.toString());
 
   await ensureDirectory(cwd);
 
@@ -820,7 +820,7 @@ export async function archiveSession(
   userId: string,
   sessionId: SessionId
 ): Promise<SessionResponse | null> {
-  const sessionsBaseDir = path.join(fastify.config.LAKEPIXIE_BASE_DIR, 'sessions');
+  const sessionsBaseDir = path.join(fastify.config.CCBRICKS_BASE_DIR, 'sessions');
 
   return fastify.withUserContext(userId, async tx => {
     // 1. セッション情報を取得（cwd を取得するため）

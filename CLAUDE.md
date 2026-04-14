@@ -1,11 +1,11 @@
-# LakePixie - Log Exploration on Databricks
+# ccbricks - Claude Code on Databricks
 
-A monorepo for a log exploration application running on Databricks Apps.
+A monorepo for a Claude Code application running on Databricks Apps.
 
 ## Architecture
 
 ```
-lakepixie/
+ccbricks/
 ├── apps/
 │   ├── web/               # React 19 + Vite 7 + shadcn/ui
 │   └── api/               # Fastify 5 + Drizzle ORM + Claude Agent SDK
