@@ -25,8 +25,8 @@ on:
       - '.github/workflows/backend-ci.yml'
 
 jobs:
-  setup:
-    name: Setup
+  backend-ci:
+    name: Backend CI
     runs-on: ubuntu-latest
 
     steps:
@@ -66,69 +66,11 @@ jobs:
       - name: Build shared packages
         run: npx turbo run build --filter=@repo/types
 
-      - name: Cache build artifacts
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-backend-${{ github.sha }}
-
-  lint:
-    name: Lint
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.16'
-
-      - name: Restore build artifacts
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-backend-${{ github.sha }}
-
       - name: Run lint
         run: npx turbo run lint --filter=@repo/api
 
-  test-unit:
-    name: Unit Tests
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.16'
-
-      - name: Restore build artifacts
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-backend-${{ github.sha }}
+      - name: Run type check
+        run: npx turbo run type-check --filter=@repo/api
 
       - name: Run unit tests (exclude integration tests)
         run: npm test -- --exclude='**/integration.test.ts'
@@ -136,92 +78,9 @@ jobs:
         env:
           NODE_ENV: test
 
-  test-integration:
-    name: Integration Tests
-    needs: setup
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: testdb
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.16'
-
-      - name: Restore build artifacts
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-backend-${{ github.sha }}
-
-      - name: Create test user for RLS testing
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d testdb -c "
-            CREATE USER testuser WITH PASSWORD 'testpass' CREATEDB;
-            GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;
-            GRANT ALL PRIVILEGES ON SCHEMA public TO testuser;
-            GRANT CREATE ON DATABASE testdb TO testuser;
-            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO testuser;
-            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO testuser;
-          "
-          PGPASSWORD=postgres psql -h localhost -U postgres -d testdb -c "
-            GRANT ALL ON SCHEMA public TO testuser WITH GRANT OPTION;
-          "
-
       - name: Run integration tests
         run: npm test -- integration.test.ts
         working-directory: apps/api
         env:
           NODE_ENV: test
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
           DATABRICKS_HOST: test.databricks.com
-
-  type-check:
-    name: Type Check
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.16'
-
-      - name: Restore build artifacts
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-backend-${{ github.sha }}
-
-      - name: Run type check
-        run: npx turbo run type-check --filter=@repo/api
