@@ -86,9 +86,14 @@ export interface McpServerRecord {
   updated_at: string;
 }
 
-export type McpServerCreateRequest = Omit<McpServerRecord, 'created_by' | 'created_at' | 'updated_at'>;
+export type McpServerCreateRequest = Omit<
+  McpServerRecord,
+  'created_by' | 'created_at' | 'updated_at'
+>;
 
-export type McpServerUpdateRequest = Partial<Omit<McpServerRecord, 'id' | 'created_by' | 'created_at' | 'updated_at'>>;
+export type McpServerUpdateRequest = Partial<
+  Omit<McpServerRecord, 'id' | 'created_by' | 'created_at' | 'updated_at'>
+>;
 
 export interface McpServerListResponse {
   mcp_servers: McpServerRecord[];

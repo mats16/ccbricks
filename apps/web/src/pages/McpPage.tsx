@@ -113,9 +113,7 @@ function ServerTypeIcon({ type }: { type: McpServerType }) {
 function ServerSubtitle({ server }: { server: McpServerRecord }) {
   if (server.type === 'stdio') {
     const parts = [server.command, ...(server.args ?? [])].join(' ');
-    return (
-      <p className="text-xs text-muted-foreground/70 mt-1 ml-6 font-mono truncate">{parts}</p>
-    );
+    return <p className="text-xs text-muted-foreground/70 mt-1 ml-6 font-mono truncate">{parts}</p>;
   }
   if (server.url) {
     return (
@@ -217,9 +215,7 @@ function ServerFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'add' ? t('mcp.addServer') : t('mcp.editServer')}
-          </DialogTitle>
+          <DialogTitle>{mode === 'add' ? t('mcp.addServer') : t('mcp.editServer')}</DialogTitle>
           <DialogDescription>
             {mode === 'add' ? t('mcp.addServerDescription') : t('mcp.editServerDescription')}
           </DialogDescription>
@@ -265,10 +261,7 @@ function ServerFormDialog({
 
           <div className="space-y-2">
             <Label>{t('mcp.type')}</Label>
-            <Select
-              value={form.type}
-              onValueChange={v => update({ type: v as McpServerType })}
-            >
+            <Select value={form.type} onValueChange={v => update({ type: v as McpServerType })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -341,11 +334,7 @@ function ServerFormDialog({
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             {t('common.cancel')}
           </Button>
           <Button onClick={onSubmit} disabled={isSubmitting}>
@@ -515,10 +504,7 @@ export function McpContent() {
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-2">
                       <DatabaseSearch className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <Label
-                        htmlFor={`mcp-${MCP_DBSQL_ID}`}
-                        className="font-medium cursor-pointer"
-                      >
+                      <Label htmlFor={`mcp-${MCP_DBSQL_ID}`} className="font-medium cursor-pointer">
                         Databricks SQL
                       </Label>
                     </div>
@@ -567,10 +553,7 @@ export function McpContent() {
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-2">
                       <ServerTypeIcon type={server.type} />
-                      <Label
-                        htmlFor={`custom-${server.id}`}
-                        className="font-medium cursor-pointer"
-                      >
+                      <Label htmlFor={`custom-${server.id}`} className="font-medium cursor-pointer">
                         {server.display_name}
                       </Label>
                       <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
@@ -673,7 +656,9 @@ export function McpContent() {
         <ServerFormDialog
           mode={dialogMode}
           open
-          onOpenChange={open => { if (!open) closeDialog(); }}
+          onOpenChange={open => {
+            if (!open) closeDialog();
+          }}
           form={form}
           onFormChange={setForm}
           onSubmit={handleSubmit}

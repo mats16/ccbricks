@@ -10,7 +10,7 @@ export class ApiClientError extends Error {
 }
 
 export async function apiClient<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = { ...options?.headers as Record<string, string> };
+  const headers: Record<string, string> = { ...(options?.headers as Record<string, string>) };
   if (options?.body) {
     headers['Content-Type'] ??= 'application/json';
   }

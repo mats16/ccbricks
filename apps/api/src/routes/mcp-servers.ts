@@ -47,10 +47,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         });
       }
 
-      const rows = await fastify.db
-        .select()
-        .from(mcpServers)
-        .orderBy(desc(mcpServers.createdAt));
+      const rows = await fastify.db.select().from(mcpServers).orderBy(desc(mcpServers.createdAt));
 
       return reply.send({ mcp_servers: rows.map(toRecord) });
     }
