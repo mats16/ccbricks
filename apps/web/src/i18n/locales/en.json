@@ -257,7 +257,7 @@
     "error": "Failed to load workspace"
   },
   "welcome": {
-    "heading": "Explore the Lakehouse",
+    "heading": "Claude Code on Databricks",
     "title": "Welcome to ccbricks",
     "subtitle": "Accelerate your Databricks development with AI Agent.\nStart with a quickstart below or type a message.",
     "comingSoon": "This feature is coming soon",

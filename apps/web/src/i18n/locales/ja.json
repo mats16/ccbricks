@@ -257,7 +257,7 @@
     "error": "Workspace の読み込みに失敗しました"
   },
   "welcome": {
-    "heading": "Explore the Lakehouse",
+    "heading": "Claude Code on Databricks",
     "title": "ccbricks へようこそ",
     "subtitle": "AI Agent で Databricks での開発を加速しましょう。\n下のクイックスタートか、メッセージを入力から始めてください。",
     "comingSoon": "この機能は近日公開予定です",
