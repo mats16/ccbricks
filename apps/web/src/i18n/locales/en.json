@@ -40,6 +40,8 @@
     "emptyChat": "Start a conversation",
     "renameSession": "Rename session",
     "archiveSession": "Archive",
+    "downloadSettings": "Download settings",
+    "downloadSettingsError": "Failed to download settings",
     "archiveSessionError": "Failed to archive session",
     "sessionTitlePlaceholder": "Session title",
     "sessionNotFound": "Session not found",

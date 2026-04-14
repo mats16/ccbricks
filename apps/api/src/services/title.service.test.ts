@@ -40,33 +40,42 @@ describe('TitleService', () => {
   });
 
   describe('generateTitle', () => {
-    it('should return generated title from LLM', async () => {
+    it('should return generated title and app_name from LLM', async () => {
       mockCreate.mockResolvedValue({
         choices: [
           {
             message: {
-              content: 'React Component Development',
+              content: JSON.stringify({
+                title: 'React Component Development',
+                app_name: 'react-component-dev',
+              }),
             },
           },
         ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Help me create a React component',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('React Component Development');
-      expect(mockCreate).toHaveBeenCalledWith({
-        model: 'databricks-claude-haiku-4-5',
-        max_tokens: 50,
-        messages: [
-          {
-            role: 'user',
-            content: expect.stringContaining('Help me create a React component'),
-          },
-        ],
+      expect(result).toEqual({
+        title: 'React Component Development',
+        app_name: 'react-component-dev',
       });
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'databricks-claude-haiku-4-5',
+          max_tokens: 150,
+          response_format: expect.objectContaining({ type: 'json_schema' }),
+          messages: [
+            {
+              role: 'user',
+              content: expect.stringContaining('Help me create a React component'),
+            },
+          ],
+        })
+      );
     });
 
     it('should return fallback title when LLM returns empty content', async () => {
@@ -80,12 +89,13 @@ describe('TitleService', () => {
         ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Test message',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('General coding session');
+      expect(result.title).toBe('General coding session');
+      expect(result.app_name).toMatch(/^app-/);
     });
 
     it('should return fallback title when choices array is empty', async () => {
@@ -93,12 +103,13 @@ describe('TitleService', () => {
         choices: [],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Test message',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('General coding session');
+      expect(result.title).toBe('General coding session');
+      expect(result.app_name).toMatch(/^app-/);
     });
 
     it('should return fallback title when message content is null', async () => {
@@ -112,12 +123,13 @@ describe('TitleService', () => {
         ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Test message',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('General coding session');
+      expect(result.title).toBe('General coding session');
+      expect(result.app_name).toMatch(/^app-/);
     });
 
     it('should throw error when API fails', async () => {
@@ -133,93 +145,157 @@ describe('TitleService', () => {
 
     it('should clean double quotes from title', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: '"Python Data Analysis"' } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: '"Python Data Analysis"',
+                app_name: 'python-data-analysis',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Analyze CSV',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('Python Data Analysis');
+      expect(result.title).toBe('Python Data Analysis');
+      expect(result.app_name).toBe('python-data-analysis');
     });
 
     it('should clean single quotes from title', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: "'React Component'" } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: "'React Component'",
+                app_name: 'react-component',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Create React component',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('React Component');
+      expect(result.title).toBe('React Component');
     });
 
     it('should clean backticks from title', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: '`API Integration`' } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: '`API Integration`',
+                app_name: 'api-integration',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Integrate API',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('API Integration');
+      expect(result.title).toBe('API Integration');
     });
 
     it('should clean markdown bold formatting', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: '**React Component** Development' } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: '**React Component** Development',
+                app_name: 'react-component-dev',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Create React component',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('React Component Development');
+      expect(result.title).toBe('React Component Development');
     });
 
     it('should clean markdown italic formatting', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: '*React Component* Development' } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: '*React Component* Development',
+                app_name: 'react-component-dev',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Create React component',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('React Component Development');
+      expect(result.title).toBe('React Component Development');
     });
 
     it('should trim whitespace from title', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: '  Python Data Analysis  ' } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: '  Python Data Analysis  ',
+                app_name: 'python-data-analysis',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Analyze data',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('Python Data Analysis');
+      expect(result.title).toBe('Python Data Analysis');
     });
 
     it('should handle Japanese messages', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: 'React Component Implementation' } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: 'React Component Implementation',
+                app_name: 'react-component-impl',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Reactコンポーネントを作成してください',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('React Component Implementation');
+      expect(result.title).toBe('React Component Implementation');
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: expect.arrayContaining([
@@ -233,15 +309,67 @@ describe('TitleService', () => {
 
     it('should return fallback when cleaned title is empty', async () => {
       mockCreate.mockResolvedValue({
-        choices: [{ message: { content: '""' } }],
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: '""',
+                app_name: 'general-session',
+              }),
+            },
+          },
+        ],
       });
 
-      const title = await service.generateTitle({
+      const result = await service.generateTitle({
         firstSessionMessage: 'Test',
         accessToken: 'test-token',
       });
 
-      expect(title).toBe('General coding session');
+      expect(result.title).toBe('General coding session');
+    });
+
+    it('should generate fallback app_name when app_name is invalid', async () => {
+      mockCreate.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: 'Valid Title',
+                app_name: 'INVALID_APP_NAME!',
+              }),
+            },
+          },
+        ],
+      });
+
+      const result = await service.generateTitle({
+        firstSessionMessage: 'Test',
+        accessToken: 'test-token',
+      });
+
+      expect(result.title).toBe('Valid Title');
+      expect(result.app_name).toMatch(/^app-/);
+    });
+
+    it('should return fallback when JSON parsing fails', async () => {
+      mockCreate.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: 'not valid json',
+            },
+          },
+        ],
+      });
+
+      const result = await service.generateTitle({
+        firstSessionMessage: 'Test',
+        accessToken: 'test-token',
+      });
+
+      expect(result.title).toBe('General coding session');
+      expect(result.app_name).toMatch(/^app-/);
     });
   });
 });

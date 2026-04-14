@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { GitBranch, ChevronDown, Pencil, Archive } from 'lucide-react';
+import { GitBranch, ChevronDown, Pencil, Archive, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -17,9 +18,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
+import { downloadSessionSettings } from '@/lib/download-settings';
+
 interface MainHeaderProps {
   title?: string;
   branchName?: string;
+  sessionId?: string;
   onTitleUpdate?: (newTitle: string) => Promise<void>;
   onArchive?: () => Promise<void>;
 }
@@ -27,6 +32,7 @@ interface MainHeaderProps {
 export function MainHeader({
   title = 'New Session',
   branchName,
+  sessionId,
   onTitleUpdate,
   onArchive,
 }: MainHeaderProps) {
@@ -57,6 +63,16 @@ export function MainHeader({
     await onArchive();
   };
 
+  const handleDownloadSettings = async () => {
+    if (!sessionId) return;
+    try {
+      await downloadSessionSettings(sessionId, title);
+    } catch (error) {
+      console.error('Failed to download settings:', error);
+      toast.error(t('main.downloadSettingsError'));
+    }
+  };
+
   return (
     <>
       <div className="flex items-center justify-between h-[50px] px-4 border-b border-border">
@@ -76,6 +92,11 @@ export function MainHeader({
               <DropdownMenuItem onClick={handleArchive}>
                 <Archive className="h-4 w-4" />
                 {t('main.archiveSession')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDownloadSettings} disabled={!sessionId}>
+                <Download className="h-4 w-4" />
+                {t('main.downloadSettings')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

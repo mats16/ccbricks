@@ -213,6 +213,7 @@ export function MainArea({
       <MainHeader
         title={session?.title ?? 'New Session'}
         branchName={branchName}
+        sessionId={sessionId}
         onTitleUpdate={handleTitleUpdate}
         onArchive={handleArchive}
       />
