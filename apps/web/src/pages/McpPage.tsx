@@ -826,6 +826,7 @@ export function McpContent() {
   };
 
   const handleDelete = async (server: McpServerRecord) => {
+    if (!confirm(t('mcp.deleteConfirm', { name: server.display_name }))) return;
     try {
       await mcpServerService.remove(server.id);
       toast.success(t('mcp.deleteSuccess'));

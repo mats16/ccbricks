@@ -347,7 +347,8 @@
     "dbsqlAlreadyRegistered": "登録済み",
     "managedEmpty": "Databricks マネージド MCP サーバーはありません",
     "genieSpaceFetchError": "Genie スペースの取得に失敗しました",
-    "duplicateError": "このサーバーは既に登録されています"
+    "duplicateError": "このサーバーは既に登録されています",
+    "deleteConfirm": "\"{{name}}\" を削除しますか？"
   },
   "admin": {
     "title": "管理",

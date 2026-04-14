@@ -347,7 +347,8 @@
     "dbsqlAlreadyRegistered": "Already registered",
     "managedEmpty": "No Databricks managed MCP servers registered",
     "genieSpaceFetchError": "Failed to fetch Genie spaces",
-    "duplicateError": "This server is already registered"
+    "duplicateError": "This server is already registered",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?"
   },
   "admin": {
     "title": "Admin",
