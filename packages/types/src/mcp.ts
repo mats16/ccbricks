@@ -74,7 +74,7 @@ export interface UpdateOutcomeResponse {
 // =====================================================
 
 /** Databricks managed MCP サーバーの種別 */
-export type ManagedMcpType = 'dbsql' | 'genie' | 'vector_search';
+export type ManagedMcpType = 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search';
 
 export interface McpServerRecord {
   id: string;

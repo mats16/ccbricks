@@ -1,4 +1,4 @@
-export const MCP_DBSQL_ID = 'dbsql';
+export const MCP_DBSQL_ID = 'databricks_sql';
 export const MCP_DBSQL_URL_PATH = '/api/2.0/mcp/sql';
 export const MCP_GENIE_URL_PREFIX = '/api/2.0/mcp/genie';
 

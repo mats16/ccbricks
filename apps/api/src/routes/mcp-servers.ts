@@ -13,7 +13,7 @@ import { mcpServers, type InsertMcpServer } from '../db/schema.js';
 import { adminGuard } from '../hooks/admin-guard.js';
 
 const VALID_TYPES: McpServerType[] = ['stdio', 'http', 'sse'];
-const VALID_MANAGED_TYPES: ManagedMcpType[] = ['dbsql', 'genie', 'vector_search'];
+const VALID_MANAGED_TYPES: ManagedMcpType[] = ['databricks_sql', 'databricks_genie', 'databricks_vector_search'];
 /** 小文字英数とアンダースコアのみ、連続アンダースコア禁止 */
 const VALID_ID_PATTERN = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 
@@ -74,7 +74,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         });
       }
 
-      if (managed_type === 'vector_search') {
+      if (managed_type === 'databricks_vector_search') {
         return reply.status(501).send({
           error: 'NotImplemented',
           message: 'Vector Search MCP is not yet available',
@@ -95,8 +95,8 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
       let generatedId: string;
       let generatedUrl: string;
 
-      if (managed_type === 'dbsql') {
-        generatedId = 'dbsql';
+      if (managed_type === 'databricks_sql') {
+        generatedId = 'databricks_sql';
         generatedUrl = `https://${databricksHost}/api/2.0/mcp/sql`;
       } else {
         // Genie Space: id に space_id を渡す
@@ -104,12 +104,12 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         if (!genieSpaceId || typeof genieSpaceId !== 'string' || !genieSpaceId.trim()) {
           return reply.status(400).send({
             error: 'BadRequest',
-            message: 'id (genie_space_id) is required for genie type',
+            message: 'id (genie_space_id) is required for databricks_genie type',
             statusCode: 400,
           });
         }
         const trimmedSpaceId = genieSpaceId.trim();
-        generatedId = `genie_${trimmedSpaceId}`;
+        generatedId = `databricks_genie_${trimmedSpaceId}`;
         generatedUrl = `https://${databricksHost}/api/2.0/mcp/genie/${trimmedSpaceId}`;
       }
 

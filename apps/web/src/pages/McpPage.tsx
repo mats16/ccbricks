@@ -106,9 +106,9 @@ function KeyValueEditor({
 }
 
 function ManagedIcon({ managedType }: { managedType: ManagedMcpType }) {
-  if (managedType === 'dbsql')
+  if (managedType === 'databricks_sql')
     return <DatabaseSearch className="h-4 w-4 shrink-0 text-muted-foreground" />;
-  if (managedType === 'genie')
+  if (managedType === 'databricks_genie')
     return <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />;
   return <Search className="h-4 w-4 shrink-0 text-muted-foreground" />;
 }
@@ -387,9 +387,9 @@ function ManagedMcpDialog({
   const [formError, setFormError] = useState<string | null>(null);
   const [genieSearchQuery, setGenieSearchQuery] = useState('');
 
-  const dbsqlAlreadyRegistered = existingServers.some(s => s.managed_type === 'dbsql');
+  const dbsqlAlreadyRegistered = existingServers.some(s => s.managed_type === 'databricks_sql');
   const registeredGenieIds = useMemo(
-    () => new Set(existingServers.filter(s => s.managed_type === 'genie').map(s => s.id)),
+    () => new Set(existingServers.filter(s => s.managed_type === 'databricks_genie').map(s => s.id)),
     [existingServers]
   );
 
@@ -434,10 +434,10 @@ function ManagedMcpDialog({
     setSelectedType(type);
     setFormError(null);
 
-    if (type === 'dbsql') {
+    if (type === 'databricks_sql') {
       setDisplayName('Databricks SQL');
       setStep('configure');
-    } else if (type === 'genie') {
+    } else if (type === 'databricks_genie') {
       setStep('configure');
       await fetchGenieSpaces();
     }
@@ -453,8 +453,8 @@ function ManagedMcpDialog({
 
   const previewUrl = useMemo(() => {
     if (!databricksHost) return '';
-    if (selectedType === 'dbsql') return buildDbsqlMcpUrl(databricksHost);
-    if (selectedType === 'genie' && selectedGenieSpaceId)
+    if (selectedType === 'databricks_sql') return buildDbsqlMcpUrl(databricksHost);
+    if (selectedType === 'databricks_genie' && selectedGenieSpaceId)
       return buildGenieMcpUrl(databricksHost, selectedGenieSpaceId);
     return '';
   }, [databricksHost, selectedType, selectedGenieSpaceId]);
@@ -467,7 +467,7 @@ function ManagedMcpDialog({
       return;
     }
 
-    if (selectedType === 'genie' && !selectedGenieSpaceId) {
+    if (selectedType === 'databricks_genie' && !selectedGenieSpaceId) {
       setFormError(t('mcp.selectGenieSpace'));
       return;
     }
@@ -475,7 +475,7 @@ function ManagedMcpDialog({
     setIsSubmitting(true);
     try {
       await mcpServerService.create({
-        id: selectedType === 'dbsql' ? 'dbsql' : selectedGenieSpaceId,
+        id: selectedType === 'databricks_sql' ? 'databricks_sql' : selectedGenieSpaceId,
         display_name: displayName.trim(),
         type: 'http',
         managed_type: selectedType!,
@@ -498,7 +498,7 @@ function ManagedMcpDialog({
   const availableGenieSpaces = useMemo(() => {
     const q = genieSearchQuery.toLowerCase().trim();
     return genieSpaces.filter(s => {
-      if (registeredGenieIds.has(`genie_${s.space_id}`)) return false;
+      if (registeredGenieIds.has(`databricks_genie_${s.space_id}`)) return false;
       if (!q) return true;
       return (
         s.title.toLowerCase().includes(q) || (s.description?.toLowerCase().includes(q) ?? false)
@@ -530,7 +530,7 @@ function ManagedMcpDialog({
               type="button"
               disabled={dbsqlAlreadyRegistered}
               className="w-full flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => handleSelectType('dbsql')}
+              onClick={() => handleSelectType('databricks_sql')}
             >
               <DatabaseSearch className="h-5 w-5 shrink-0 text-muted-foreground" />
               <div className="flex-1 min-w-0">
@@ -546,7 +546,7 @@ function ManagedMcpDialog({
             <button
               type="button"
               className="w-full flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-left"
-              onClick={() => handleSelectType('genie')}
+              onClick={() => handleSelectType('databricks_genie')}
             >
               <Sparkles className="h-5 w-5 shrink-0 text-muted-foreground" />
               <div className="flex-1 min-w-0">
@@ -590,7 +590,7 @@ function ManagedMcpDialog({
             </Button>
 
             {/* Genie space scrollable list */}
-            {selectedType === 'genie' && (
+            {selectedType === 'databricks_genie' && (
               <div className="flex flex-col gap-2 min-h-0 flex-1">
                 <Label className="shrink-0">{t('mcp.selectGenieSpace')}</Label>
                 <Input
