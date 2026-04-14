@@ -25,7 +25,7 @@ on:
       - '.github/workflows/backend-ci.yml'
 
 jobs:
-  backend-ci:
+  ci:
     name: Backend CI
     runs-on: ubuntu-latest
 

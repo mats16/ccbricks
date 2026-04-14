@@ -25,8 +25,8 @@ on:
       - '.github/workflows/frontend-ci.yml'
 
 jobs:
-  setup:
-    name: Setup
+  ci:
+    name: Frontend CI
     runs-on: ubuntu-latest
 
     steps:
@@ -66,97 +66,11 @@ jobs:
       - name: Build shared packages
         run: npx turbo run build --filter=@repo/types
 
-      - name: Cache build artifacts
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-frontend-${{ github.sha }}
-
-  lint:
-    name: Lint
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.16'
-
-      - name: Restore build artifacts
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-frontend-${{ github.sha }}
-
       - name: Run lint
         run: npx turbo run lint --filter=@repo/web
 
-  test:
-    name: Test
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.16'
-
-      - name: Restore build artifacts
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-frontend-${{ github.sha }}
+      - name: Run type check
+        run: npx turbo run type-check --filter=@repo/web
 
       - name: Run tests
         run: npx turbo run test --filter=@repo/web
-
-  type-check:
-    name: Type Check
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.16'
-
-      - name: Restore build artifacts
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-            packages/types/dist
-            .turbo
-          key: ${{ runner.os }}-build-frontend-${{ github.sha }}
-
-      - name: Run type check
-        run: npx turbo run type-check --filter=@repo/web
