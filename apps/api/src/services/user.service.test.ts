@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getOrCreateUser } from './user.service.js';
 
+vi.mock('./admin.service.js', () => ({
+  getDefaultNewUserIsAdmin: vi.fn().mockResolvedValue(true),
+}));
+
 describe('user.service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -13,7 +17,9 @@ describe('user.service', () => {
     const mockLimit = vi
       .fn()
       .mockResolvedValue(
-        existingUser ? [{ id: 'user-123', name: 'Test User', email: 'test@example.com' }] : []
+        existingUser
+          ? [{ id: 'user-123', name: 'Test User', email: 'test@example.com', isAdmin: false }]
+          : []
       );
 
     const mockInsert = vi.fn().mockReturnThis();
@@ -59,7 +65,7 @@ describe('user.service', () => {
 
       const result = await getOrCreateUser(fastify, userInfo);
 
-      expect(result).toEqual(userInfo);
+      expect(result).toEqual({ ...userInfo, is_admin: false });
       expect(fastify.withUserContext).not.toHaveBeenCalled();
     });
 
@@ -69,7 +75,7 @@ describe('user.service', () => {
 
       const result = await getOrCreateUser(fastify, userInfo);
 
-      expect(result).toEqual(userInfo);
+      expect(result).toEqual({ ...userInfo, is_admin: true });
       expect(fastify.withUserContext).toHaveBeenCalledWith('new-user-456', expect.any(Function));
     });
 
@@ -198,12 +204,12 @@ describe('user.service', () => {
       const userInfo = { id: 'user-123', name: 'Test User', email: 'test@example.com' };
 
       const existingResult = await getOrCreateUser(existingFastify, userInfo);
-      expect(existingResult).toEqual(userInfo);
+      expect(existingResult).toEqual({ ...userInfo, is_admin: false });
 
       // Test with new user
       const newFastify = createMockFastify(false);
       const newResult = await getOrCreateUser(newFastify, userInfo);
-      expect(newResult).toEqual(userInfo);
+      expect(newResult).toEqual({ ...userInfo, is_admin: true });
     });
   });
 });
