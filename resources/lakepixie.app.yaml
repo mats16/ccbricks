@@ -12,17 +12,18 @@ resources:
       #      key: database-url
       #      permission: READ
       user_api_scopes:
-        - mcp.genie
-        - mcp.vectorsearch
-        - mcp.functions
-        - mcp.external
         - sql
-        - dashboards.genie
-        - files.files
         - serving.serving-endpoints
+        - files.files
+        - dashboards.genie
         - catalog.catalogs:read
         - catalog.schemas:read
         - catalog.tables:read
+        - mcp.external
+        - mcp.genie
+        - mcp.functions
+        - mcp.vectorsearch
+        - apps
         - workspace.workspace
       permissions:
         - level: CAN_USE

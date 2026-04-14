@@ -64,6 +64,7 @@
     "skills": "Skills",
     "agents": "Subagents",
     "mcp": "MCP Servers",
+    "admin": "Admin",
     "databricksConsole": "Databricks Console",
     "loadError": "Failed to load user",
     "defaultName": "User"
@@ -293,6 +294,27 @@
     "fetchError": "Failed to fetch Genie spaces",
     "empty": "No Genie spaces available",
     "sessionDropdownLabel": "MCP Servers"
+  },
+  "admin": {
+    "title": "Admin",
+    "userManagement": "User Management",
+    "settings": "Settings",
+    "userId": "User ID",
+    "email": "Email",
+    "role": "Role",
+    "createdAt": "Created",
+    "actions": "Actions",
+    "you": "you",
+    "roleAdmin": "Admin",
+    "roleMember": "Member",
+    "promote": "Promote",
+    "demote": "Demote",
+    "defaultRole": "Default role for new users",
+    "updateRoleSuccess": "Role updated successfully",
+    "updateRoleError": "Failed to update role",
+    "updateSettingsSuccess": "Settings updated successfully",
+    "updateSettingsError": "Failed to update settings",
+    "fetchError": "Failed to load admin data"
   },
   "tools": {
     "updateTodos": "Update Todos",

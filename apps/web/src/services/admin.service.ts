@@ -1,0 +1,24 @@
+import type {
+  AdminUserListResponse,
+  AppSettingsResponse,
+  UpdateAppSettingsRequest,
+} from '@repo/types';
+import { apiClient } from './api-client';
+
+export const adminService = {
+  getUsers: () => apiClient<AdminUserListResponse>('/api/admin/users'),
+
+  updateUserRole: (userId: string, isAdmin: boolean) =>
+    apiClient<{ success: true }>(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_admin: isAdmin }),
+    }),
+
+  getSettings: () => apiClient<AppSettingsResponse>('/api/admin/settings'),
+
+  updateSettings: (settings: UpdateAppSettingsRequest) =>
+    apiClient<{ success: true }>('/api/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    }),
+};

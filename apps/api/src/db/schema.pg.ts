@@ -1,5 +1,14 @@
 // apps/api/src/db/schema.ts
-import { pgTable, uuid, timestamp, text, index, pgPolicy, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  timestamp,
+  text,
+  boolean,
+  index,
+  pgPolicy,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // =====================================================
@@ -17,6 +26,8 @@ import { sql } from 'drizzle-orm';
  */
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
+  email: text('email'),
+  isAdmin: boolean('is_admin').notNull().default(true),
   createdAt: timestamp('created_at', { mode: 'date' })
     .notNull()
     .default(sql`now()`),
@@ -131,6 +142,19 @@ export const sessionEvents = pgTable(
   })
 );
 
+/**
+ * app_settings テーブル
+ * アプリケーション全体のグローバル設定を管理（key-value）
+ */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .notNull()
+    .default(sql`now()`)
+    .$onUpdate(() => new Date()),
+});
+
 // =====================================================
 // Type Exports
 // =====================================================
@@ -140,9 +164,11 @@ export type InsertUser = typeof users.$inferInsert;
 export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type InsertSession = typeof sessions.$inferInsert;
 export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
+export type InsertAppSettings = typeof appSettings.$inferInsert;
 
 // Select types (for querying records)
 export type User = typeof users.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
+export type AppSettings = typeof appSettings.$inferSelect;

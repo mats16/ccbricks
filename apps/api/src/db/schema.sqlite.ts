@@ -12,6 +12,8 @@ import { sql } from 'drizzle-orm';
  */
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
+  email: text('email'),
+  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -93,6 +95,19 @@ export const sessionEvents = sqliteTable(
   })
 );
 
+/**
+ * app_settings テーブル
+ * アプリケーション全体のグローバル設定を管理（key-value）
+ */
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`)
+    .$onUpdate(() => new Date()),
+});
+
 // =====================================================
 // Type Exports
 // =====================================================
@@ -101,8 +116,10 @@ export type InsertUser = typeof users.$inferInsert;
 export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type InsertSession = typeof sessions.$inferInsert;
 export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
+export type InsertAppSettings = typeof appSettings.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
+export type AppSettings = typeof appSettings.$inferSelect;

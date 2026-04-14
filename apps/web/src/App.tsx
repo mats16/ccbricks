@@ -38,6 +38,7 @@ function AppContent() {
       <Route path="/skills" element={<AppLayout />} />
       <Route path="/agents" element={<AppLayout />} />
       <Route path="/mcp" element={<AppLayout />} />
+      <Route path="/admin" element={<AppLayout />} />
       <Route path="/sessions/:sessionId" element={<AppLayout />} />
     </Routes>
   );

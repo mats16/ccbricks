@@ -97,6 +97,8 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   client.exec(`
     CREATE TABLE IF NOT EXISTS "users" (
       "id" TEXT PRIMARY KEY,
+      "email" TEXT,
+      "is_admin" INTEGER NOT NULL DEFAULT 1,
       "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
       "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -124,6 +126,12 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "message" TEXT NOT NULL,
       "created_at" INTEGER NOT NULL DEFAULT (unixepoch())
     );
+    CREATE TABLE IF NOT EXISTS "app_settings" (
+      "key" TEXT PRIMARY KEY,
+      "value" TEXT NOT NULL,
+      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_new_user_is_admin', 'true');
     CREATE INDEX IF NOT EXISTS "sessions_user_id_idx" ON "sessions" ("user_id");
     CREATE INDEX IF NOT EXISTS "sessions_updated_at_idx" ON "sessions" ("updated_at");
     CREATE INDEX IF NOT EXISTS "sessions_status_idx" ON "sessions" ("status");

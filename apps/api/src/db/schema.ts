@@ -17,6 +17,7 @@ export const users = mod.users;
 export const userSettings = mod.userSettings;
 export const sessions = mod.sessions;
 export const sessionEvents = mod.sessionEvents;
+export const appSettings = mod.appSettings;
 
 // 行型は PG スキーマから re-export（canonical types）
 export type {
@@ -28,4 +29,6 @@ export type {
   Session,
   InsertSessionEvent,
   SessionEvent,
+  InsertAppSettings,
+  AppSettings,
 } from './schema.pg.js';

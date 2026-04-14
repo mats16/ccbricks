@@ -64,6 +64,7 @@
     "skills": "スキル",
     "agents": "サブエージェント",
     "mcp": "MCP サーバー",
+    "admin": "管理",
     "databricksConsole": "Databricks Console",
     "loadError": "ユーザー情報の取得に失敗しました",
     "defaultName": "ユーザー"
@@ -293,6 +294,27 @@
     "fetchError": "Genie スペースの取得に失敗しました",
     "empty": "利用可能な Genie スペースがありません",
     "sessionDropdownLabel": "MCP サーバー"
+  },
+  "admin": {
+    "title": "管理",
+    "userManagement": "ユーザー管理",
+    "settings": "設定",
+    "userId": "ユーザー ID",
+    "email": "メールアドレス",
+    "role": "ロール",
+    "createdAt": "作成日",
+    "actions": "操作",
+    "you": "自分",
+    "roleAdmin": "Admin",
+    "roleMember": "Member",
+    "promote": "昇格",
+    "demote": "降格",
+    "defaultRole": "新規ユーザーのデフォルトロール",
+    "updateRoleSuccess": "ロールを更新しました",
+    "updateRoleError": "ロールの更新に失敗しました",
+    "updateSettingsSuccess": "設定を更新しました",
+    "updateSettingsError": "設定の更新に失敗しました",
+    "fetchError": "管理データの読み込みに失敗しました"
   },
   "tools": {
     "updateTodos": "Update Todos",
