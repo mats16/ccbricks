@@ -388,7 +388,8 @@ function ManagedMcpDialog({
 
   const dbsqlAlreadyRegistered = existingServers.some(s => s.managed_type === 'databricks_sql');
   const registeredGenieIds = useMemo(
-    () => new Set(existingServers.filter(s => s.managed_type === 'databricks_genie').map(s => s.id)),
+    () =>
+      new Set(existingServers.filter(s => s.managed_type === 'databricks_genie').map(s => s.id)),
     [existingServers]
   );
 

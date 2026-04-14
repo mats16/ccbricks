@@ -13,7 +13,11 @@ import { mcpServers, userSettingsMcp, type InsertMcpServer } from '../db/schema.
 import { adminGuard } from '../hooks/admin-guard.js';
 
 const VALID_TYPES: McpServerType[] = ['stdio', 'http', 'sse'];
-const VALID_MANAGED_TYPES: ManagedMcpType[] = ['databricks_sql', 'databricks_genie', 'databricks_vector_search'];
+const VALID_MANAGED_TYPES: ManagedMcpType[] = [
+  'databricks_sql',
+  'databricks_genie',
+  'databricks_vector_search',
+];
 /** 小文字英数とアンダースコアのみ、連続アンダースコア禁止 */
 const VALID_ID_PATTERN = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 

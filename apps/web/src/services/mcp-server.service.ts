@@ -32,10 +32,7 @@ export const mcpServerService = {
     });
   },
 
-  async updateEnabled(
-    serverId: string,
-    enabled: boolean
-  ): Promise<UserSettingsMcpUpdateResponse> {
+  async updateEnabled(serverId: string, enabled: boolean): Promise<UserSettingsMcpUpdateResponse> {
     return apiClient<UserSettingsMcpUpdateResponse>(
       `/api/user/settings/mcp/${encodeURIComponent(serverId)}`,
       {
