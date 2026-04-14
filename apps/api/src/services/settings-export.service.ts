@@ -49,7 +49,7 @@ export function generateSettingsZip(
   archive.directory(join(ctx.userHome, '.claude', 'skills'), '.claude/skills');
   archive.directory(join(ctx.userHome, '.claude', 'agents'), '.claude/agents');
 
-  archive.on('error', (err) => {
+  archive.on('error', err => {
     archive.destroy(err);
   });
 
