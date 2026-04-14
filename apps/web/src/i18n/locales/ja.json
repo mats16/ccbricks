@@ -331,6 +331,7 @@
     "urlRequired": "http/sse タイプの場合 URL は必須です",
     "commandRequired": "stdio タイプの場合コマンドは必須です",
     "customFetchError": "カスタム MCP サーバーの取得に失敗しました",
+    "settingsSaveError": "MCP 設定の保存に失敗しました",
     "managedSection": "Databricks マネージド",
     "addManagedServer": "Databricks MCP を追加",
     "addManagedServerDescription": "Databricks マネージド MCP サーバーを登録",

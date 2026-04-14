@@ -8,6 +8,7 @@ import {
   index,
   pgPolicy,
   jsonb,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -182,6 +183,41 @@ export const mcpServers = pgTable('mcp_servers', {
     .$onUpdate(() => new Date()),
 });
 
+/**
+ * user_settings_mcp テーブル
+ * ユーザーごとの MCP サーバー有効/無効設定を管理
+ */
+export const userSettingsMcp = pgTable(
+  'user_settings_mcp',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    serverId: text('server_id')
+      .notNull()
+      .references(() => mcpServers.id, { onDelete: 'cascade' }),
+    enabled: boolean('enabled').notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .notNull()
+      .default(sql`now()`)
+      .$onUpdate(() => new Date()),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.userId, table.serverId] }),
+  })
+).enableRLS();
+
+/**
+ * user_settings_mcp の RLS ポリシー
+ * ユーザーは自分のデータのみアクセス可能
+ */
+export const userSettingsMcpPolicy = pgPolicy('user_settings_mcp_user_isolation_policy', {
+  for: 'all',
+  to: 'public',
+  using: sql`user_id = current_setting('app.user_id', true)`,
+  withCheck: sql`user_id = current_setting('app.user_id', true)`,
+}).link(userSettingsMcp);
+
 // =====================================================
 // Type Exports
 // =====================================================
@@ -193,6 +229,7 @@ export type InsertSession = typeof sessions.$inferInsert;
 export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
 export type InsertAppSettings = typeof appSettings.$inferInsert;
 export type InsertMcpServer = typeof mcpServers.$inferInsert;
+export type InsertUserSettingMcp = typeof userSettingsMcp.$inferInsert;
 
 // Select types (for querying records)
 export type User = typeof users.$inferSelect;
@@ -201,3 +238,4 @@ export type Session = typeof sessions.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type McpServer = typeof mcpServers.$inferSelect;
+export type UserSettingMcp = typeof userSettingsMcp.$inferSelect;

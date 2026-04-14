@@ -19,6 +19,7 @@ import userSettingsRoute from './routes/user-settings.js';
 import genieRoute from './routes/genie.js';
 import adminRoute from './routes/admin.js';
 import mcpServersRoute from './routes/mcp-servers.js';
+import userSettingsMcpRoute from './routes/user-settings-mcp.js';
 import { startEventBatcher } from './services/event-queue.service.js';
 
 export async function build() {
@@ -61,6 +62,7 @@ export async function build() {
   await app.register(genieRoute, { prefix: '/api/databricks' });
   await app.register(adminRoute, { prefix: '/api' });
   await app.register(mcpServersRoute, { prefix: '/api' });
+  await app.register(userSettingsMcpRoute, { prefix: '/api' });
 
   // APIルートのキャッシュ制御
   app.addHook('onSend', async (request, reply) => {

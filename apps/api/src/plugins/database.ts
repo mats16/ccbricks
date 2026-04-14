@@ -145,7 +145,7 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
       "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
     );
-    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_new_user_is_admin', 'true');
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('new_user_role_default', 'admin');
     CREATE INDEX IF NOT EXISTS "sessions_user_id_idx" ON "sessions" ("user_id");
     CREATE INDEX IF NOT EXISTS "sessions_updated_at_idx" ON "sessions" ("updated_at");
     CREATE INDEX IF NOT EXISTS "sessions_status_idx" ON "sessions" ("status");

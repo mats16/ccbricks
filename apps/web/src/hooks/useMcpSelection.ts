@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import useLocalStorageState from 'use-local-storage-state';
 import { mcpServerService } from '@/services';
-import { CLAUDE_CODE_PRESET_TOOLS, STORAGE_KEY_ENABLED_MCP_SERVERS } from '@/constants';
+import { CLAUDE_CODE_PRESET_TOOLS } from '@/constants';
 import type { McpConfig, McpServerEntry, McpServerRecord } from '@repo/types';
 
 export interface McpSelectionItem {
@@ -27,12 +26,6 @@ interface UseMcpSelectionReturn {
 export function useMcpSelection(): UseMcpSelectionReturn {
   const [servers, setServers] = useState<McpServerRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // グローバル設定（MCP 設定ページで管理）
-  const [globalEnabled] = useLocalStorageState<Record<string, boolean>>(
-    STORAGE_KEY_ENABLED_MCP_SERVERS,
-    { defaultValue: {} }
-  );
 
   // セッションレベルのトグル状態
   const [sessionOverrides, setSessionOverrides] = useState<Record<string, boolean>>({});
@@ -67,7 +60,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     for (const server of servers) {
       // managed サーバーはデフォルト有効、custom サーバーはデフォルト無効
       const defaultEnabled = server.managed_type != null;
-      if (!(globalEnabled[server.id] ?? defaultEnabled)) continue;
+      if (!(server.enabled ?? defaultEnabled)) continue;
 
       const displayUrl =
         server.type === 'stdio'
@@ -83,7 +76,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     }
 
     return result;
-  }, [servers, globalEnabled, sessionOverrides]);
+  }, [servers, sessionOverrides]);
 
   const enabledCount = useMemo(() => items.filter(i => i.enabled).length, [items]);
 

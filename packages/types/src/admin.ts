@@ -17,10 +17,12 @@ export interface UpdateUserRoleRequest {
   is_admin: boolean;
 }
 
+export type UserRole = 'admin' | 'member';
+
 export interface AppSettingsResponse {
-  default_new_user_is_admin: boolean;
+  new_user_role_default: UserRole;
 }
 
 export interface UpdateAppSettingsRequest {
-  default_new_user_is_admin: boolean;
+  new_user_role_default: UserRole;
 }

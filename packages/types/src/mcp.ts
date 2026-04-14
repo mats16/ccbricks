@@ -86,6 +86,8 @@ export interface McpServerRecord {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  /** ユーザーごとの有効/無効設定（未設定時は undefined） */
+  enabled?: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -102,4 +104,17 @@ export type McpServerUpdateRequest = Partial<
 
 export interface McpServerListResponse {
   mcp_servers: McpServerRecord[];
+}
+
+// =====================================================
+// User MCP Settings Types (ユーザーごとの MCP 有効/無効設定)
+// =====================================================
+
+export interface UserSettingsMcpUpdateRequest {
+  enabled: boolean;
+}
+
+export interface UserSettingsMcpUpdateResponse {
+  server_id: string;
+  enabled: boolean;
 }

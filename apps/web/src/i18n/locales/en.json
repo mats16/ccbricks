@@ -331,6 +331,7 @@
     "urlRequired": "URL is required for http/sse type",
     "commandRequired": "Command is required for stdio type",
     "customFetchError": "Failed to fetch custom MCP servers",
+    "settingsSaveError": "Failed to save MCP settings",
     "managedSection": "Databricks Managed",
     "addManagedServer": "Add Databricks MCP",
     "addManagedServerDescription": "Register a Databricks managed MCP server",

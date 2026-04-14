@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { AdminUserInfo, AppSettingsResponse } from '@repo/types';
+import type { AdminUserInfo, AppSettingsResponse, UserRole } from '@repo/types';
 import { and, eq, sql } from 'drizzle-orm';
 import { users, appSettings } from '../db/schema.js';
 
@@ -57,11 +57,11 @@ export async function getAppSettings(fastify: FastifyInstance): Promise<AppSetti
   const [row] = await fastify.db
     .select({ value: appSettings.value })
     .from(appSettings)
-    .where(eq(appSettings.key, 'default_new_user_is_admin'))
+    .where(eq(appSettings.key, 'new_user_role_default'))
     .limit(1);
 
   return {
-    default_new_user_is_admin: row ? row.value === 'true' : true,
+    new_user_role_default: row?.value === 'admin' || row?.value === 'member' ? row.value : 'admin',
   };
 }
 
@@ -70,25 +70,23 @@ export async function getAppSettings(fastify: FastifyInstance): Promise<AppSetti
  */
 export async function updateAppSettings(
   fastify: FastifyInstance,
-  defaultNewUserIsAdmin: boolean
+  newUserRoleDefault: UserRole
 ): Promise<void> {
-  const value = String(defaultNewUserIsAdmin);
-
   await fastify.db
     .insert(appSettings)
-    .values({ key: 'default_new_user_is_admin', value })
+    .values({ key: 'new_user_role_default', value: newUserRoleDefault })
     .onConflictDoUpdate({
       target: appSettings.key,
-      set: { value },
+      set: { value: newUserRoleDefault },
     });
 }
 
 /**
- * 新規ユーザーのデフォルト Admin フラグを取得する
+ * 新規ユーザーのデフォルトロールが Admin かどうかを取得する
  */
 export async function getDefaultNewUserIsAdmin(fastify: FastifyInstance): Promise<boolean> {
   const settings = await getAppSettings(fastify);
-  return settings.default_new_user_is_admin;
+  return settings.new_user_role_default === 'admin';
 }
 
 /**

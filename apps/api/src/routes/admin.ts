@@ -75,17 +75,17 @@ const adminRoute: FastifyPluginAsync = async fastify => {
     Body: UpdateAppSettingsRequest;
     Reply: { success: true } | ApiError;
   }>('/admin/settings', { preHandler: guard }, async (request, reply) => {
-    const { default_new_user_is_admin } = request.body;
+    const { new_user_role_default } = request.body;
 
-    if (typeof default_new_user_is_admin !== 'boolean') {
+    if (new_user_role_default !== 'admin' && new_user_role_default !== 'member') {
       return reply.status(400).send({
         error: 'BadRequest',
-        message: 'default_new_user_is_admin must be a boolean',
+        message: "new_user_role_default must be 'admin' or 'member'",
         statusCode: 400,
       });
     }
 
-    await updateAppSettings(fastify, default_new_user_is_admin);
+    await updateAppSettings(fastify, new_user_role_default);
     return reply.send({ success: true });
   });
 };

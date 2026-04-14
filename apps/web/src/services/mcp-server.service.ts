@@ -3,6 +3,7 @@ import type {
   McpServerUpdateRequest,
   McpServerRecord,
   McpServerListResponse,
+  UserSettingsMcpUpdateResponse,
 } from '@repo/types';
 import { apiClient } from './api-client';
 
@@ -29,5 +30,18 @@ export const mcpServerService = {
     await apiClient<{ success: true }>(`/api/mcp-servers/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
+  },
+
+  async updateEnabled(
+    serverId: string,
+    enabled: boolean
+  ): Promise<UserSettingsMcpUpdateResponse> {
+    return apiClient<UserSettingsMcpUpdateResponse>(
+      `/api/user/settings/mcp/${encodeURIComponent(serverId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ enabled }),
+      }
+    );
   },
 };

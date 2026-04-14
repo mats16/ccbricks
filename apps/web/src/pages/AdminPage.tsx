@@ -81,11 +81,11 @@ export function AdminContent() {
   };
 
   const handleDefaultRoleChange = async (value: string) => {
-    const newDefault = value === 'true';
+    const newDefault = value as 'admin' | 'member';
     setIsSavingSettings(true);
     try {
-      await adminService.updateSettings({ default_new_user_is_admin: newDefault });
-      setSettings({ default_new_user_is_admin: newDefault });
+      await adminService.updateSettings({ new_user_role_default: newDefault });
+      setSettings({ new_user_role_default: newDefault });
       toast.success(t('admin.updateSettingsSuccess'));
     } catch {
       toast.error(t('admin.updateSettingsError'));
@@ -119,7 +119,7 @@ export function AdminContent() {
                   <p className="text-sm font-medium">{t('admin.defaultRole')}</p>
                 </div>
                 <Select
-                  value={String(settings?.default_new_user_is_admin ?? true)}
+                  value={settings?.new_user_role_default ?? 'admin'}
                   onValueChange={handleDefaultRoleChange}
                   disabled={isSavingSettings}
                 >
@@ -127,8 +127,8 @@ export function AdminContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="true">{t('admin.roleAdmin')}</SelectItem>
-                    <SelectItem value="false">{t('admin.roleMember')}</SelectItem>
+                    <SelectItem value="admin">{t('admin.roleAdmin')}</SelectItem>
+                    <SelectItem value="member">{t('admin.roleMember')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

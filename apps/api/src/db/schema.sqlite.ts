@@ -1,5 +1,5 @@
 // apps/api/src/db/schema.sqlite.ts
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // =====================================================
@@ -135,6 +135,30 @@ export const mcpServers = sqliteTable('mcp_servers', {
     .$onUpdate(() => new Date()),
 });
 
+/**
+ * user_settings_mcp テーブル
+ * ユーザーごとの MCP サーバー有効/無効設定を管理
+ */
+export const userSettingsMcp = sqliteTable(
+  'user_settings_mcp',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    serverId: text('server_id')
+      .notNull()
+      .references(() => mcpServers.id, { onDelete: 'cascade' }),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`)
+      .$onUpdate(() => new Date()),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.userId, table.serverId] }),
+  })
+);
+
 // =====================================================
 // Type Exports
 // =====================================================
@@ -145,6 +169,7 @@ export type InsertSession = typeof sessions.$inferInsert;
 export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
 export type InsertAppSettings = typeof appSettings.$inferInsert;
 export type InsertMcpServer = typeof mcpServers.$inferInsert;
+export type InsertUserSettingMcp = typeof userSettingsMcp.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
@@ -152,3 +177,4 @@ export type Session = typeof sessions.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type McpServer = typeof mcpServers.$inferSelect;
+export type UserSettingMcp = typeof userSettingsMcp.$inferSelect;

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import useLocalStorageState from 'use-local-storage-state';
 import {
   Loader2,
   AlertCircle,
@@ -38,7 +37,7 @@ import {
 import { cn } from '@/lib/utils';
 import { genieService, mcpServerService } from '@/services';
 import { useUser } from '@/hooks/useUser';
-import { buildDbsqlMcpUrl, buildGenieMcpUrl, STORAGE_KEY_ENABLED_MCP_SERVERS } from '@/constants';
+import { buildDbsqlMcpUrl, buildGenieMcpUrl } from '@/constants';
 import type { GenieSpace, McpServerRecord, McpServerType, ManagedMcpType } from '@repo/types';
 
 // ─── Shared helpers ──────────────────────────────────────────
@@ -475,7 +474,7 @@ function ManagedMcpDialog({
     setIsSubmitting(true);
     try {
       await mcpServerService.create({
-        id: selectedType === 'databricks_sql' ? 'databricks_sql' : selectedGenieSpaceId,
+        id: selectedType === 'databricks_sql' ? 'dbsql' : selectedGenieSpaceId,
         display_name: displayName.trim(),
         type: 'http',
         managed_type: selectedType!,
@@ -498,7 +497,7 @@ function ManagedMcpDialog({
   const availableGenieSpaces = useMemo(() => {
     const q = genieSearchQuery.toLowerCase().trim();
     return genieSpaces.filter(s => {
-      if (registeredGenieIds.has(`databricks_genie_${s.space_id}`)) return false;
+      if (registeredGenieIds.has(`genie_${s.space_id}`)) return false;
       if (!q) return true;
       return (
         s.title.toLowerCase().includes(q) || (s.description?.toLowerCase().includes(q) ?? false)
@@ -719,15 +718,21 @@ export function McpContent() {
   // Managed MCP dialog state
   const [showManagedDialog, setShowManagedDialog] = useState(false);
 
-  const [enabledServers, setEnabledServers] = useLocalStorageState<Record<string, boolean>>(
-    STORAGE_KEY_ENABLED_MCP_SERVERS,
-    { defaultValue: {} }
-  );
+  const [enabledServers, setEnabledServers] = useState<Record<string, boolean>>({});
 
   const fetchServers = useCallback(async () => {
     try {
       const response = await mcpServerService.list();
-      setAllServers(response.mcp_servers ?? []);
+      const servers = response.mcp_servers ?? [];
+      setAllServers(servers);
+      // サーバーレスポンスの enabled フィールドから状態を構築
+      const enabled: Record<string, boolean> = {};
+      for (const s of servers) {
+        if (s.enabled !== undefined) {
+          enabled[s.id] = s.enabled;
+        }
+      }
+      setEnabledServers(enabled);
     } catch (err) {
       const detail = err instanceof Error ? err.message : '';
       setFetchError(detail ? `${t('mcp.customFetchError')}: ${detail}` : t('mcp.customFetchError'));
@@ -750,6 +755,12 @@ export function McpContent() {
 
   const handleToggle = (key: string, checked: boolean) => {
     setEnabledServers(prev => ({ ...prev, [key]: checked }));
+    // バックグラウンドで API に保存
+    mcpServerService.updateEnabled(key, checked).catch(() => {
+      // 失敗時にリバート
+      setEnabledServers(prev => ({ ...prev, [key]: !checked }));
+      toast.error(t('mcp.settingsSaveError'));
+    });
   };
 
   // ─── Custom server dialog handlers ───
@@ -894,7 +905,7 @@ export function McpContent() {
                         {server.display_name}
                       </Label>
                       <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        {server.managed_type}
+                        {server.id}
                       </span>
                     </div>
                     <ServerSubtitle server={server} />

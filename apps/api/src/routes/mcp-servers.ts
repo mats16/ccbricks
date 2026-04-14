@@ -9,7 +9,7 @@ import type {
   ManagedMcpType,
   ApiError,
 } from '@repo/types';
-import { mcpServers, type InsertMcpServer } from '../db/schema.js';
+import { mcpServers, userSettingsMcp, type InsertMcpServer } from '../db/schema.js';
 import { adminGuard } from '../hooks/admin-guard.js';
 
 const VALID_TYPES: McpServerType[] = ['stdio', 'http', 'sse'];
@@ -50,9 +50,18 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         });
       }
 
-      const rows = await fastify.db.select().from(mcpServers).orderBy(desc(mcpServers.createdAt));
+      const [rows, settings] = await Promise.all([
+        fastify.db.select().from(mcpServers).orderBy(desc(mcpServers.createdAt)),
+        fastify.db.select().from(userSettingsMcp).where(eq(userSettingsMcp.userId, user.id)),
+      ]);
+      const enabledMap = new Map(settings.map(s => [s.serverId, s.enabled]));
 
-      return reply.send({ mcp_servers: rows.map(toRecord) });
+      return reply.send({
+        mcp_servers: rows.map(row => ({
+          ...toRecord(row),
+          enabled: enabledMap.get(row.id) ?? false,
+        })),
+      });
     }
   );
 
@@ -96,7 +105,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
       let generatedUrl: string;
 
       if (managed_type === 'databricks_sql') {
-        generatedId = 'databricks_sql';
+        generatedId = 'dbsql';
         generatedUrl = `https://${databricksHost}/api/2.0/mcp/sql`;
       } else {
         // Genie Space: id に space_id を渡す
@@ -109,7 +118,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
           });
         }
         const trimmedSpaceId = genieSpaceId.trim();
-        generatedId = `databricks_genie_${trimmedSpaceId}`;
+        generatedId = `genie_${trimmedSpaceId}`;
         generatedUrl = `https://${databricksHost}/api/2.0/mcp/genie/${trimmedSpaceId}`;
       }
 
