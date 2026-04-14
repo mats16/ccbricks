@@ -4,8 +4,10 @@ import { createUserContext } from '../lib/user-context.js';
 const genieRoute: FastifyPluginAsync = async fastify => {
   const databricksHost = fastify.config.DATABRICKS_HOST;
 
-  // GET /genie/spaces - Genie スペース一覧
-  fastify.get('/genie/spaces', async (request, reply) => {
+  // GET /genie/spaces - Genie スペース一覧 (ページネーション対応)
+  fastify.get<{
+    Querystring: { page_token?: string; page_size?: string };
+  }>('/genie/spaces', async (request, reply) => {
     const ctx = createUserContext(fastify, request);
     const oboToken = ctx.oboAccessToken;
 
@@ -18,6 +20,13 @@ const genieRoute: FastifyPluginAsync = async fastify => {
     }
 
     const url = new URL('/api/2.0/genie/spaces', `https://${databricksHost}`);
+    const { page_token, page_size } = request.query;
+    if (page_token) {
+      url.searchParams.set('page_token', page_token);
+    }
+    if (page_size) {
+      url.searchParams.set('page_size', page_size);
+    }
 
     const response = await fetch(url.toString(), {
       method: 'GET',

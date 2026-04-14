@@ -169,6 +169,7 @@ export const mcpServers = pgTable('mcp_servers', {
   command: text('command'),
   args: jsonb('args'), // string[]
   env: jsonb('env'), // Record<string, string>
+  managedType: text('managed_type'), // null = custom, 'dbsql' | 'genie' | 'vector_search'
   createdBy: text('created_by')
     .notNull()
     .references(() => users.id),

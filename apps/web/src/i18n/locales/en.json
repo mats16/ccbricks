@@ -75,7 +75,8 @@
     "retry": "Retry",
     "cancel": "Cancel",
     "save": "Save",
-    "add": "Add"
+    "add": "Add",
+    "loadMore": "Load more"
   },
   "time": {
     "justNow": "Just now",
@@ -295,7 +296,7 @@
     "fetchError": "Failed to fetch Genie spaces",
     "empty": "No Genie spaces available",
     "sessionDropdownLabel": "MCP Servers",
-    "addServer": "Register New",
+    "addServer": "Add New",
     "addServerDescription": "Register a custom MCP server",
     "customSection": "Custom",
     "id": "ID",
@@ -306,7 +307,7 @@
     "command": "Command",
     "argsField": "Arguments",
     "envField": "Environment Variables",
-    "idPlaceholder": "e.g. my-mcp-server",
+    "idPlaceholder": "e.g. my_mcp_server",
     "displayNamePlaceholder": "e.g. My MCP Server",
     "urlPlaceholder": "https://...",
     "headerKeyPlaceholder": "e.g. Authorization",
@@ -329,7 +330,23 @@
     "displayNameRequired": "Display name is required",
     "urlRequired": "URL is required for http/sse type",
     "commandRequired": "Command is required for stdio type",
-    "customFetchError": "Failed to fetch custom MCP servers"
+    "customFetchError": "Failed to fetch custom MCP servers",
+    "managedSection": "Databricks Managed",
+    "addManagedServer": "Add Databricks MCP",
+    "addManagedServerDescription": "Register a Databricks managed MCP server",
+    "selectServerType": "Select server type",
+    "dbsqlLabel": "Databricks SQL",
+    "dbsqlDescription": "Query Databricks SQL warehouses via MCP",
+    "genieLabel": "Genie Space",
+    "genieDescription": "Connect to a Genie Space for natural language data queries",
+    "vectorSearchLabel": "Vector Search",
+    "vectorSearchComingSoon": "Coming soon",
+    "selectGenieSpace": "Select a Genie Space",
+    "genieSearchPlaceholder": "Search Genie spaces...",
+    "dbsqlAlreadyRegistered": "Already registered",
+    "managedEmpty": "No Databricks managed MCP servers registered",
+    "genieSpaceFetchError": "Failed to fetch Genie spaces",
+    "duplicateError": "This server is already registered"
   },
   "admin": {
     "title": "Admin",

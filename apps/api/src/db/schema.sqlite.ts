@@ -122,6 +122,7 @@ export const mcpServers = sqliteTable('mcp_servers', {
   command: text('command'),
   args: text('args', { mode: 'json' }), // string[]
   env: text('env', { mode: 'json' }), // Record<string, string>
+  managedType: text('managed_type'), // null = custom, 'dbsql' | 'genie' | 'vector_search'
   createdBy: text('created_by')
     .notNull()
     .references(() => users.id),

@@ -6,12 +6,14 @@ import type {
   McpServerRecord,
   McpServerListResponse,
   McpServerType,
+  ManagedMcpType,
   ApiError,
 } from '@repo/types';
 import { mcpServers, type InsertMcpServer } from '../db/schema.js';
 import { adminGuard } from '../hooks/admin-guard.js';
 
 const VALID_TYPES: McpServerType[] = ['stdio', 'http', 'sse'];
+const VALID_MANAGED_TYPES: ManagedMcpType[] = ['dbsql', 'genie', 'vector_search'];
 /** 小文字英数とアンダースコアのみ、連続アンダースコア禁止 */
 const VALID_ID_PATTERN = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 
@@ -20,6 +22,7 @@ function toRecord(row: typeof mcpServers.$inferSelect): McpServerRecord {
     id: row.id,
     display_name: row.displayName,
     type: row.type as McpServerType,
+    managed_type: (row.managedType as ManagedMcpType) ?? undefined,
     url: row.url ?? undefined,
     headers: (row.headers as Record<string, string>) ?? undefined,
     command: row.command ?? undefined,
@@ -59,6 +62,86 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
     Reply: McpServerRecord | ApiError;
   }>('/mcp-servers', { preHandler: guard }, async (request, reply) => {
     const { user } = request.ctx!;
+    const { managed_type } = request.body;
+
+    // --- Managed MCP サーバー登録 ---
+    if (managed_type) {
+      if (!VALID_MANAGED_TYPES.includes(managed_type)) {
+        return reply.status(400).send({
+          error: 'BadRequest',
+          message: `managed_type must be one of: ${VALID_MANAGED_TYPES.join(', ')}`,
+          statusCode: 400,
+        });
+      }
+
+      if (managed_type === 'vector_search') {
+        return reply.status(501).send({
+          error: 'NotImplemented',
+          message: 'Vector Search MCP is not yet available',
+          statusCode: 501,
+        });
+      }
+
+      const { display_name } = request.body;
+      if (!display_name || typeof display_name !== 'string' || !display_name.trim()) {
+        return reply.status(400).send({
+          error: 'BadRequest',
+          message: 'display_name is required',
+          statusCode: 400,
+        });
+      }
+
+      const databricksHost = fastify.config.DATABRICKS_HOST;
+      let generatedId: string;
+      let generatedUrl: string;
+
+      if (managed_type === 'dbsql') {
+        generatedId = 'dbsql';
+        generatedUrl = `https://${databricksHost}/api/2.0/mcp/sql`;
+      } else {
+        // Genie Space: id に space_id を渡す
+        const genieSpaceId = request.body.id;
+        if (!genieSpaceId || typeof genieSpaceId !== 'string' || !genieSpaceId.trim()) {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: 'id (genie_space_id) is required for genie type',
+            statusCode: 400,
+          });
+        }
+        const trimmedSpaceId = genieSpaceId.trim();
+        generatedId = `genie_${trimmedSpaceId}`;
+        generatedUrl = `https://${databricksHost}/api/2.0/mcp/genie/${trimmedSpaceId}`;
+      }
+
+      // PK ルックアップで重複チェック
+      const existing = await fastify.db
+        .select({ id: mcpServers.id })
+        .from(mcpServers)
+        .where(eq(mcpServers.id, generatedId));
+      if (existing.length > 0) {
+        return reply.status(409).send({
+          error: 'Conflict',
+          message: `MCP server "${generatedId}" is already registered`,
+          statusCode: 409,
+        });
+      }
+
+      const [row] = await fastify.db
+        .insert(mcpServers)
+        .values({
+          id: generatedId,
+          displayName: display_name.trim(),
+          type: 'http',
+          url: generatedUrl,
+          managedType: managed_type,
+          createdBy: user.id,
+        })
+        .returning();
+
+      return reply.status(201).send(toRecord(row));
+    }
+
+    // --- Custom MCP サーバー登録 ---
     const { id, display_name, type, url, headers, command, args, env } = request.body;
 
     if (!id || typeof id !== 'string' || !id.trim()) {

@@ -75,7 +75,8 @@
     "retry": "再試行",
     "cancel": "キャンセル",
     "save": "保存",
-    "add": "追加"
+    "add": "追加",
+    "loadMore": "もっと読み込む"
   },
   "time": {
     "justNow": "たった今",
@@ -295,7 +296,7 @@
     "fetchError": "Genie スペースの取得に失敗しました",
     "empty": "利用可能な Genie スペースがありません",
     "sessionDropdownLabel": "MCP サーバー",
-    "addServer": "新規登録",
+    "addServer": "新規追加",
     "addServerDescription": "カスタム MCP サーバーを登録",
     "customSection": "カスタム",
     "id": "ID",
@@ -306,7 +307,7 @@
     "command": "コマンド",
     "argsField": "引数",
     "envField": "環境変数",
-    "idPlaceholder": "例: my-mcp-server",
+    "idPlaceholder": "例: my_mcp_server",
     "displayNamePlaceholder": "例: マイ MCP サーバー",
     "urlPlaceholder": "https://...",
     "headerKeyPlaceholder": "例: Authorization",
@@ -329,7 +330,23 @@
     "displayNameRequired": "表示名は必須です",
     "urlRequired": "http/sse タイプの場合 URL は必須です",
     "commandRequired": "stdio タイプの場合コマンドは必須です",
-    "customFetchError": "カスタム MCP サーバーの取得に失敗しました"
+    "customFetchError": "カスタム MCP サーバーの取得に失敗しました",
+    "managedSection": "Databricks マネージド",
+    "addManagedServer": "Databricks MCP を追加",
+    "addManagedServerDescription": "Databricks マネージド MCP サーバーを登録",
+    "selectServerType": "サーバータイプを選択",
+    "dbsqlLabel": "Databricks SQL",
+    "dbsqlDescription": "MCP 経由で Databricks SQL ウェアハウスにクエリ",
+    "genieLabel": "Genie Space",
+    "genieDescription": "Genie Space に接続して自然言語でデータクエリ",
+    "vectorSearchLabel": "Vector Search",
+    "vectorSearchComingSoon": "近日公開",
+    "selectGenieSpace": "Genie Space を選択",
+    "genieSearchPlaceholder": "Genie スペースを検索...",
+    "dbsqlAlreadyRegistered": "登録済み",
+    "managedEmpty": "Databricks マネージド MCP サーバーはありません",
+    "genieSpaceFetchError": "Genie スペースの取得に失敗しました",
+    "duplicateError": "このサーバーは既に登録されています"
   },
   "admin": {
     "title": "管理",

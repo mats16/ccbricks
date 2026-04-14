@@ -12,6 +12,7 @@ export interface GenieSpace {
 
 export interface GenieSpaceListResponse {
   spaces: GenieSpace[];
+  next_page_token?: string;
 }
 
 // =====================================================
@@ -72,10 +73,14 @@ export interface UpdateOutcomeResponse {
 // Custom MCP Server Types (管理者が登録するカスタムサーバー)
 // =====================================================
 
+/** Databricks managed MCP サーバーの種別 */
+export type ManagedMcpType = 'dbsql' | 'genie' | 'vector_search';
+
 export interface McpServerRecord {
   id: string;
   display_name: string;
   type: McpServerType;
+  managed_type?: ManagedMcpType;
   url?: string;
   headers?: Record<string, string>;
   command?: string;

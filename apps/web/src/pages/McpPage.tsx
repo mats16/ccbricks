@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useLocalStorageState from 'use-local-storage-state';
 import {
   Loader2,
   AlertCircle,
   DatabaseSearch,
-  Sparkle,
+  Sparkles,
   Plus,
   Trash2,
   Pencil,
@@ -13,6 +13,8 @@ import {
   Terminal,
   Globe,
   X,
+  Search,
+  Construction,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -33,15 +35,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { genieService, mcpServerService } from '@/services';
 import { useUser } from '@/hooks/useUser';
-import {
-  buildDbsqlMcpUrl,
-  buildGenieMcpUrl,
-  MCP_DBSQL_ID,
-  STORAGE_KEY_ENABLED_MCP_SERVERS,
-} from '@/constants';
-import type { GenieSpace, McpServerRecord, McpServerType } from '@repo/types';
+import { buildDbsqlMcpUrl, buildGenieMcpUrl, STORAGE_KEY_ENABLED_MCP_SERVERS } from '@/constants';
+import type { GenieSpace, McpServerRecord, McpServerType, ManagedMcpType } from '@repo/types';
+
+// ─── Shared helpers ──────────────────────────────────────────
 
 interface KeyValuePair {
   key: string;
@@ -105,6 +105,14 @@ function KeyValueEditor({
   );
 }
 
+function ManagedIcon({ managedType }: { managedType: ManagedMcpType }) {
+  if (managedType === 'dbsql')
+    return <DatabaseSearch className="h-4 w-4 shrink-0 text-muted-foreground" />;
+  if (managedType === 'genie')
+    return <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />;
+  return <Search className="h-4 w-4 shrink-0 text-muted-foreground" />;
+}
+
 function ServerTypeIcon({ type }: { type: McpServerType }) {
   if (type === 'stdio') return <Terminal className="h-4 w-4 shrink-0 text-muted-foreground" />;
   return <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />;
@@ -135,6 +143,8 @@ function pairsToRecord(pairs: KeyValuePair[]): Record<string, string> | undefine
 function recordToPairs(record?: Record<string, string>): KeyValuePair[] {
   return record ? Object.entries(record).map(([key, value]) => ({ key, value })) : [];
 }
+
+// ─── Custom server form ──────────────────────────────────────
 
 interface ServerFormState {
   id: string;
@@ -347,57 +357,402 @@ function ServerFormDialog({
   );
 }
 
+// ─── Managed MCP dialog ──────────────────────────────────────
+
+type ManagedStep = 'select' | 'configure';
+
+function ManagedMcpDialog({
+  open,
+  onOpenChange,
+  onCreated,
+  databricksHost,
+  existingServers,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: () => void;
+  databricksHost: string | null | undefined;
+  existingServers: McpServerRecord[];
+}) {
+  const { t } = useTranslation();
+  const [step, setStep] = useState<ManagedStep>('select');
+  const [selectedType, setSelectedType] = useState<ManagedMcpType | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const [selectedGenieSpaceId, setSelectedGenieSpaceId] = useState('');
+  const [genieSpaces, setGenieSpaces] = useState<GenieSpace[]>([]);
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
+  const [isLoadingSpaces, setIsLoadingSpaces] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [genieSearchQuery, setGenieSearchQuery] = useState('');
+
+  const dbsqlAlreadyRegistered = existingServers.some(s => s.managed_type === 'dbsql');
+  const registeredGenieIds = useMemo(
+    () => new Set(existingServers.filter(s => s.managed_type === 'genie').map(s => s.id)),
+    [existingServers]
+  );
+
+  const reset = () => {
+    setStep('select');
+    setSelectedType(null);
+    setDisplayName('');
+    setSelectedGenieSpaceId('');
+    setGenieSpaces([]);
+    setNextPageToken(undefined);
+    setGenieSearchQuery('');
+    setFormError(null);
+  };
+
+  const handleOpenChange = (v: boolean) => {
+    onOpenChange(v);
+    if (!v) reset();
+  };
+
+  const fetchGenieSpaces = async (pageToken?: string) => {
+    const isFirstPage = !pageToken;
+    if (isFirstPage) setIsLoadingSpaces(true);
+    else setIsLoadingMore(true);
+
+    try {
+      const res = await genieService.listGenieSpaces(pageToken);
+      if (isFirstPage) {
+        setGenieSpaces(res.spaces ?? []);
+      } else {
+        setGenieSpaces(prev => [...prev, ...(res.spaces ?? [])]);
+      }
+      setNextPageToken(res.next_page_token);
+    } catch {
+      setFormError(t('mcp.genieSpaceFetchError'));
+    } finally {
+      setIsLoadingSpaces(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleSelectType = async (type: ManagedMcpType) => {
+    setSelectedType(type);
+    setFormError(null);
+
+    if (type === 'dbsql') {
+      setDisplayName('Databricks SQL');
+      setStep('configure');
+    } else if (type === 'genie') {
+      setStep('configure');
+      await fetchGenieSpaces();
+    }
+  };
+
+  const handleGenieSelect = (spaceId: string) => {
+    setSelectedGenieSpaceId(spaceId);
+    const space = genieSpaces.find(s => s.space_id === spaceId);
+    if (space) {
+      setDisplayName(space.title);
+    }
+  };
+
+  const previewUrl = useMemo(() => {
+    if (!databricksHost) return '';
+    if (selectedType === 'dbsql') return buildDbsqlMcpUrl(databricksHost);
+    if (selectedType === 'genie' && selectedGenieSpaceId)
+      return buildGenieMcpUrl(databricksHost, selectedGenieSpaceId);
+    return '';
+  }, [databricksHost, selectedType, selectedGenieSpaceId]);
+
+  const handleSubmit = async () => {
+    setFormError(null);
+
+    if (!displayName.trim()) {
+      setFormError(t('mcp.displayNameRequired'));
+      return;
+    }
+
+    if (selectedType === 'genie' && !selectedGenieSpaceId) {
+      setFormError(t('mcp.selectGenieSpace'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await mcpServerService.create({
+        id: selectedType === 'dbsql' ? 'dbsql' : selectedGenieSpaceId,
+        display_name: displayName.trim(),
+        type: 'http',
+        managed_type: selectedType!,
+      });
+      toast.success(t('mcp.addSuccess'));
+      handleOpenChange(false);
+      onCreated();
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : '';
+      if (detail.includes('409') || detail.toLowerCase().includes('already')) {
+        setFormError(t('mcp.duplicateError'));
+      } else {
+        setFormError(detail || t('mcp.addError'));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const availableGenieSpaces = useMemo(() => {
+    const q = genieSearchQuery.toLowerCase().trim();
+    return genieSpaces.filter(s => {
+      if (registeredGenieIds.has(`genie_${s.space_id}`)) return false;
+      if (!q) return true;
+      return (
+        s.title.toLowerCase().includes(q) || (s.description?.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }, [genieSpaces, registeredGenieIds, genieSearchQuery]);
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>{t('mcp.addManagedServer')}</DialogTitle>
+          <DialogDescription>{t('mcp.addManagedServerDescription')}</DialogDescription>
+        </DialogHeader>
+
+        {formError && (
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-md text-sm shrink-0">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {formError}
+          </div>
+        )}
+
+        {step === 'select' && (
+          <div className="space-y-2 overflow-y-auto">
+            <p className="text-sm text-muted-foreground">{t('mcp.selectServerType')}</p>
+
+            {/* Databricks SQL */}
+            <button
+              type="button"
+              disabled={dbsqlAlreadyRegistered}
+              className="w-full flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => handleSelectType('dbsql')}
+            >
+              <DatabaseSearch className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{t('mcp.dbsqlLabel')}</p>
+                <p className="text-xs text-muted-foreground">{t('mcp.dbsqlDescription')}</p>
+                {dbsqlAlreadyRegistered && (
+                  <p className="text-xs text-amber-500 mt-1">{t('mcp.dbsqlAlreadyRegistered')}</p>
+                )}
+              </div>
+            </button>
+
+            {/* Genie Space */}
+            <button
+              type="button"
+              className="w-full flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-left"
+              onClick={() => handleSelectType('genie')}
+            >
+              <Sparkles className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{t('mcp.genieLabel')}</p>
+                <p className="text-xs text-muted-foreground">{t('mcp.genieDescription')}</p>
+              </div>
+            </button>
+
+            {/* Vector Search (disabled) */}
+            <button
+              type="button"
+              disabled
+              className="w-full flex items-center gap-3 p-4 rounded-lg border border-border bg-card text-left opacity-50 cursor-not-allowed"
+            >
+              <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{t('mcp.vectorSearchLabel')}</p>
+                <p className="text-xs text-muted-foreground">{t('mcp.vectorSearchComingSoon')}</p>
+              </div>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                <Construction className="h-3 w-3" />
+                {t('mcp.vectorSearchComingSoon')}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {step === 'configure' && (
+          <div className="flex flex-col gap-4 min-h-0 flex-1">
+            {/* Back button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-start shrink-0"
+              onClick={() => {
+                setStep('select');
+                setFormError(null);
+              }}
+            >
+              &larr; {t('mcp.selectServerType')}
+            </Button>
+
+            {/* Genie space scrollable list */}
+            {selectedType === 'genie' && (
+              <div className="flex flex-col gap-2 min-h-0 flex-1">
+                <Label className="shrink-0">{t('mcp.selectGenieSpace')}</Label>
+                <Input
+                  value={genieSearchQuery}
+                  onChange={e => setGenieSearchQuery(e.target.value)}
+                  placeholder={t('mcp.genieSearchPlaceholder')}
+                  className="shrink-0"
+                />
+                {isLoadingSpaces ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="overflow-y-auto border border-border rounded-lg min-h-0 flex-1 max-h-[40vh]">
+                    <div className="space-y-0.5 p-1">
+                      {availableGenieSpaces.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                          <Sparkles className="h-8 w-8 mb-2 opacity-50" />
+                          <p className="text-sm">{t('mcp.empty')}</p>
+                        </div>
+                      )}
+                      {availableGenieSpaces.map(space => (
+                        <button
+                          key={space.space_id}
+                          type="button"
+                          className={cn(
+                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left transition-colors border',
+                            selectedGenieSpaceId === space.space_id
+                              ? 'bg-primary/10 border-primary/30'
+                              : 'hover:bg-accent/50 border-transparent'
+                          )}
+                          onClick={() => handleGenieSelect(space.space_id)}
+                        >
+                          <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{space.title}</p>
+                            {space.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                                {space.description}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                      {/* Load more */}
+                      {nextPageToken && (
+                        <div className="flex justify-center py-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isLoadingMore}
+                            onClick={() => fetchGenieSpaces(nextPageToken)}
+                          >
+                            {isLoadingMore ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <Plus className="h-4 w-4 mr-1" />
+                            )}
+                            {t('common.loadMore')}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Display name */}
+            <div className="space-y-2 shrink-0">
+              <Label htmlFor="managed-display-name">{t('mcp.displayName')}</Label>
+              <Input
+                id="managed-display-name"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder={t('mcp.displayNamePlaceholder')}
+              />
+            </div>
+
+            {/* URL preview */}
+            {previewUrl && (
+              <div className="space-y-1 shrink-0">
+                <Label className="text-xs text-muted-foreground">{t('mcp.url')}</Label>
+                <p className="text-xs font-mono text-muted-foreground/70 bg-muted p-2 rounded truncate">
+                  {previewUrl}
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                {t('mcp.addManagedServer')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main page ───────────────────────────────────────────────
+
 export function McpContent() {
   const { t } = useTranslation();
   const { databricksHost, isAdmin } = useUser();
-  const [spaces, setSpaces] = useState<GenieSpace[]>([]);
-  const [customServers, setCustomServers] = useState<McpServerRecord[]>([]);
+  const [allServers, setAllServers] = useState<McpServerRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [customError, setCustomError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Custom server dialog state
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | null>(null);
   const [editingServerId, setEditingServerId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState<ServerFormState>(EMPTY_FORM);
 
+  // Managed MCP dialog state
+  const [showManagedDialog, setShowManagedDialog] = useState(false);
+
   const [enabledServers, setEnabledServers] = useLocalStorageState<Record<string, boolean>>(
     STORAGE_KEY_ENABLED_MCP_SERVERS,
     { defaultValue: {} }
   );
 
-  const fetchSpaces = useCallback(async () => {
-    try {
-      const response = await genieService.listGenieSpaces();
-      setSpaces(response.spaces ?? []);
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : '';
-      setError(detail ? `${t('mcp.fetchError')}: ${detail}` : t('mcp.fetchError'));
-    }
-  }, [t]);
-
-  const fetchCustomServers = useCallback(async () => {
+  const fetchServers = useCallback(async () => {
     try {
       const response = await mcpServerService.list();
-      setCustomServers(response.mcp_servers ?? []);
+      setAllServers(response.mcp_servers ?? []);
     } catch (err) {
       const detail = err instanceof Error ? err.message : '';
-      setCustomError(
-        detail ? `${t('mcp.customFetchError')}: ${detail}` : t('mcp.customFetchError')
-      );
+      setFetchError(detail ? `${t('mcp.customFetchError')}: ${detail}` : t('mcp.customFetchError'));
     }
   }, [t]);
 
   useEffect(() => {
     setIsLoading(true);
-    Promise.all([fetchSpaces(), fetchCustomServers()]).finally(() => setIsLoading(false));
-  }, [fetchSpaces, fetchCustomServers]);
+    fetchServers().finally(() => setIsLoading(false));
+  }, [fetchServers]);
+
+  const { managedServers, customServers } = useMemo(() => {
+    const managed: McpServerRecord[] = [];
+    const custom: McpServerRecord[] = [];
+    for (const s of allServers) {
+      (s.managed_type != null ? managed : custom).push(s);
+    }
+    return { managedServers: managed, customServers: custom };
+  }, [allServers]);
 
   const handleToggle = (key: string, checked: boolean) => {
     setEnabledServers(prev => ({ ...prev, [key]: checked }));
   };
 
+  // ─── Custom server dialog handlers ───
   const closeDialog = () => {
     setDialogMode(null);
     setEditingServerId(null);
@@ -450,7 +805,7 @@ export function McpContent() {
         toast.success(t('mcp.editSuccess'));
       }
       closeDialog();
-      await fetchCustomServers();
+      await fetchServers();
     } catch (err) {
       const detail = err instanceof Error ? err.message : '';
       setFormError(detail || t(dialogMode === 'add' ? 'mcp.addError' : 'mcp.editError'));
@@ -463,7 +818,7 @@ export function McpContent() {
     try {
       await mcpServerService.remove(server.id);
       toast.success(t('mcp.deleteSuccess'));
-      await fetchCustomServers();
+      await fetchServers();
     } catch {
       toast.error(t('mcp.deleteError'));
     }
@@ -479,63 +834,100 @@ export function McpContent() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
         <div>
           <h1 className="text-xl font-bold">{t('mcp.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('mcp.description')}</p>
         </div>
         {isAdmin && (
-          <Button size="sm" onClick={openAddDialog}>
-            <Plus className="h-4 w-4 mr-1" />
-            {t('mcp.addServer')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowManagedDialog(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              {t('mcp.addManagedServer')}
+            </Button>
+            <Button size="sm" onClick={openAddDialog}>
+              <Plus className="h-4 w-4 mr-1" />
+              {t('mcp.addServer')}
+            </Button>
+          </div>
         )}
       </div>
 
+      {/* Content */}
       <div className="flex-1 overflow-auto p-4">
+        {fetchError && (
+          <div className="flex items-center gap-2 p-3 mb-4 bg-destructive/10 text-destructive rounded-md text-sm">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {fetchError}
+          </div>
+        )}
+
+        {/* Managed MCP section */}
         <section className="mb-6">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-2">Managed MCP</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-2">
+            {t('mcp.managedSection')}
+          </h2>
+          {managedServers.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <DatabaseSearch className="h-10 w-10 mb-3 opacity-50" />
+              <p className="text-sm">{t('mcp.managedEmpty')}</p>
+            </div>
+          )}
           <div className="space-y-2">
-            {(() => {
-              const dbsqlUrl = buildDbsqlMcpUrl(databricksHost);
-              const isDbsqlEnabled = enabledServers[MCP_DBSQL_ID] ?? true;
+            {managedServers.map(server => {
+              const defaultEnabled = true;
+              const isEnabled = enabledServers[server.id] ?? defaultEnabled;
+
               return (
-                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors">
+                <div
+                  key={server.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                >
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-2">
-                      <DatabaseSearch className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <Label htmlFor={`mcp-${MCP_DBSQL_ID}`} className="font-medium cursor-pointer">
-                        Databricks SQL
+                      <ManagedIcon managedType={server.managed_type!} />
+                      <Label
+                        htmlFor={`managed-${server.id}`}
+                        className="font-medium cursor-pointer"
+                      >
+                        {server.display_name}
                       </Label>
+                      <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {server.managed_type}
+                      </span>
                     </div>
-                    {dbsqlUrl && (
-                      <p className="text-xs text-muted-foreground/70 mt-1 ml-6 font-mono truncate">
-                        {dbsqlUrl}
-                      </p>
-                    )}
+                    <ServerSubtitle server={server} />
                   </div>
-                  <Switch
-                    id={`mcp-${MCP_DBSQL_ID}`}
-                    checked={isDbsqlEnabled}
-                    onCheckedChange={checked => handleToggle(MCP_DBSQL_ID, checked)}
-                  />
+                  <div className="flex items-center gap-2">
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDelete(server)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Switch
+                      id={`managed-${server.id}`}
+                      checked={isEnabled}
+                      onCheckedChange={checked => handleToggle(server.id, checked)}
+                    />
+                  </div>
                 </div>
               );
-            })()}
+            })}
           </div>
         </section>
 
+        {/* Custom MCP section */}
         <section className="mb-6">
           <h2 className="text-sm font-semibold text-muted-foreground mb-2">
             {t('mcp.customSection')}
           </h2>
-          {customError && (
-            <div className="flex items-center gap-2 p-3 mb-2 bg-destructive/10 text-destructive rounded-md text-sm">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              {customError}
-            </div>
-          )}
-          {!customError && customServers.length === 0 && (
+          {customServers.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Server className="h-10 w-10 mb-3 opacity-50" />
               <p className="text-sm">{t('mcp.customEmpty')}</p>
@@ -594,64 +986,18 @@ export function McpContent() {
             })}
           </div>
         </section>
-
-        <section>
-          <h2 className="text-sm font-semibold text-muted-foreground mb-2">Genie</h2>
-          {error && (
-            <div className="flex items-center gap-2 p-3 mb-2 bg-destructive/10 text-destructive rounded-md text-sm">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              {error}
-            </div>
-          )}
-          {!error && spaces.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Sparkle className="h-10 w-10 mb-3 opacity-50" />
-              <p className="text-sm">{t('mcp.empty')}</p>
-            </div>
-          )}
-          <div className="space-y-2">
-            {spaces.map(space => {
-              const mcpUrl = buildGenieMcpUrl(databricksHost, space.space_id);
-              const isEnabled = enabledServers[space.space_id] ?? false;
-
-              return (
-                <div
-                  key={space.space_id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0 mr-4">
-                    <div className="flex items-center gap-2">
-                      <Sparkle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <Label
-                        htmlFor={`genie-${space.space_id}`}
-                        className="font-medium cursor-pointer"
-                      >
-                        {space.title}
-                      </Label>
-                    </div>
-                    {space.description && (
-                      <p className="text-sm text-muted-foreground mt-1 ml-6 line-clamp-2">
-                        {space.description}
-                      </p>
-                    )}
-                    {mcpUrl && (
-                      <p className="text-xs text-muted-foreground/70 mt-1 ml-6 font-mono truncate">
-                        {mcpUrl}
-                      </p>
-                    )}
-                  </div>
-                  <Switch
-                    id={`genie-${space.space_id}`}
-                    checked={isEnabled}
-                    onCheckedChange={checked => handleToggle(space.space_id, checked)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </section>
       </div>
 
+      {/* Managed MCP dialog */}
+      <ManagedMcpDialog
+        open={showManagedDialog}
+        onOpenChange={setShowManagedDialog}
+        onCreated={fetchServers}
+        databricksHost={databricksHost}
+        existingServers={allServers}
+      />
+
+      {/* Custom server form dialog */}
       {dialogMode && (
         <ServerFormDialog
           mode={dialogMode}

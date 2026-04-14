@@ -140,6 +140,7 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "command" TEXT,
       "args" TEXT,
       "env" TEXT,
+      "managed_type" TEXT,
       "created_by" TEXT NOT NULL REFERENCES "users"("id"),
       "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
       "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
