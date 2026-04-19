@@ -417,8 +417,16 @@ const userSkillsRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
+    const ctx = createUserContext(fastify, request);
+    if (!ctx.oboAccessToken) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'OBO access token is not available',
+        statusCode: 401,
+      });
+    }
+
     try {
-      const ctx = createUserContext(fastify, request);
       const result = await backupSkillsToWorkspace(ctx);
       return reply.send(result);
     } catch (error) {
@@ -449,8 +457,16 @@ const userSkillsRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
+    const ctx = createUserContext(fastify, request);
+    if (!ctx.oboAccessToken) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'OBO access token is not available',
+        statusCode: 401,
+      });
+    }
+
     try {
-      const ctx = createUserContext(fastify, request);
       const result = await restoreSkillsFromWorkspace(ctx);
       return reply.send(result);
     } catch (error) {

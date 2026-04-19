@@ -15,7 +15,6 @@ import type {
   SkillRestoreResponse,
 } from '@repo/types';
 import type { UserContext } from '../lib/user-context.js';
-import type { AuthProvider } from '../lib/databricks-auth.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
 
@@ -788,7 +787,7 @@ function getWorkspaceSkillsPath(userName: string): string {
 function spawnDatabricksCli(
   args: string[],
   options: {
-    authProvider: AuthProvider;
+    env: Record<string, string>;
     timeout?: number;
     cwd?: string;
   }
@@ -800,7 +799,7 @@ function spawnDatabricksCli(
       env: {
         PATH: process.env.PATH,
         HOME: process.env.HOME,
-        ...options.authProvider.getEnvVars(),
+        ...options.env,
       },
     });
 
@@ -845,8 +844,8 @@ export async function backupSkillsToWorkspace(ctx: UserContext): Promise<SkillBa
   const localSkillsDir = getSkillsDir(ctx);
   const workspacePath = getWorkspaceSkillsPath(ctx.userName);
 
-  // 認証情報を取得
-  const authProvider = ctx.getAuthProvider();
+  // OBO トークンで CLI を実行するための環境変数を取得
+  const cliEnv = ctx.getOboCliEnv();
 
   // ローカルスキルディレクトリが存在するか確認
   try {
@@ -865,7 +864,7 @@ export async function backupSkillsToWorkspace(ctx: UserContext): Promise<SkillBa
   // 1. Workspace 上の既存ディレクトリを削除（エラーは無視）
   try {
     await spawnDatabricksCli(['workspace', 'delete', workspacePath, '--recursive'], {
-      authProvider,
+      env: cliEnv,
       timeout: 30000,
     });
   } catch {
@@ -876,7 +875,7 @@ export async function backupSkillsToWorkspace(ctx: UserContext): Promise<SkillBa
   await spawnDatabricksCli(
     ['workspace', 'import-dir', localSkillsDir, workspacePath, '--overwrite'],
     {
-      authProvider,
+      env: cliEnv,
       timeout: 120000,
     }
   );
@@ -896,8 +895,8 @@ export async function restoreSkillsFromWorkspace(ctx: UserContext): Promise<Skil
   const localSkillsDir = getSkillsDir(ctx);
   const workspacePath = getWorkspaceSkillsPath(ctx.userName);
 
-  // 認証情報を取得
-  const authProvider = ctx.getAuthProvider();
+  // OBO トークンで CLI を実行するための環境変数を取得
+  const cliEnv = ctx.getOboCliEnv();
 
   // 1. ローカルの既存ディレクトリを削除
   // セキュリティ: ユーザーホーム配下であることを検証
@@ -911,7 +910,7 @@ export async function restoreSkillsFromWorkspace(ctx: UserContext): Promise<Skil
   await spawnDatabricksCli(
     ['workspace', 'export-dir', workspacePath, localSkillsDir, '--overwrite'],
     {
-      authProvider,
+      env: cliEnv,
       timeout: 120000,
     }
   );
