@@ -290,6 +290,13 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
             args: serverConfig.args,
             env: serverConfig.env,
           };
+        } else if (serverConfig.headers?.Authorization) {
+          // 既に Authorization ヘッダーがある場合はそのまま使用（例: GitHub PAT）
+          mcpServers[serverId] = {
+            type: serverConfig.type,
+            url: serverConfig.url!,
+            headers: { ...serverConfig.headers },
+          };
         } else if (oboToken) {
           // http / sse: OBO トークンを注入
           mcpServers[serverId] = {

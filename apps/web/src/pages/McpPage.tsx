@@ -16,6 +16,7 @@ import {
   Construction,
   GitBranch,
   SquareKanban,
+  ExternalLink,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -379,8 +380,8 @@ const MCP_TILES: McpTileConfig[] = [
   { type: 'custom', labelKey: 'mcp.customMcpLabel', descriptionKey: 'mcp.customMcpDescription', icon: Server },
 ];
 
-const MCP_TEMPLATES: Record<string, { id: string; displayName: string; defaultUrl: string; defaultType: McpServerType; urlPlaceholderKey: string }> = {
-  github: { id: 'github', displayName: 'GitHub', defaultUrl: 'https://api.githubcopilot.com/mcp/', defaultType: 'http', urlPlaceholderKey: 'mcp.githubUrlPlaceholder' },
+const MCP_TEMPLATES: Record<string, { id: string; displayName: string; defaultUrl: string; defaultType: McpServerType; urlPlaceholderKey: string; fixed?: boolean }> = {
+  github: { id: 'github', displayName: 'GitHub', defaultUrl: 'https://api.githubcopilot.com/mcp/', defaultType: 'http', urlPlaceholderKey: 'mcp.githubUrlPlaceholder', fixed: true },
   atlassian: { id: 'atlassian', displayName: 'Atlassian', defaultUrl: 'https://mcp.atlassian.com/v1/mcp', defaultType: 'sse' as McpServerType, urlPlaceholderKey: 'mcp.atlassianUrlPlaceholder' },
 };
 
@@ -421,12 +422,27 @@ function AddMcpDialog({
   const [templateType, setTemplateType] = useState<McpServerType>('http');
   const [templateUrl, setTemplateUrl] = useState('');
   const [templateHeaders, setTemplateHeaders] = useState<KeyValuePair[]>([]);
+  const [templatePat, setTemplatePat] = useState('');
 
   // Shared state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const dbsqlAlreadyRegistered = existingServers.some(s => s.managed_type === 'databricks_sql');
+  const selectedTemplate = useMemo(
+    () => (selectedTemplateKey ? MCP_TEMPLATES[selectedTemplateKey] : null),
+    [selectedTemplateKey]
+  );
+  const isFixedTemplate = selectedTemplate?.fixed ?? false;
+
+  /** シングルトンタイルの登録済みチェック: tile.type → 登録済みかどうか */
+  const registeredSingletonTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of existingServers) {
+      if (s.managed_type === 'databricks_sql') set.add('databricks_sql');
+      if (s.id === 'github') set.add('github');
+    }
+    return set;
+  }, [existingServers]);
   const registeredGenieIds = useMemo(
     () =>
       new Set(existingServers.filter(s => s.managed_type === 'databricks_genie').map(s => s.id)),
@@ -447,6 +463,7 @@ function AddMcpDialog({
     setTemplateType('http');
     setTemplateUrl('');
     setTemplateHeaders([]);
+    setTemplatePat('');
     setFormError(null);
   };
 
@@ -505,6 +522,15 @@ function AddMcpDialog({
     });
   }, [genieSpaces, registeredGenieIds, genieSearchQuery]);
 
+  const handleCreateError = (err: unknown) => {
+    const detail = err instanceof Error ? err.message : '';
+    if (detail.includes('409') || detail.toLowerCase().includes('already')) {
+      setFormError(t('mcp.duplicateError'));
+    } else {
+      setFormError(detail || t('mcp.addError'));
+    }
+  };
+
   const handleManagedSubmit = async () => {
     setFormError(null);
 
@@ -530,12 +556,7 @@ function AddMcpDialog({
       handleOpenChange(false);
       onCreated();
     } catch (err) {
-      const detail = err instanceof Error ? err.message : '';
-      if (detail.includes('409') || detail.toLowerCase().includes('already')) {
-        setFormError(t('mcp.duplicateError'));
-      } else {
-        setFormError(detail || t('mcp.addError'));
-      }
+      handleCreateError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -546,42 +567,48 @@ function AddMcpDialog({
   const handleTemplateSubmit = async () => {
     setFormError(null);
 
-    if (!templateId.trim()) {
-      setFormError(t('mcp.idRequired'));
+    if (!isFixedTemplate) {
+      if (!templateId.trim()) {
+        setFormError(t('mcp.idRequired'));
+        return;
+      }
+      if (!/^[a-z0-9]+(_[a-z0-9]+)*$/.test(templateId.trim())) {
+        setFormError(t('mcp.idInvalid'));
+        return;
+      }
+      if (!templateDisplayName.trim()) {
+        setFormError(t('mcp.displayNameRequired'));
+        return;
+      }
+      if (!templateUrl.trim()) {
+        setFormError(t('mcp.urlRequired'));
+        return;
+      }
+    }
+
+    if (isFixedTemplate && !templatePat.trim()) {
+      setFormError(t('mcp.patRequired'));
       return;
     }
-    if (!/^[a-z0-9]+(_[a-z0-9]+)*$/.test(templateId.trim())) {
-      setFormError(t('mcp.idInvalid'));
-      return;
-    }
-    if (!templateDisplayName.trim()) {
-      setFormError(t('mcp.displayNameRequired'));
-      return;
-    }
-    if (!templateUrl.trim()) {
-      setFormError(t('mcp.urlRequired'));
-      return;
-    }
+
+    const headers = isFixedTemplate
+      ? { Authorization: `Bearer ${templatePat.trim()}` }
+      : pairsToRecord(templateHeaders);
 
     setIsSubmitting(true);
     try {
       await mcpServerService.create({
-        id: templateId.trim(),
-        display_name: templateDisplayName.trim(),
-        type: templateType,
-        url: templateUrl.trim(),
-        headers: pairsToRecord(templateHeaders),
+        id: isFixedTemplate ? selectedTemplate!.id : templateId.trim(),
+        display_name: isFixedTemplate ? selectedTemplate!.displayName : templateDisplayName.trim(),
+        type: isFixedTemplate ? selectedTemplate!.defaultType : templateType,
+        url: isFixedTemplate ? selectedTemplate!.defaultUrl : templateUrl.trim(),
+        headers,
       });
       toast.success(t('mcp.addSuccess'));
       handleOpenChange(false);
       onCreated();
     } catch (err) {
-      const detail = err instanceof Error ? err.message : '';
-      if (detail.includes('409') || detail.toLowerCase().includes('already')) {
-        setFormError(t('mcp.duplicateError'));
-      } else {
-        setFormError(detail || t('mcp.addError'));
-      }
+      handleCreateError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -646,8 +673,8 @@ function AddMcpDialog({
             <div className="grid grid-cols-3 gap-3">
               {MCP_TILES.map(tile => {
                 const Icon = tile.icon;
-                const isDisabled =
-                  tile.disabled || (tile.type === 'databricks_sql' && dbsqlAlreadyRegistered);
+                const isSingletonRegistered = registeredSingletonTypes.has(tile.type);
+                const isDisabled = tile.disabled || isSingletonRegistered;
 
                 return (
                   <button
@@ -672,8 +699,8 @@ function AddMcpDialog({
                         {t(tile.disabledBadgeKey)}
                       </span>
                     )}
-                    {tile.type === 'databricks_sql' && dbsqlAlreadyRegistered && (
-                      <p className="text-xs text-amber-500">{t('mcp.dbsqlAlreadyRegistered')}</p>
+                    {isSingletonRegistered && (
+                      <p className="text-xs text-amber-500">{t('mcp.alreadyRegistered')}</p>
                     )}
                   </button>
                 );
@@ -804,7 +831,7 @@ function AddMcpDialog({
         )}
 
         {/* ─── Step: Template Configuration (GitHub / Jira) ─── */}
-        {step === 'configure-template' && selectedTemplateKey && (
+        {step === 'configure-template' && selectedTemplate && (
           <div className="flex flex-col gap-4 min-h-0 flex-1">
             <Button
               variant="ghost"
@@ -818,48 +845,85 @@ function AddMcpDialog({
               &larr; {t('mcp.selectServerType')}
             </Button>
 
-            <div className="space-y-2">
-              <Label htmlFor="template-id">{t('mcp.id')}</Label>
-              <Input
-                id="template-id"
-                value={templateId}
-                onChange={e => setTemplateId(e.target.value)}
-                placeholder={t('mcp.idPlaceholder')}
-                className="font-mono"
-              />
-            </div>
+            {isFixedTemplate ? (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{t('mcp.url')}</Label>
+                  <p className="text-xs font-mono text-muted-foreground/70 bg-muted p-2 rounded truncate">
+                    {selectedTemplate.defaultUrl}
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="template-display-name">{t('mcp.displayName')}</Label>
-              <Input
-                id="template-display-name"
-                value={templateDisplayName}
-                onChange={e => setTemplateDisplayName(e.target.value)}
-                placeholder={t('mcp.displayNamePlaceholder')}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-pat">{t('mcp.patLabel')}</Label>
+                  <Input
+                    id="template-pat"
+                    type="password"
+                    value={templatePat}
+                    onChange={e => setTemplatePat(e.target.value)}
+                    placeholder={t('mcp.patPlaceholder')}
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('mcp.patDescription')}{' '}
+                    <a
+                      href="https://github.com/settings/personal-access-tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-0.5 text-primary hover:underline"
+                    >
+                      {t('mcp.patCreateLink')}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="template-id">{t('mcp.id')}</Label>
+                  <Input
+                    id="template-id"
+                    value={templateId}
+                    onChange={e => setTemplateId(e.target.value)}
+                    placeholder={t('mcp.idPlaceholder')}
+                    className="font-mono"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="template-url">{t('mcp.url')}</Label>
-              <Input
-                id="template-url"
-                value={templateUrl}
-                onChange={e => setTemplateUrl(e.target.value)}
-                placeholder={t(MCP_TEMPLATES[selectedTemplateKey].urlPlaceholderKey)}
-                className="font-mono"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-display-name">{t('mcp.displayName')}</Label>
+                  <Input
+                    id="template-display-name"
+                    value={templateDisplayName}
+                    onChange={e => setTemplateDisplayName(e.target.value)}
+                    placeholder={t('mcp.displayNamePlaceholder')}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label>{t('mcp.headers')}</Label>
-              <KeyValueEditor
-                pairs={templateHeaders}
-                onChange={setTemplateHeaders}
-                addLabel={t('common.add')}
-                keyPlaceholder={t('mcp.headerKeyPlaceholder')}
-                valuePlaceholder={t('mcp.headerValuePlaceholder')}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-url">{t('mcp.url')}</Label>
+                  <Input
+                    id="template-url"
+                    value={templateUrl}
+                    onChange={e => setTemplateUrl(e.target.value)}
+                    placeholder={t(selectedTemplate.urlPlaceholderKey)}
+                    className="font-mono"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t('mcp.headers')}</Label>
+                  <KeyValueEditor
+                    pairs={templateHeaders}
+                    onChange={setTemplateHeaders}
+                    addLabel={t('common.add')}
+                    keyPlaceholder={t('mcp.headerKeyPlaceholder')}
+                    valuePlaceholder={t('mcp.headerValuePlaceholder')}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="flex justify-end gap-2 pt-2 shrink-0">
               <Button

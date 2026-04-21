@@ -344,7 +344,7 @@
     "vectorSearchComingSoon": "近日公開",
     "selectGenieSpace": "Genie Space を選択",
     "genieSearchPlaceholder": "Genie スペースを検索...",
-    "dbsqlAlreadyRegistered": "登録済み",
+    "alreadyRegistered": "登録済み",
     "managedEmpty": "Databricks マネージド MCP サーバーはありません",
     "genieSpaceFetchError": "Genie スペースの取得に失敗しました",
     "duplicateError": "このサーバーは既に登録されています",
@@ -358,7 +358,12 @@
     "customMcpLabel": "カスタム MCP",
     "customMcpDescription": "カスタム設定で任意の MCP サーバーを登録",
     "githubUrlPlaceholder": "https://api.githubcopilot.com/mcp/",
-    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp"
+    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp",
+    "patLabel": "Personal Access Token (PAT)",
+    "patPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+    "patDescription": "Authorization ヘッダーに使用されます。トークンは安全に保存されます。",
+    "patRequired": "Personal Access Token は必須です",
+    "patCreateLink": "トークンを作成"
   },
   "admin": {
     "title": "管理",

@@ -344,7 +344,7 @@
     "vectorSearchComingSoon": "Coming soon",
     "selectGenieSpace": "Select a Genie Space",
     "genieSearchPlaceholder": "Search Genie spaces...",
-    "dbsqlAlreadyRegistered": "Already registered",
+    "alreadyRegistered": "Already registered",
     "managedEmpty": "No Databricks managed MCP servers registered",
     "genieSpaceFetchError": "Failed to fetch Genie spaces",
     "duplicateError": "This server is already registered",
@@ -358,7 +358,12 @@
     "customMcpLabel": "Custom MCP",
     "customMcpDescription": "Register any MCP server with custom configuration",
     "githubUrlPlaceholder": "https://api.githubcopilot.com/mcp/",
-    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp"
+    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp",
+    "patLabel": "Personal Access Token (PAT)",
+    "patPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+    "patDescription": "Used for Authorization header. The token is stored securely.",
+    "patRequired": "Personal Access Token is required",
+    "patCreateLink": "Create a token"
   },
   "admin": {
     "title": "Admin",
