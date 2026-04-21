@@ -4,7 +4,8 @@ import type {
   McpServerCreateRequest,
   McpServerUpdateRequest,
   McpServerRecord,
-  McpServerListResponse,
+  McpServerPublicRecord,
+  McpServerPublicListResponse,
   McpServerType,
   ManagedMcpType,
   ApiError,
@@ -37,9 +38,15 @@ function toRecord(row: typeof mcpServers.$inferSelect): McpServerRecord {
   };
 }
 
+/** フロントエンド向け: headers/env を除外したレコード */
+function toPublicRecord(row: typeof mcpServers.$inferSelect): McpServerPublicRecord {
+  const { headers: _, env: __, ...rest } = toRecord(row);
+  return rest;
+}
+
 const mcpServersRoute: FastifyPluginAsync = async fastify => {
-  // ユーザーの MCP サーバー一覧
-  fastify.get<{ Reply: McpServerListResponse | ApiError }>(
+  // ユーザーの MCP サーバー一覧（headers/env を除外）
+  fastify.get<{ Reply: McpServerPublicListResponse | ApiError }>(
     '/mcp-servers',
     async (request, reply) => {
       const { user } = request.ctx!;
@@ -58,10 +65,43 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         .orderBy(desc(mcpServers.createdAt));
 
       return reply.send({
-        mcp_servers: rows.map(row => toRecord(row)),
+        mcp_servers: rows.map(row => toPublicRecord(row)),
       });
     }
   );
+
+  // 個別 MCP サーバー取得（編集ダイアログ用、headers/env を含む完全なレコード）
+  fastify.get<{
+    Params: { id: string };
+    Reply: McpServerRecord | ApiError;
+  }>('/mcp-servers/:id', async (request, reply) => {
+    const { user } = request.ctx!;
+    if (!user.id) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User ID not found in request context',
+        statusCode: 401,
+      });
+    }
+
+    const { id } = request.params;
+
+    const [row] = await fastify.db
+      .select()
+      .from(mcpServers)
+      .where(and(eq(mcpServers.userId, user.id), eq(mcpServers.id, id)))
+      .limit(1);
+
+    if (!row) {
+      return reply.status(404).send({
+        error: 'NotFound',
+        message: 'MCP server not found',
+        statusCode: 404,
+      });
+    }
+
+    return reply.send(toRecord(row));
+  });
 
   // サーバー登録
   fastify.post<{

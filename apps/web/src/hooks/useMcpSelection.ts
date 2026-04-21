@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { mcpServerService } from '@/services';
 import { CLAUDE_CODE_PRESET_TOOLS } from '@/constants';
-import type { McpConfig, McpServerEntry, McpServerRecord } from '@repo/types';
+import type { McpConfig, McpServerEntry, McpServerPublicRecord } from '@repo/types';
 
 export interface McpSelectionItem {
   space_id: string;
@@ -24,7 +24,7 @@ interface UseMcpSelectionReturn {
 }
 
 export function useMcpSelection(): UseMcpSelectionReturn {
-  const [servers, setServers] = useState<McpServerRecord[]>([]);
+  const [servers, setServers] = useState<McpServerPublicRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // セッションレベルのトグル状態
@@ -36,7 +36,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
       try {
         const res = await mcpServerService
           .list()
-          .catch(() => ({ mcp_servers: [] as McpServerRecord[] }));
+          .catch(() => ({ mcp_servers: [] as McpServerPublicRecord[] }));
         if (!cancelled) {
           setServers(res.mcp_servers ?? []);
         }
@@ -86,7 +86,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     }));
   }, []);
 
-  /** サーバー ID から McpServerEntry を構築 */
+  /** サーバー ID から McpServerEntry を構築（headers/env はサーバサイドで解決） */
   const buildServerEntry = useCallback(
     (serverId: string): McpServerEntry | undefined => {
       const server = serverMap.get(serverId);
@@ -97,14 +97,12 @@ export function useMcpSelection(): UseMcpSelectionReturn {
           type: 'stdio',
           command: server.command,
           args: server.args,
-          env: server.env,
         };
       }
 
       return {
         type: server.type,
         url: server.url,
-        headers: server.headers,
       };
     },
     [serverMap]

@@ -23,6 +23,7 @@ import type {
   DatabricksWorkspaceSource,
   DatabricksAppsOutcome,
   ResolvedDatabricksAppsOutcome,
+  McpConfig,
 } from '@repo/types';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessions } from '../db/schema.js';
@@ -33,6 +34,7 @@ import { fromUUID } from 'typeid-js';
 import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
 import { getAuthProvider } from '../lib/databricks-auth.js';
 import { wsManager } from './websocket-manager.service.js';
+import { resolveMcpServersFromDb } from './mcp-server.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
 import type { UserContext } from '../lib/user-context.js';
@@ -41,6 +43,17 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
+
+/** mcp_config から headers/env を除外してフロントエンド・DB 保存用にサニタイズ */
+function sanitizeMcpConfig(config?: McpConfig): McpConfig | undefined {
+  if (!config) return undefined;
+  const sanitized: McpConfig = { mcpServers: {} };
+  for (const [id, entry] of Object.entries(config.mcpServers)) {
+    const { headers: _, env: __, ...rest } = entry;
+    sanitized.mcpServers[id] = rest;
+  }
+  return Object.keys(sanitized.mcpServers).length > 0 ? sanitized : undefined;
+}
 
 /** セッションID → AbortController のマッピング（abort 用） */
 const sessionAbortControllers = new Map<string, AbortController>();
@@ -277,14 +290,16 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     const abortController = new AbortController();
     const authProvider = ctx.getAuthProvider();
 
-    // MCP サーバーを構築（フロントエンドの mcp_config から、OBO トークンを注入）
-    const mcpServers: Record<string, McpServerConfig> = {};
+    // MCP サーバーを構築（DB から認証情報を解決し、OBO トークンを注入）
+    const sdkMcpServers: Record<string, McpServerConfig> = {};
     const oboToken = ctx.oboAccessToken;
     if (sessionContext.mcp_config?.mcpServers) {
-      for (const [serverId, serverConfig] of Object.entries(sessionContext.mcp_config.mcpServers)) {
+      const serverIds = Object.keys(sessionContext.mcp_config.mcpServers);
+      const dbServers = await resolveMcpServersFromDb(fastify, userId, serverIds);
+      for (const [serverId, serverConfig] of Object.entries(dbServers)) {
         if (serverConfig.type === 'stdio') {
           // stdio: ローカルコマンド実行（OBO トークン不要）
-          mcpServers[serverId] = {
+          sdkMcpServers[serverId] = {
             type: 'stdio',
             command: serverConfig.command!,
             args: serverConfig.args,
@@ -292,14 +307,14 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           };
         } else if (serverConfig.headers?.Authorization) {
           // 既に Authorization ヘッダーがある場合はそのまま使用（例: GitHub PAT）
-          mcpServers[serverId] = {
+          sdkMcpServers[serverId] = {
             type: serverConfig.type,
             url: serverConfig.url!,
             headers: { ...serverConfig.headers },
           };
         } else if (oboToken) {
           // http / sse: OBO トークンを注入
-          mcpServers[serverId] = {
+          sdkMcpServers[serverId] = {
             type: serverConfig.type,
             url: serverConfig.url!,
             headers: {
@@ -328,7 +343,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
         settingSources: ['user', 'project', 'local'],
         permissionMode: 'bypassPermissions',
         systemPrompt: systemPromptConfig,
-        mcpServers,
+        mcpServers: sdkMcpServers,
         tools: {
           type: 'preset',
           preset: 'claude_code',
@@ -490,7 +505,7 @@ export async function createSession(
     model: session_context.model,
     sources: session_context.sources,
     outcomes: resolvedOutcomes,
-    mcp_config: session_context.mcp_config,
+    mcp_config: sanitizeMcpConfig(session_context.mcp_config),
   };
 
   // 7. タイムスタンプを設定（レスポンス用）
@@ -654,7 +669,11 @@ function toSessionResponse(row: {
     session_status: row.status as SessionStatus,
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
-    session_context: (row.context as SessionContextResponse) ?? null,
+    session_context: (() => {
+      if (!row.context) return null;
+      const ctx = row.context as SessionContextResponse;
+      return { ...ctx, mcp_config: sanitizeMcpConfig(ctx.mcp_config) };
+    })(),
   };
 }
 

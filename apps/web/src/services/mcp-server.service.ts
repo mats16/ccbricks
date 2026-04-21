@@ -2,13 +2,17 @@ import type {
   McpServerCreateRequest,
   McpServerUpdateRequest,
   McpServerRecord,
-  McpServerListResponse,
+  McpServerPublicListResponse,
 } from '@repo/types';
 import { apiClient } from './api-client';
 
 export const mcpServerService = {
-  async list(): Promise<McpServerListResponse> {
-    return apiClient<McpServerListResponse>('/api/mcp-servers');
+  async list(): Promise<McpServerPublicListResponse> {
+    return apiClient<McpServerPublicListResponse>('/api/mcp-servers');
+  },
+
+  async get(id: string): Promise<McpServerRecord> {
+    return apiClient<McpServerRecord>(`/api/mcp-servers/${encodeURIComponent(id)}`);
   },
 
   async create(req: McpServerCreateRequest): Promise<McpServerRecord> {

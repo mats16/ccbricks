@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils';
 import { genieService, mcpServerService } from '@/services';
 import { useUser } from '@/hooks/useUser';
 import { buildDbsqlMcpUrl, buildGenieMcpUrl } from '@/constants';
-import type { GenieSpace, McpServerRecord, McpServerType, ManagedMcpType } from '@repo/types';
+import type { GenieSpace, McpServerRecord, McpServerPublicRecord, McpServerType, ManagedMcpType } from '@repo/types';
 
 // ─── Shared helpers ──────────────────────────────────────────
 
@@ -121,7 +121,7 @@ function ServerTypeIcon({ type }: { type: McpServerType }) {
   return <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />;
 }
 
-function ServerSubtitle({ server }: { server: McpServerRecord }) {
+function ServerSubtitle({ server }: { server: McpServerPublicRecord }) {
   if (server.type === 'stdio') {
     const parts = [server.command, ...(server.args ?? [])].join(' ');
     return <p className="text-xs text-muted-foreground/70 mt-1 ml-6 font-mono truncate">{parts}</p>;
@@ -400,7 +400,7 @@ function AddMcpDialog({
   onCreated: () => void;
   onOpenCustomForm: () => void;
   databricksHost: string | null | undefined;
-  existingServers: McpServerRecord[];
+  existingServers: McpServerPublicRecord[];
 }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<AddMcpStep>('select');
@@ -950,7 +950,7 @@ function AddMcpDialog({
 export function McpContent() {
   const { t } = useTranslation();
   const { databricksHost } = useUser();
-  const [allServers, setAllServers] = useState<McpServerRecord[]>([]);
+  const [allServers, setAllServers] = useState<McpServerPublicRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -989,8 +989,8 @@ export function McpContent() {
   }, [fetchServers]);
 
   const { managedServers, customServers } = useMemo(() => {
-    const managed: McpServerRecord[] = [];
-    const custom: McpServerRecord[] = [];
+    const managed: McpServerPublicRecord[] = [];
+    const custom: McpServerPublicRecord[] = [];
     for (const s of allServers) {
       (s.managed_type != null ? managed : custom).push(s);
     }
@@ -1023,10 +1023,15 @@ export function McpContent() {
     setDialogMode('add');
   };
 
-  const openEditDialog = (server: McpServerRecord) => {
+  const openEditDialog = async (server: McpServerPublicRecord) => {
     setEditingServerId(server.id);
-    setForm(serverToFormState(server));
     setFormError(null);
+    try {
+      const fullRecord = await mcpServerService.get(server.id);
+      setForm(serverToFormState(fullRecord));
+    } catch {
+      setForm(serverToFormState({ ...server, headers: undefined, env: undefined } as McpServerRecord));
+    }
     setDialogMode('edit');
   };
 
@@ -1071,7 +1076,7 @@ export function McpContent() {
     }
   };
 
-  const handleDelete = async (server: McpServerRecord) => {
+  const handleDelete = async (server: McpServerPublicRecord) => {
     if (!confirm(t('mcp.deleteConfirm', { name: server.display_name }))) return;
     try {
       await mcpServerService.remove(server.id);

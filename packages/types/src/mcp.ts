@@ -104,3 +104,10 @@ export type McpServerUpdateRequest = Partial<
 export interface McpServerListResponse {
   mcp_servers: McpServerRecord[];
 }
+
+/** フロントエンド向け: headers と env を除外した McpServerRecord */
+export type McpServerPublicRecord = Omit<McpServerRecord, 'headers' | 'env'>;
+
+export interface McpServerPublicListResponse {
+  mcp_servers: McpServerPublicRecord[];
+}
