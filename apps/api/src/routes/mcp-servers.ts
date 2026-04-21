@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type {
   McpServerCreateRequest,
   McpServerUpdateRequest,
@@ -9,8 +9,7 @@ import type {
   ManagedMcpType,
   ApiError,
 } from '@repo/types';
-import { mcpServers, userSettingsMcp, type InsertMcpServer } from '../db/schema.js';
-import { adminGuard } from '../hooks/admin-guard.js';
+import { mcpServers, type InsertMcpServer } from '../db/schema.js';
 
 const VALID_TYPES: McpServerType[] = ['stdio', 'http', 'sse'];
 const VALID_MANAGED_TYPES: ManagedMcpType[] = [
@@ -32,16 +31,14 @@ function toRecord(row: typeof mcpServers.$inferSelect): McpServerRecord {
     command: row.command ?? undefined,
     args: (row.args as string[]) ?? undefined,
     env: (row.env as Record<string, string>) ?? undefined,
-    created_by: row.createdBy,
+    is_disabled: row.isDisabled,
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
   };
 }
 
 const mcpServersRoute: FastifyPluginAsync = async fastify => {
-  const guard = adminGuard(fastify);
-
-  // 全ユーザー: 登録済みサーバー一覧
+  // ユーザーの MCP サーバー一覧
   fastify.get<{ Reply: McpServerListResponse | ApiError }>(
     '/mcp-servers',
     async (request, reply) => {
@@ -54,27 +51,32 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         });
       }
 
-      const [rows, settings] = await Promise.all([
-        fastify.db.select().from(mcpServers).orderBy(desc(mcpServers.createdAt)),
-        fastify.db.select().from(userSettingsMcp).where(eq(userSettingsMcp.userId, user.id)),
-      ]);
-      const enabledMap = new Map(settings.map(s => [s.serverId, s.enabled]));
+      const rows = await fastify.db
+        .select()
+        .from(mcpServers)
+        .where(eq(mcpServers.userId, user.id))
+        .orderBy(desc(mcpServers.createdAt));
 
       return reply.send({
-        mcp_servers: rows.map(row => ({
-          ...toRecord(row),
-          enabled: enabledMap.get(row.id) ?? false,
-        })),
+        mcp_servers: rows.map(row => toRecord(row)),
       });
     }
   );
 
-  // 管理者のみ: サーバー登録
+  // サーバー登録
   fastify.post<{
     Body: McpServerCreateRequest;
     Reply: McpServerRecord | ApiError;
-  }>('/mcp-servers', { preHandler: guard }, async (request, reply) => {
+  }>('/mcp-servers', async (request, reply) => {
     const { user } = request.ctx!;
+    if (!user.id) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User ID not found in request context',
+        statusCode: 401,
+      });
+    }
+
     const { managed_type } = request.body;
 
     // --- Managed MCP サーバー登録 ---
@@ -126,12 +128,20 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         generatedUrl = `https://${databricksHost}/api/2.0/mcp/genie/${trimmedSpaceId}`;
       }
 
-      // PK ルックアップで重複チェック
-      const existing = await fastify.db
-        .select({ id: mcpServers.id })
-        .from(mcpServers)
-        .where(eq(mcpServers.id, generatedId));
-      if (existing.length > 0) {
+      const rows = await fastify.db
+        .insert(mcpServers)
+        .values({
+          userId: user.id,
+          id: generatedId,
+          displayName: display_name.trim(),
+          type: 'http',
+          url: generatedUrl,
+          managedType: managed_type,
+        })
+        .onConflictDoNothing({ target: [mcpServers.userId, mcpServers.id] })
+        .returning();
+
+      if (rows.length === 0) {
         return reply.status(409).send({
           error: 'Conflict',
           message: `MCP server "${generatedId}" is already registered`,
@@ -139,19 +149,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         });
       }
 
-      const [row] = await fastify.db
-        .insert(mcpServers)
-        .values({
-          id: generatedId,
-          displayName: display_name.trim(),
-          type: 'http',
-          url: generatedUrl,
-          managedType: managed_type,
-          createdBy: user.id,
-        })
-        .returning();
-
-      return reply.status(201).send(toRecord(row));
+      return reply.status(201).send(toRecord(rows[0]));
     }
 
     // --- Custom MCP サーバー登録 ---
@@ -206,10 +204,12 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
-    const [row] = await fastify.db
+    const trimmedId = id.trim();
+    const rows = await fastify.db
       .insert(mcpServers)
       .values({
-        id: id.trim(),
+        userId: user.id,
+        id: trimmedId,
         displayName: display_name.trim(),
         type,
         url: url?.trim() || null,
@@ -217,21 +217,38 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         command: command?.trim() || null,
         args: args ?? null,
         env: env ?? null,
-        createdBy: user.id,
       })
+      .onConflictDoNothing({ target: [mcpServers.userId, mcpServers.id] })
       .returning();
 
-    return reply.status(201).send(toRecord(row));
+    if (rows.length === 0) {
+      return reply.status(409).send({
+        error: 'Conflict',
+        message: `MCP server "${trimmedId}" is already registered`,
+        statusCode: 409,
+      });
+    }
+
+    return reply.status(201).send(toRecord(rows[0]));
   });
 
-  // 管理者のみ: サーバー更新
+  // サーバー更新
   fastify.patch<{
     Params: { id: string };
     Body: McpServerUpdateRequest;
     Reply: McpServerRecord | ApiError;
-  }>('/mcp-servers/:id', { preHandler: guard }, async (request, reply) => {
+  }>('/mcp-servers/:id', async (request, reply) => {
+    const { user } = request.ctx!;
+    if (!user.id) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User ID not found in request context',
+        statusCode: 401,
+      });
+    }
+
     const { id } = request.params;
-    const { display_name, type, url, headers, command, args, env } = request.body;
+    const { display_name, type, url, headers, command, args, env, is_disabled } = request.body;
 
     const updates: Partial<InsertMcpServer> = {};
 
@@ -262,6 +279,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
     if (command !== undefined) updates.command = command?.trim() || null;
     if (args !== undefined) updates.args = args ?? null;
     if (env !== undefined) updates.env = env ?? null;
+    if (is_disabled !== undefined) updates.isDisabled = is_disabled;
 
     if (Object.keys(updates).length === 0) {
       return reply.status(400).send({
@@ -274,7 +292,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
     const [row] = await fastify.db
       .update(mcpServers)
       .set(updates)
-      .where(eq(mcpServers.id, id))
+      .where(and(eq(mcpServers.userId, user.id), eq(mcpServers.id, id)))
       .returning();
 
     if (!row) {
@@ -288,16 +306,25 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
     return reply.send(toRecord(row));
   });
 
-  // 管理者のみ: サーバー削除
+  // サーバー削除
   fastify.delete<{
     Params: { id: string };
     Reply: { success: true } | ApiError;
-  }>('/mcp-servers/:id', { preHandler: guard }, async (request, reply) => {
+  }>('/mcp-servers/:id', async (request, reply) => {
+    const { user } = request.ctx!;
+    if (!user.id) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User ID not found in request context',
+        statusCode: 401,
+      });
+    }
+
     const { id } = request.params;
 
     const deleted = await fastify.db
       .delete(mcpServers)
-      .where(eq(mcpServers.id, id))
+      .where(and(eq(mcpServers.userId, user.id), eq(mcpServers.id, id)))
       .returning({ id: mcpServers.id });
 
     if (deleted.length === 0) {

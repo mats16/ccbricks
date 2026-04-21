@@ -70,7 +70,7 @@ export interface UpdateOutcomeResponse {
 }
 
 // =====================================================
-// Custom MCP Server Types (管理者が登録するカスタムサーバー)
+// Custom MCP Server Types (ユーザーごとの MCP サーバー設定)
 // =====================================================
 
 /** Databricks managed MCP サーバーの種別 */
@@ -86,35 +86,21 @@ export interface McpServerRecord {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
-  /** ユーザーごとの有効/無効設定（未設定時は undefined） */
-  enabled?: boolean;
-  created_by: string;
+  /** サーバーが無効化されているかどうか */
+  is_disabled: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export type McpServerCreateRequest = Omit<
   McpServerRecord,
-  'enabled' | 'created_by' | 'created_at' | 'updated_at'
+  'is_disabled' | 'created_at' | 'updated_at'
 >;
 
 export type McpServerUpdateRequest = Partial<
-  Omit<McpServerRecord, 'id' | 'enabled' | 'created_by' | 'created_at' | 'updated_at'>
+  Omit<McpServerRecord, 'id' | 'managed_type' | 'created_at' | 'updated_at'>
 >;
 
 export interface McpServerListResponse {
   mcp_servers: McpServerRecord[];
-}
-
-// =====================================================
-// User MCP Settings Types (ユーザーごとの MCP 有効/無効設定)
-// =====================================================
-
-export interface UserSettingsMcpUpdateRequest {
-  enabled: boolean;
-}
-
-export interface UserSettingsMcpUpdateResponse {
-  server_id: string;
-  enabled: boolean;
 }

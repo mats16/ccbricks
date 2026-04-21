@@ -58,9 +58,8 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     const result: McpSelectionItem[] = [];
 
     for (const server of servers) {
-      // managed サーバーはデフォルト有効、custom サーバーはデフォルト無効
-      const defaultEnabled = server.managed_type != null;
-      if (!(server.enabled ?? defaultEnabled)) continue;
+      // is_disabled のサーバーはスキップ
+      if (server.is_disabled) continue;
 
       const displayUrl =
         server.type === 'stdio'

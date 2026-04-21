@@ -348,7 +348,17 @@
     "managedEmpty": "No Databricks managed MCP servers registered",
     "genieSpaceFetchError": "Failed to fetch Genie spaces",
     "duplicateError": "This server is already registered",
-    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?"
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
+    "addMcpServer": "Add MCP Server",
+    "addMcpServerDescription": "Select a server type to add",
+    "githubLabel": "GitHub",
+    "githubDescription": "Connect to GitHub for repository and issue management",
+    "atlassianLabel": "Atlassian",
+    "atlassianDescription": "Connect to Atlassian for project and issue tracking",
+    "customMcpLabel": "Custom MCP",
+    "customMcpDescription": "Register any MCP server with custom configuration",
+    "githubUrlPlaceholder": "https://api.githubcopilot.com/mcp/",
+    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp"
   },
   "admin": {
     "title": "Admin",

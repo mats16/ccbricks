@@ -348,7 +348,17 @@
     "managedEmpty": "Databricks マネージド MCP サーバーはありません",
     "genieSpaceFetchError": "Genie スペースの取得に失敗しました",
     "duplicateError": "このサーバーは既に登録されています",
-    "deleteConfirm": "\"{{name}}\" を削除しますか？"
+    "deleteConfirm": "\"{{name}}\" を削除しますか？",
+    "addMcpServer": "MCP サーバーを追加",
+    "addMcpServerDescription": "追加するサーバータイプを選択",
+    "githubLabel": "GitHub",
+    "githubDescription": "GitHub に接続してリポジトリや Issue を管理",
+    "atlassianLabel": "Atlassian",
+    "atlassianDescription": "Atlassian に接続してプロジェクトや Issue を管理",
+    "customMcpLabel": "カスタム MCP",
+    "customMcpDescription": "カスタム設定で任意の MCP サーバーを登録",
+    "githubUrlPlaceholder": "https://api.githubcopilot.com/mcp/",
+    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp"
   },
   "admin": {
     "title": "管理",
