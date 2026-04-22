@@ -24,6 +24,7 @@ export interface AppSettingsResponse {
   default_opus_model: string | null;
   default_sonnet_model: string | null;
   default_haiku_model: string | null;
+  otel_table_name: string | null;
 }
 
 export interface UpdateAppSettingsRequest {
@@ -31,6 +32,7 @@ export interface UpdateAppSettingsRequest {
   default_opus_model?: string | null;
   default_sonnet_model?: string | null;
   default_haiku_model?: string | null;
+  otel_table_name?: string | null;
 }
 
 export interface ServingEndpointsByTier {

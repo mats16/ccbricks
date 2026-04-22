@@ -32,7 +32,7 @@ import { validatePathWithinBase } from '../utils/path-validation.js';
 import { fromUUID } from 'typeid-js';
 import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
 import { getAuthProvider } from '../lib/databricks-auth.js';
-import { getModelSettings } from './admin.service.js';
+import { getAppSettings, resolveModelSettings } from './admin.service.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -311,8 +311,10 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
       (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
     )?.name;
 
-    // DB のモデル設定を取得（未設定なら環境変数デフォルトにフォールバック）
-    const modelSettings = await getModelSettings(fastify);
+    const appSettings = await getAppSettings(fastify);
+    const modelSettings = resolveModelSettings(appSettings);
+    const otelTableName = appSettings.otel_table_name;
+    const spToken = await authProvider.getToken();
 
     const response = query({
       prompt,
@@ -342,7 +344,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ...(workspacePath ? { SESSION_WORKSPACE_PATH: workspacePath } : {}),
           ...(appsOutcomeName ? { SESSION_APP_NAME: appsOutcomeName } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
-          ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
+          ANTHROPIC_AUTH_TOKEN: spToken,
           ANTHROPIC_DEFAULT_OPUS_MODEL: modelSettings.opusModel,
           ANTHROPIC_DEFAULT_SONNET_MODEL: modelSettings.sonnetModel,
           ANTHROPIC_DEFAULT_HAIKU_MODEL: modelSettings.haikuModel,
@@ -351,6 +353,15 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           // Databricks CLI 認証: OBO トークンを使用
           DATABRICKS_HOST: `https://${fastify.config.DATABRICKS_HOST}`,
           DATABRICKS_TOKEN: oboToken ?? '',
+          ...(otelTableName
+            ? {
+                CLAUDE_CODE_ENABLE_TELEMETRY: '1',
+                OTEL_METRICS_EXPORTER: 'otlp',
+                OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: 'http/protobuf',
+                OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/otel/v1/metrics`,
+                OTEL_EXPORTER_OTLP_METRICS_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelTableName}`,
+              }
+            : {}),
         },
       },
     });

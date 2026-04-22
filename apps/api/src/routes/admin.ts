@@ -90,11 +90,12 @@ const adminRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
-    // バリデーション: モデル設定（null か 非空文字列のみ許可）
+    // バリデーション: モデル設定・OTEL テーブル名（null か 非空文字列のみ許可）
     for (const key of [
       'default_opus_model',
       'default_sonnet_model',
       'default_haiku_model',
+      'otel_table_name',
     ] as const) {
       const value = body[key];
       if (value !== undefined && value !== null && (typeof value !== 'string' || value === '')) {

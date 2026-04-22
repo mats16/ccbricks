@@ -387,7 +387,11 @@
     "haikuModel": "Claude Haiku",
     "envDefault": "環境変数のデフォルト",
     "resetToDefault": "デフォルトに戻す",
-    "fetchEndpointsError": "Serving Endpoint の取得に失敗しました"
+    "fetchEndpointsError": "Serving Endpoint の取得に失敗しました",
+    "telemetryConfiguration": "テレメトリ設定",
+    "otelTableName": "OpenTelemetry メトリクステーブル",
+    "otelTableNamePlaceholder": "catalog.schema.table",
+    "otelTableNameDescription": "Unity Catalog テーブル名を設定すると、Claude Code のテレメトリメトリクスが有効になります"
   },
   "tools": {
     "updateTodos": "Update Todos",

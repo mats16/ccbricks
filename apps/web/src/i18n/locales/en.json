@@ -387,7 +387,11 @@
     "haikuModel": "Claude Haiku",
     "envDefault": "Environment default",
     "resetToDefault": "Reset to default",
-    "fetchEndpointsError": "Failed to load serving endpoints"
+    "fetchEndpointsError": "Failed to load serving endpoints",
+    "telemetryConfiguration": "Telemetry Configuration",
+    "otelTableName": "OpenTelemetry Metrics Table",
+    "otelTableNamePlaceholder": "catalog.schema.table",
+    "otelTableNameDescription": "Set a Unity Catalog table name to enable Claude Code telemetry metrics export"
   },
   "tools": {
     "updateTodos": "Update Todos",

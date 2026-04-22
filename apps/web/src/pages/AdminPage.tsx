@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ShieldCheck, ShieldOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldOff, Loader2, Save } from 'lucide-react';
 import type { AdminUserInfo, AppSettingsResponse, ServingEndpointsByTier } from '@repo/types';
 import { useUser } from '@/hooks/useUser';
 import { adminService } from '@/services';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ export function AdminContent() {
   const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [otelTableNameInput, setOtelTableNameInput] = useState('');
 
   const MODEL_NULL_SENTINEL = '__default__';
 
@@ -55,6 +57,7 @@ export function AdminContent() {
       setIsLoadingSettings(true);
       const data = await adminService.getSettings();
       setSettings(data);
+      setOtelTableNameInput(data.otel_table_name ?? '');
     } catch {
       toast.error(t('admin.fetchError'));
     } finally {
@@ -119,6 +122,20 @@ export function AdminContent() {
     try {
       await adminService.updateSettings({ default_new_user_role: newDefault });
       setSettings(prev => (prev ? { ...prev, default_new_user_role: newDefault } : prev));
+      toast.success(t('admin.updateSettingsSuccess'));
+    } catch {
+      toast.error(t('admin.updateSettingsError'));
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleOtelTableNameSave = async () => {
+    const value = otelTableNameInput.trim();
+    setIsSavingSettings(true);
+    try {
+      await adminService.updateSettings({ otel_table_name: value || null });
+      setSettings(prev => (prev ? { ...prev, otel_table_name: value || null } : prev));
       toast.success(t('admin.updateSettingsSuccess'));
     } catch {
       toast.error(t('admin.updateSettingsError'));
@@ -207,6 +224,45 @@ export function AdminContent() {
                   </Select>
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-4">{t('admin.telemetryConfiguration')}</h2>
+          {isLoadingSettings ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="border border-border rounded-lg p-4 space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="shrink-0">
+                  <p className="text-sm font-medium">{t('admin.otelTableName')}</p>
+                  <p className="text-xs text-muted-foreground">{t('admin.otelTableNameDescription')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="w-[320px]"
+                    placeholder={t('admin.otelTableNamePlaceholder')}
+                    value={otelTableNameInput}
+                    onChange={e => setOtelTableNameInput(e.target.value)}
+                    disabled={isSavingSettings}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleOtelTableNameSave}
+                    disabled={isSavingSettings || otelTableNameInput === (settings?.otel_table_name ?? '')}
+                  >
+                    {isSavingSettings ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </section>

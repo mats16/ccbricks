@@ -9,7 +9,7 @@ const MODEL_SETTINGS_KEYS = [
   'default_haiku_model',
 ] as const;
 
-const ALL_SETTINGS_KEYS = ['default_new_user_role', ...MODEL_SETTINGS_KEYS] as const;
+const ALL_SETTINGS_KEYS = ['default_new_user_role', ...MODEL_SETTINGS_KEYS, 'otel_table_name'] as const;
 
 /**
  * 全ユーザーを取得する（管理者用）
@@ -75,6 +75,7 @@ export async function getAppSettings(fastify: FastifyInstance): Promise<AppSetti
     default_opus_model: map.get('default_opus_model') ?? null,
     default_sonnet_model: map.get('default_sonnet_model') ?? null,
     default_haiku_model: map.get('default_haiku_model') ?? null,
+    otel_table_name: map.get('otel_table_name') ?? null,
   };
 }
 
@@ -142,7 +143,13 @@ const MODEL_DEFAULTS = {
  */
 export async function getModelSettings(fastify: FastifyInstance): Promise<ModelSettings> {
   const settings = await getAppSettings(fastify);
+  return resolveModelSettings(settings);
+}
 
+/**
+ * AppSettingsResponse からモデル設定を導出する（DB クエリなし）
+ */
+export function resolveModelSettings(settings: AppSettingsResponse): ModelSettings {
   return {
     opusModel: settings.default_opus_model ?? MODEL_DEFAULTS.default_opus_model,
     sonnetModel: settings.default_sonnet_model ?? MODEL_DEFAULTS.default_sonnet_model,
