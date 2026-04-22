@@ -28,7 +28,7 @@ export function AppLayout() {
   const {
     sessions,
     isLoading: isSessionsLoading,
-    refetch: refetchSessions,
+    addSession,
     updateSession,
     getSession,
   } = useSessions();
@@ -110,7 +110,7 @@ export function AppLayout() {
                 ) : (
                   <MainArea
                     onSessionArchived={handleMainAreaArchive}
-                    onSessionCreated={refetchSessions}
+                    onSessionCreated={addSession}
                   />
                 )}
               </div>
@@ -149,7 +149,7 @@ export function AppLayout() {
             ) : (
               <MainArea
                 onSessionArchived={handleMainAreaArchive}
-                onSessionCreated={refetchSessions}
+                onSessionCreated={addSession}
               />
             )}
           </div>

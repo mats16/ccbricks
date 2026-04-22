@@ -7,6 +7,7 @@ interface UseSessionsReturn {
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
+  addSession: (newSession: SessionResponse) => void;
   updateSession: (updatedSession: SessionResponse) => void;
   getSession: (sessionId: string) => SessionResponse | undefined;
 }
@@ -50,6 +51,10 @@ export function useSessions(): UseSessionsReturn {
     }
   }, []);
 
+  const addSession = useCallback((newSession: SessionResponse) => {
+    setSessions(prev => [newSession, ...prev]);
+  }, []);
+
   const updateSession = useCallback((updatedSession: SessionResponse) => {
     setSessions(prevSessions =>
       prevSessions.map(s => (s.id === updatedSession.id ? updatedSession : s))
@@ -70,6 +75,7 @@ export function useSessions(): UseSessionsReturn {
     isLoading,
     error,
     refetch: fetchSessions,
+    addSession,
     updateSession,
     getSession,
   };
