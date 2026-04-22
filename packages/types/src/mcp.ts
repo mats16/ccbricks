@@ -74,7 +74,11 @@ export interface UpdateOutcomeResponse {
 // =====================================================
 
 /** Databricks managed MCP サーバーの種別 */
-export type ManagedMcpType = 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search';
+export type ManagedMcpType =
+  | 'databricks_sql'
+  | 'databricks_genie'
+  | 'databricks_vector_search'
+  | 'unity_ai_gateway';
 
 export interface McpServerRecord {
   id: string;
@@ -103,4 +107,40 @@ export type McpServerUpdateRequest = Partial<
 
 export interface McpServerListResponse {
   mcp_servers: McpServerRecord[];
+}
+
+// =====================================================
+// External MCP Server Types (Unity AI Gateway)
+// =====================================================
+
+/** Unity Catalog Connection (バックエンド内部用) */
+export interface UnityCatalogConnection {
+  connection_id: string;
+  name: string;
+  full_name: string;
+  connection_type: string;
+  options: {
+    is_mcp_connection?: string;
+    host?: string;
+    base_path?: string;
+    port?: string;
+    auth_scheme?: string;
+  };
+  url: string;
+  owner: string;
+  provisioning_info?: {
+    state: string;
+  };
+}
+
+/** フロントエンド向け外部 MCP サーバー情報 */
+export interface ExternalMcpServer {
+  id: string;
+  name: string;
+  url: string;
+  owner: string;
+}
+
+export interface ExternalMcpServerListResponse {
+  mcp_servers: ExternalMcpServer[];
 }

@@ -14,8 +14,8 @@ import {
   X,
   Search,
   Construction,
-  GitBranch,
-  SquareKanban,
+  Network,
+  LogIn,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -38,10 +38,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { genieService, mcpServerService } from '@/services';
+import { genieService, mcpServerService, externalMcpServerService } from '@/services';
 import { useUser } from '@/hooks/useUser';
-import { buildDbsqlMcpUrl, buildGenieMcpUrl } from '@/constants';
-import type { GenieSpace, McpServerRecord, McpServerType, ManagedMcpType } from '@repo/types';
+import { buildDbsqlMcpUrl, buildGenieMcpUrl, buildExternalMcpUrl } from '@/constants';
+import type {
+  GenieSpace,
+  McpServerRecord,
+  McpServerType,
+  ManagedMcpType,
+  ExternalMcpServer,
+} from '@repo/types';
 
 // ─── Shared helpers ──────────────────────────────────────────
 
@@ -112,6 +118,8 @@ function ManagedIcon({ managedType }: { managedType: ManagedMcpType }) {
     return <DatabaseSearch className="h-4 w-4 shrink-0 text-muted-foreground" />;
   if (managedType === 'databricks_genie')
     return <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />;
+  if (managedType === 'unity_ai_gateway')
+    return <Network className="h-4 w-4 shrink-0 text-muted-foreground" />;
   return <Search className="h-4 w-4 shrink-0 text-muted-foreground" />;
 }
 
@@ -362,7 +370,7 @@ function ServerFormDialog({
 // ─── Unified Add MCP dialog ──────────────────────────────────
 
 interface McpTileConfig {
-  type: 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search' | 'github' | 'atlassian' | 'custom';
+  type: 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search' | 'unity_ai_gateway' | 'custom';
   labelKey: string;
   descriptionKey: string;
   icon: LucideIcon;
@@ -374,17 +382,11 @@ const MCP_TILES: McpTileConfig[] = [
   { type: 'databricks_sql', labelKey: 'mcp.dbsqlLabel', descriptionKey: 'mcp.dbsqlDescription', icon: DatabaseSearch },
   { type: 'databricks_genie', labelKey: 'mcp.genieLabel', descriptionKey: 'mcp.genieDescription', icon: Sparkles },
   { type: 'databricks_vector_search', labelKey: 'mcp.vectorSearchLabel', descriptionKey: 'mcp.vectorSearchComingSoon', icon: Search, disabled: true, disabledBadgeKey: 'mcp.vectorSearchComingSoon' },
-  { type: 'github', labelKey: 'mcp.githubLabel', descriptionKey: 'mcp.githubDescription', icon: GitBranch },
-  { type: 'atlassian', labelKey: 'mcp.atlassianLabel', descriptionKey: 'mcp.atlassianDescription', icon: SquareKanban },
+  { type: 'unity_ai_gateway', labelKey: 'mcp.unityAiGatewayLabel', descriptionKey: 'mcp.unityAiGatewayDescription', icon: Network },
   { type: 'custom', labelKey: 'mcp.customMcpLabel', descriptionKey: 'mcp.customMcpDescription', icon: Server },
 ];
 
-const MCP_TEMPLATES: Record<string, { id: string; displayName: string; defaultUrl: string; defaultType: McpServerType; urlPlaceholderKey: string }> = {
-  github: { id: 'github', displayName: 'GitHub', defaultUrl: 'https://api.githubcopilot.com/mcp/', defaultType: 'http', urlPlaceholderKey: 'mcp.githubUrlPlaceholder' },
-  atlassian: { id: 'atlassian', displayName: 'Atlassian', defaultUrl: 'https://mcp.atlassian.com/v1/mcp', defaultType: 'sse' as McpServerType, urlPlaceholderKey: 'mcp.atlassianUrlPlaceholder' },
-};
-
-type AddMcpStep = 'select' | 'configure-managed' | 'configure-template';
+type AddMcpStep = 'select' | 'configure-managed' | 'configure-unity-gateway';
 
 function AddMcpDialog({
   open,
@@ -414,13 +416,11 @@ function AddMcpDialog({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [genieSearchQuery, setGenieSearchQuery] = useState('');
 
-  // Template state (GitHub / Jira)
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
-  const [templateId, setTemplateId] = useState('');
-  const [templateDisplayName, setTemplateDisplayName] = useState('');
-  const [templateType, setTemplateType] = useState<McpServerType>('http');
-  const [templateUrl, setTemplateUrl] = useState('');
-  const [templateHeaders, setTemplateHeaders] = useState<KeyValuePair[]>([]);
+  // Unity AI Gateway state
+  const [ucMcpServers, setUcMcpServers] = useState<ExternalMcpServer[]>([]);
+  const [isLoadingUcServers, setIsLoadingUcServers] = useState(false);
+  const [selectedUcServerId, setSelectedUcServerId] = useState('');
+  const [ucSearchQuery, setUcSearchQuery] = useState('');
 
   // Shared state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -432,6 +432,13 @@ function AddMcpDialog({
       new Set(existingServers.filter(s => s.managed_type === 'databricks_genie').map(s => s.id)),
     [existingServers]
   );
+  const registeredUcConnectionIds = useMemo(
+    () =>
+      new Set(
+        existingServers.filter(s => s.managed_type === 'unity_ai_gateway').map(s => s.id)
+      ),
+    [existingServers]
+  );
 
   const reset = () => {
     setStep('select');
@@ -441,12 +448,10 @@ function AddMcpDialog({
     setGenieSpaces([]);
     setNextPageToken(undefined);
     setGenieSearchQuery('');
-    setSelectedTemplateKey(null);
-    setTemplateId('');
-    setTemplateDisplayName('');
-    setTemplateType('http');
-    setTemplateUrl('');
-    setTemplateHeaders([]);
+    setUcMcpServers([]);
+    setIsLoadingUcServers(false);
+    setSelectedUcServerId('');
+    setUcSearchQuery('');
     setFormError(null);
   };
 
@@ -541,36 +546,54 @@ function AddMcpDialog({
     }
   };
 
-  // ─── Template helpers ───
+  // ─── Unity AI Gateway helpers ───
 
-  const handleTemplateSubmit = async () => {
+  const fetchUcMcpServers = async () => {
+    setIsLoadingUcServers(true);
+    try {
+      const res = await externalMcpServerService.list();
+      setUcMcpServers(res.mcp_servers ?? []);
+    } catch {
+      setFormError(t('mcp.unityAiGatewayFetchError'));
+    } finally {
+      setIsLoadingUcServers(false);
+    }
+  };
+
+  const handleUcServerSelect = (serverId: string) => {
+    setSelectedUcServerId(serverId);
+  };
+
+  const selectedUcServer = useMemo(
+    () => ucMcpServers.find(s => s.id === selectedUcServerId),
+    [ucMcpServers, selectedUcServerId]
+  );
+
+  const availableUcMcpServers = useMemo(() => {
+    const q = ucSearchQuery.toLowerCase().trim();
+    return ucMcpServers.filter(s => {
+      const generatedId = `external_${s.name.replace(/-/g, '_')}`;
+      if (registeredUcConnectionIds.has(generatedId)) return false;
+      if (!q) return true;
+      return s.name.toLowerCase().includes(q) || s.owner?.toLowerCase().includes(q);
+    });
+  }, [ucMcpServers, registeredUcConnectionIds, ucSearchQuery]);
+
+  const handleUnityGatewaySubmit = async () => {
     setFormError(null);
 
-    if (!templateId.trim()) {
-      setFormError(t('mcp.idRequired'));
-      return;
-    }
-    if (!/^[a-z0-9]+(_[a-z0-9]+)*$/.test(templateId.trim())) {
-      setFormError(t('mcp.idInvalid'));
-      return;
-    }
-    if (!templateDisplayName.trim()) {
-      setFormError(t('mcp.displayNameRequired'));
-      return;
-    }
-    if (!templateUrl.trim()) {
-      setFormError(t('mcp.urlRequired'));
+    if (!selectedUcServer) {
+      setFormError(t('mcp.selectConnection'));
       return;
     }
 
     setIsSubmitting(true);
     try {
       await mcpServerService.create({
-        id: templateId.trim(),
-        display_name: templateDisplayName.trim(),
-        type: templateType,
-        url: templateUrl.trim(),
-        headers: pairsToRecord(templateHeaders),
+        id: selectedUcServer.name,
+        display_name: selectedUcServer.name,
+        type: 'http',
+        managed_type: 'unity_ai_gateway',
       });
       toast.success(t('mcp.addSuccess'));
       handleOpenChange(false);
@@ -612,15 +635,9 @@ function AddMcpDialog({
       return;
     }
 
-    if (tileType === 'github' || tileType === 'atlassian') {
-      const tmpl = MCP_TEMPLATES[tileType];
-      setSelectedTemplateKey(tileType);
-      setTemplateId(tmpl.id);
-      setTemplateDisplayName(tmpl.displayName);
-      setTemplateType(tmpl.defaultType);
-      setTemplateUrl(tmpl.defaultUrl);
-      setTemplateHeaders([]);
-      setStep('configure-template');
+    if (tileType === 'unity_ai_gateway') {
+      setStep('configure-unity-gateway');
+      await fetchUcMcpServers();
       return;
     }
   };
@@ -803,8 +820,8 @@ function AddMcpDialog({
           </div>
         )}
 
-        {/* ─── Step: Template Configuration (GitHub / Jira) ─── */}
-        {step === 'configure-template' && selectedTemplateKey && (
+        {/* ─── Step: Unity AI Gateway Configuration ─── */}
+        {step === 'configure-unity-gateway' && (
           <div className="flex flex-col gap-4 min-h-0 flex-1">
             <Button
               variant="ghost"
@@ -818,48 +835,62 @@ function AddMcpDialog({
               &larr; {t('mcp.selectServerType')}
             </Button>
 
-            <div className="space-y-2">
-              <Label htmlFor="template-id">{t('mcp.id')}</Label>
+            <div className="flex flex-col gap-2 min-h-0 flex-1">
+              <Label className="shrink-0">{t('mcp.selectConnection')}</Label>
               <Input
-                id="template-id"
-                value={templateId}
-                onChange={e => setTemplateId(e.target.value)}
-                placeholder={t('mcp.idPlaceholder')}
-                className="font-mono"
+                value={ucSearchQuery}
+                onChange={e => setUcSearchQuery(e.target.value)}
+                placeholder={t('mcp.connectionSearchPlaceholder')}
+                className="shrink-0"
               />
+              {isLoadingUcServers ? (
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+              ) : (
+                <div className="overflow-y-auto border border-border rounded-lg min-h-0 flex-1 max-h-[40vh]">
+                  <div className="space-y-0.5 p-1">
+                    {availableUcMcpServers.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                        <Network className="h-8 w-8 mb-2 opacity-50" />
+                        <p className="text-sm">{t('mcp.empty')}</p>
+                      </div>
+                    )}
+                    {availableUcMcpServers.map(server => (
+                      <button
+                        key={server.id}
+                        type="button"
+                        className={cn(
+                          'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left transition-colors border',
+                          selectedUcServerId === server.id
+                            ? 'bg-primary/10 border-primary/30'
+                            : 'hover:bg-accent/50 border-transparent'
+                        )}
+                        onClick={() => handleUcServerSelect(server.id)}
+                      >
+                        <Network className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{server.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                            {server.url}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="template-display-name">{t('mcp.displayName')}</Label>
-              <Input
-                id="template-display-name"
-                value={templateDisplayName}
-                onChange={e => setTemplateDisplayName(e.target.value)}
-                placeholder={t('mcp.displayNamePlaceholder')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="template-url">{t('mcp.url')}</Label>
-              <Input
-                id="template-url"
-                value={templateUrl}
-                onChange={e => setTemplateUrl(e.target.value)}
-                placeholder={t(MCP_TEMPLATES[selectedTemplateKey].urlPlaceholderKey)}
-                className="font-mono"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t('mcp.headers')}</Label>
-              <KeyValueEditor
-                pairs={templateHeaders}
-                onChange={setTemplateHeaders}
-                addLabel={t('common.add')}
-                keyPlaceholder={t('mcp.headerKeyPlaceholder')}
-                valuePlaceholder={t('mcp.headerValuePlaceholder')}
-              />
-            </div>
+            {/* URL preview */}
+            {selectedUcServer && databricksHost && (
+              <div className="space-y-1 shrink-0">
+                <Label className="text-xs text-muted-foreground">{t('mcp.url')}</Label>
+                <p className="text-xs font-mono text-muted-foreground/70 bg-muted p-2 rounded truncate">
+                  {buildExternalMcpUrl(databricksHost, selectedUcServer.name)}
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-2 shrink-0">
               <Button
@@ -869,9 +900,9 @@ function AddMcpDialog({
               >
                 {t('common.cancel')}
               </Button>
-              <Button onClick={handleTemplateSubmit} disabled={isSubmitting}>
+              <Button onClick={handleUnityGatewaySubmit} disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                {t('mcp.addMcpServer')}
+                {t('mcp.addManagedServer')}
               </Button>
             </div>
           </div>
@@ -1067,7 +1098,7 @@ export function McpContent() {
               return (
                 <div
                   key={server.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                  className="group flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-2">
@@ -1085,19 +1116,35 @@ export function McpContent() {
                     <ServerSubtitle server={server} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDelete(server)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {server.managed_type === 'unity_ai_gateway' && databricksHost && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs mr-2"
+                        onClick={() =>
+                          window.open(
+                            `https://${databricksHost}/explore/connections/${server.display_name}`,
+                            '_blank'
+                          )
+                        }
+                      >
+                        <LogIn className="h-3.5 w-3.5 mr-1" />
+                        {t('mcp.login')}
+                      </Button>
+                    )}
                     <Switch
                       id={`managed-${server.id}`}
                       checked={isEnabled}
                       onCheckedChange={checked => handleToggle(server.id, checked)}
                     />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive invisible group-hover:visible"
+                      onClick={() => handleDelete(server)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -1123,7 +1170,7 @@ export function McpContent() {
               return (
                 <div
                   key={server.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                  className="group flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-2">
@@ -1146,19 +1193,19 @@ export function McpContent() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDelete(server)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                     <Switch
                       id={`custom-${server.id}`}
                       checked={isEnabled}
                       onCheckedChange={checked => handleToggle(server.id, checked)}
                     />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive invisible group-hover:visible"
+                      onClick={() => handleDelete(server)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               );

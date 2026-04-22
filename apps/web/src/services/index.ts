@@ -9,3 +9,4 @@ export { jobsService } from './jobs.service';
 export { reposService } from './repos.service';
 export { genieService } from './genie.service';
 export { mcpServerService } from './mcp-server.service';
+export { externalMcpServerService } from './external-mcp-server.service';

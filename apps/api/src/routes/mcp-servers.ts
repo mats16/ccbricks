@@ -16,6 +16,7 @@ const VALID_MANAGED_TYPES: ManagedMcpType[] = [
   'databricks_sql',
   'databricks_genie',
   'databricks_vector_search',
+  'unity_ai_gateway',
 ];
 /** 小文字英数とアンダースコアのみ、連続アンダースコア禁止 */
 const VALID_ID_PATTERN = /^[a-z0-9]+(_[a-z0-9]+)*$/;
@@ -113,6 +114,20 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
       if (managed_type === 'databricks_sql') {
         generatedId = 'dbsql';
         generatedUrl = `https://${databricksHost}/api/2.0/mcp/sql`;
+      } else if (managed_type === 'unity_ai_gateway') {
+        // Unity AI Gateway: id に connection name を渡す
+        const connectionName = request.body.id;
+        if (!connectionName || typeof connectionName !== 'string' || !connectionName.trim()) {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: 'id (connection name) is required for unity_ai_gateway type',
+            statusCode: 400,
+          });
+        }
+        const trimmedName = connectionName.trim();
+        // name のハイフンをアンダースコアに変換して ID パターンに適合させる
+        generatedId = `external_${trimmedName.replace(/-/g, '_')}`;
+        generatedUrl = `https://${databricksHost}/api/2.0/mcp/external/${trimmedName}`;
       } else {
         // Genie Space: id に space_id を渡す
         const genieSpaceId = request.body.id;

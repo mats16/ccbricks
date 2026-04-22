@@ -351,14 +351,15 @@
     "deleteConfirm": "\"{{name}}\" を削除しますか？",
     "addMcpServer": "MCP サーバーを追加",
     "addMcpServerDescription": "追加するサーバータイプを選択",
-    "githubLabel": "GitHub",
-    "githubDescription": "GitHub に接続してリポジトリや Issue を管理",
-    "atlassianLabel": "Atlassian",
-    "atlassianDescription": "Atlassian に接続してプロジェクトや Issue を管理",
+    "unityAiGatewayLabel": "Unity AI Gateway",
+    "unityAiGatewayDescription": "Unity AI Gateway 経由で MCP サーバーに接続",
+    "unityAiGatewayFetchError": "MCP サーバーの取得に失敗しました",
+    "selectConnection": "接続を選択",
+    "connectionSearchPlaceholder": "接続を検索...",
+    "connectionNotFound": "接続が見つかりません",
+    "login": "Login",
     "customMcpLabel": "カスタム MCP",
-    "customMcpDescription": "カスタム設定で任意の MCP サーバーを登録",
-    "githubUrlPlaceholder": "https://api.githubcopilot.com/mcp/",
-    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp"
+    "customMcpDescription": "カスタム設定で任意の MCP サーバーを登録"
   },
   "admin": {
     "title": "管理",

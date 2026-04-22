@@ -351,14 +351,15 @@
     "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
     "addMcpServer": "Add MCP Server",
     "addMcpServerDescription": "Select a server type to add",
-    "githubLabel": "GitHub",
-    "githubDescription": "Connect to GitHub for repository and issue management",
-    "atlassianLabel": "Atlassian",
-    "atlassianDescription": "Connect to Atlassian for project and issue tracking",
+    "unityAiGatewayLabel": "Unity AI Gateway",
+    "unityAiGatewayDescription": "Connect to MCP servers via Unity AI Gateway",
+    "unityAiGatewayFetchError": "Failed to fetch MCP servers",
+    "selectConnection": "Select a connection",
+    "connectionSearchPlaceholder": "Search connections...",
+    "connectionNotFound": "Connection not found",
+    "login": "Login",
     "customMcpLabel": "Custom MCP",
-    "customMcpDescription": "Register any MCP server with custom configuration",
-    "githubUrlPlaceholder": "https://api.githubcopilot.com/mcp/",
-    "atlassianUrlPlaceholder": "https://mcp.atlassian.com/v1/mcp"
+    "customMcpDescription": "Register any MCP server with custom configuration"
   },
   "admin": {
     "title": "Admin",
