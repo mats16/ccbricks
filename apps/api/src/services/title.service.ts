@@ -7,7 +7,7 @@ const TITLE_GENERATION_PROMPT = `Generate a short, concise title (3-6 words) and
 
 Rules for app_name:
 - Lowercase alphanumeric characters and hyphens only (regex: /^[a-z0-9][a-z0-9-]*$/)
-- Maximum 30 characters
+- Maximum 26 characters
 - Descriptive and derived from the title
 
 Respond in the specified JSON format.
@@ -19,7 +19,7 @@ const FALLBACK_TITLE = 'General coding session';
 const REQUEST_TIMEOUT_MS = 30000; // 30 seconds
 
 const APP_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-const APP_NAME_MAX_LENGTH = 30;
+const APP_NAME_MAX_LENGTH = 26;
 
 const RESPONSE_FORMAT: OpenAI.ChatCompletionCreateParams['response_format'] = {
   type: 'json_schema',
@@ -75,11 +75,11 @@ function isValidAppName(appName: string): boolean {
 }
 
 /**
- * Generates a fallback app_name using typeid with 'app' prefix.
- * Format: app-{base32_uuidv7} (exactly 30 characters)
+ * Generates a fallback app_name using typeid (no prefix).
+ * Format: {base32_uuidv7} (exactly 26 characters)
  */
 function generateFallbackAppName(): string {
-  return typeid('app').toString().replaceAll('_', '-');
+  return typeid().toString().replaceAll('_', '-');
 }
 
 export interface TitleServiceConfig {
