@@ -370,7 +370,12 @@ function ServerFormDialog({
 // ─── Unified Add MCP dialog ──────────────────────────────────
 
 interface McpTileConfig {
-  type: 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search' | 'unity_ai_gateway' | 'custom';
+  type:
+    | 'databricks_sql'
+    | 'databricks_genie'
+    | 'databricks_vector_search'
+    | 'unity_ai_gateway'
+    | 'custom';
   labelKey: string;
   descriptionKey: string;
   icon: LucideIcon;
@@ -379,11 +384,38 @@ interface McpTileConfig {
 }
 
 const MCP_TILES: McpTileConfig[] = [
-  { type: 'databricks_sql', labelKey: 'mcp.dbsqlLabel', descriptionKey: 'mcp.dbsqlDescription', icon: DatabaseSearch },
-  { type: 'databricks_genie', labelKey: 'mcp.genieLabel', descriptionKey: 'mcp.genieDescription', icon: Sparkles },
-  { type: 'databricks_vector_search', labelKey: 'mcp.vectorSearchLabel', descriptionKey: 'mcp.vectorSearchComingSoon', icon: Search, disabled: true, disabledBadgeKey: 'mcp.vectorSearchComingSoon' },
-  { type: 'unity_ai_gateway', labelKey: 'mcp.unityAiGatewayLabel', descriptionKey: 'mcp.unityAiGatewayDescription', icon: Network },
-  { type: 'custom', labelKey: 'mcp.customMcpLabel', descriptionKey: 'mcp.customMcpDescription', icon: Server },
+  {
+    type: 'databricks_sql',
+    labelKey: 'mcp.dbsqlLabel',
+    descriptionKey: 'mcp.dbsqlDescription',
+    icon: DatabaseSearch,
+  },
+  {
+    type: 'databricks_genie',
+    labelKey: 'mcp.genieLabel',
+    descriptionKey: 'mcp.genieDescription',
+    icon: Sparkles,
+  },
+  {
+    type: 'databricks_vector_search',
+    labelKey: 'mcp.vectorSearchLabel',
+    descriptionKey: 'mcp.vectorSearchComingSoon',
+    icon: Search,
+    disabled: true,
+    disabledBadgeKey: 'mcp.vectorSearchComingSoon',
+  },
+  {
+    type: 'unity_ai_gateway',
+    labelKey: 'mcp.unityAiGatewayLabel',
+    descriptionKey: 'mcp.unityAiGatewayDescription',
+    icon: Network,
+  },
+  {
+    type: 'custom',
+    labelKey: 'mcp.customMcpLabel',
+    descriptionKey: 'mcp.customMcpDescription',
+    icon: Server,
+  },
 ];
 
 type AddMcpStep = 'select' | 'configure-managed' | 'configure-unity-gateway';
@@ -434,9 +466,7 @@ function AddMcpDialog({
   );
   const registeredUcConnectionIds = useMemo(
     () =>
-      new Set(
-        existingServers.filter(s => s.managed_type === 'unity_ai_gateway').map(s => s.id)
-      ),
+      new Set(existingServers.filter(s => s.managed_type === 'unity_ai_gateway').map(s => s.id)),
     [existingServers]
   );
 
