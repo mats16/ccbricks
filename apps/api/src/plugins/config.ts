@@ -75,21 +75,6 @@ const schema = {
       default: '',
       description: 'The base URL for the Anthropic API.',
     },
-    ANTHROPIC_DEFAULT_OPUS_MODEL: {
-      type: 'string',
-      default: 'databricks-claude-opus-4-6',
-      description: 'The default OPUS model for the Anthropic API.',
-    },
-    ANTHROPIC_DEFAULT_SONNET_MODEL: {
-      type: 'string',
-      default: 'databricks-claude-sonnet-4-6',
-      description: 'The default SONNET model for the Anthropic API.',
-    },
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: {
-      type: 'string',
-      default: 'databricks-claude-haiku-4-5',
-      description: 'The default HAIKU model for the Anthropic API.',
-    },
     // System
     HOME: {
       type: 'string',
@@ -141,9 +126,6 @@ declare module 'fastify' {
       DATABRICKS_CLIENT_SECRET: string;
       // Anthropic
       ANTHROPIC_BASE_URL: string;
-      ANTHROPIC_DEFAULT_OPUS_MODEL: string;
-      ANTHROPIC_DEFAULT_SONNET_MODEL: string;
-      ANTHROPIC_DEFAULT_HAIKU_MODEL: string;
       // System
       HOME: string;
       PATH: string;
@@ -172,8 +154,10 @@ export default fp(
       });
       // Add bin directory to PATH (for databricks-cli and jq)
       fastify.config.PATH = `${fastify.config.HOME}/bin:${fastify.config.PATH}`;
-      // Set Anthropic base URL
-      fastify.config.ANTHROPIC_BASE_URL = `https://${fastify.config.DATABRICKS_HOST}/serving-endpoints/anthropic`;
+      // Set Anthropic base URL (AI Gateway)
+      if (!fastify.config.ANTHROPIC_BASE_URL) {
+        fastify.config.ANTHROPIC_BASE_URL = `https://${fastify.config.DATABRICKS_WORKSPACE_ID}.ai-gateway.cloud.databricks.com/anthropic`;
+      }
       fastify.log.info('Configuration loaded and validated');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

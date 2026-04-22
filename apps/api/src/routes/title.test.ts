@@ -38,6 +38,15 @@ vi.mock('../lib/user-context.js', () => ({
   })),
 }));
 
+// Mock admin.service to avoid DB dependency
+vi.mock('../services/admin.service.js', () => ({
+  getModelSettings: vi.fn().mockResolvedValue({
+    opusModel: 'databricks-claude-opus-4-6',
+    sonnetModel: 'databricks-claude-sonnet-4-6',
+    haikuModel: 'databricks-claude-haiku-4-5',
+  }),
+}));
+
 /** Helper to create a structured output response from the mock LLM */
 function createStructuredResponse(data: { title: string; app_name: string }) {
   return {

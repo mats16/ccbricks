@@ -75,17 +75,53 @@ const adminRoute: FastifyPluginAsync = async fastify => {
     Body: UpdateAppSettingsRequest;
     Reply: { success: true } | ApiError;
   }>('/admin/settings', { preHandler: guard }, async (request, reply) => {
-    const { new_user_role_default } = request.body;
+    const body = request.body;
 
-    if (new_user_role_default !== 'admin' && new_user_role_default !== 'member') {
+    // バリデーション: default_new_user_role
+    if (
+      body.default_new_user_role !== undefined &&
+      body.default_new_user_role !== 'admin' &&
+      body.default_new_user_role !== 'member'
+    ) {
       return reply.status(400).send({
         error: 'BadRequest',
-        message: "new_user_role_default must be 'admin' or 'member'",
+        message: "default_new_user_role must be 'admin' or 'member'",
         statusCode: 400,
       });
     }
 
-    await updateAppSettings(fastify, new_user_role_default);
+    // バリデーション: モデル設定（null か 非空文字列のみ許可）
+    for (const key of [
+      'default_opus_model',
+      'default_sonnet_model',
+      'default_haiku_model',
+    ] as const) {
+      const value = body[key];
+      if (value !== undefined && value !== null && (typeof value !== 'string' || value === '')) {
+        return reply.status(400).send({
+          error: 'BadRequest',
+          message: `${key} must be a non-empty string or null`,
+          statusCode: 400,
+        });
+      }
+    }
+
+    // バリデーション: OTEL テーブル名（null か Unity Catalog 3-part name のみ許可）
+    if (body.otel_table_name !== undefined && body.otel_table_name !== null) {
+      if (
+        typeof body.otel_table_name !== 'string' ||
+        !/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/.test(body.otel_table_name)
+      ) {
+        return reply.status(400).send({
+          error: 'BadRequest',
+          message:
+            'otel_table_name must be a Unity Catalog 3-part name (catalog.schema.table) or null',
+          statusCode: 400,
+        });
+      }
+    }
+
+    await updateAppSettings(fastify, body);
     return reply.send({ success: true });
   });
 };

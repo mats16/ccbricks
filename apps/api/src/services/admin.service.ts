@@ -1,7 +1,19 @@
 import type { FastifyInstance } from 'fastify';
-import type { AdminUserInfo, AppSettingsResponse, UserRole } from '@repo/types';
-import { and, eq, sql } from 'drizzle-orm';
+import type { AdminUserInfo, AppSettingsResponse, UpdateAppSettingsRequest } from '@repo/types';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { users, appSettings } from '../db/schema.js';
+
+const MODEL_SETTINGS_KEYS = [
+  'default_opus_model',
+  'default_sonnet_model',
+  'default_haiku_model',
+] as const;
+
+const ALL_SETTINGS_KEYS = [
+  'default_new_user_role',
+  ...MODEL_SETTINGS_KEYS,
+  'otel_table_name',
+] as const;
 
 /**
  * 全ユーザーを取得する（管理者用）
@@ -54,31 +66,59 @@ export async function updateUserIsAdmin(
  * アプリケーション設定を取得する
  */
 export async function getAppSettings(fastify: FastifyInstance): Promise<AppSettingsResponse> {
-  const [row] = await fastify.db
-    .select({ value: appSettings.value })
+  const rows = await fastify.db
+    .select({ key: appSettings.key, value: appSettings.value })
     .from(appSettings)
-    .where(eq(appSettings.key, 'new_user_role_default'))
-    .limit(1);
+    .where(inArray(appSettings.key, [...ALL_SETTINGS_KEYS]));
+
+  const map = new Map(rows.map(r => [r.key, r.value]));
+  const roleValue = map.get('default_new_user_role');
 
   return {
-    new_user_role_default: row?.value === 'admin' || row?.value === 'member' ? row.value : 'admin',
+    default_new_user_role: roleValue === 'admin' || roleValue === 'member' ? roleValue : 'admin',
+    default_opus_model: map.get('default_opus_model') ?? null,
+    default_sonnet_model: map.get('default_sonnet_model') ?? null,
+    default_haiku_model: map.get('default_haiku_model') ?? null,
+    otel_table_name: map.get('otel_table_name') ?? null,
   };
 }
 
 /**
  * アプリケーション設定を更新する
+ *
+ * 各フィールドが存在する場合のみ更新。null の場合はキーを削除（デフォルトに戻す）。
  */
 export async function updateAppSettings(
   fastify: FastifyInstance,
-  newUserRoleDefault: UserRole
+  settings: UpdateAppSettingsRequest
 ): Promise<void> {
-  await fastify.db
-    .insert(appSettings)
-    .values({ key: 'new_user_role_default', value: newUserRoleDefault })
-    .onConflictDoUpdate({
-      target: appSettings.key,
-      set: { value: newUserRoleDefault },
-    });
+  const entries: Array<{ key: string; value: string | null }> = [];
+
+  for (const key of ALL_SETTINGS_KEYS) {
+    const value = settings[key];
+    if (value !== undefined) {
+      entries.push({ key, value: value ?? null });
+    }
+  }
+
+  if (entries.length === 0) return;
+
+  await fastify.db.transaction(async tx => {
+    for (const entry of entries) {
+      if (entry.value === null) {
+        // null の場合はキーを削除（デフォルトに戻す）
+        await tx.delete(appSettings).where(eq(appSettings.key, entry.key));
+      } else {
+        await tx
+          .insert(appSettings)
+          .values({ key: entry.key, value: entry.value })
+          .onConflictDoUpdate({
+            target: appSettings.key,
+            set: { value: entry.value },
+          });
+      }
+    }
+  });
 }
 
 /**
@@ -86,7 +126,43 @@ export async function updateAppSettings(
  */
 export async function getDefaultNewUserIsAdmin(fastify: FastifyInstance): Promise<boolean> {
   const settings = await getAppSettings(fastify);
-  return settings.new_user_role_default === 'admin';
+  return settings.default_new_user_role === 'admin';
+}
+
+/**
+ * セッション・タイトル生成で使用するモデル設定
+ */
+export interface ModelSettings {
+  opusModel: string;
+  sonnetModel: string;
+  haikuModel: string;
+}
+
+const MODEL_DEFAULTS = {
+  default_opus_model: 'databricks-claude-opus-4-6',
+  default_sonnet_model: 'databricks-claude-sonnet-4-6',
+  default_haiku_model: 'databricks-claude-haiku-4-5',
+} as const;
+
+/**
+ * モデル設定を取得する
+ *
+ * DB から読み取り、未設定の場合はハードコードデフォルトにフォールバックする。
+ */
+export async function getModelSettings(fastify: FastifyInstance): Promise<ModelSettings> {
+  const settings = await getAppSettings(fastify);
+  return resolveModelSettings(settings);
+}
+
+/**
+ * AppSettingsResponse からモデル設定を導出する（DB クエリなし）
+ */
+export function resolveModelSettings(settings: AppSettingsResponse): ModelSettings {
+  return {
+    opusModel: settings.default_opus_model ?? MODEL_DEFAULTS.default_opus_model,
+    sonnetModel: settings.default_sonnet_model ?? MODEL_DEFAULTS.default_sonnet_model,
+    haikuModel: settings.default_haiku_model ?? MODEL_DEFAULTS.default_haiku_model,
+  };
 }
 
 /**

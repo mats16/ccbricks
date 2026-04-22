@@ -380,7 +380,18 @@
     "updateRoleError": "ロールの更新に失敗しました",
     "updateSettingsSuccess": "設定を更新しました",
     "updateSettingsError": "設定の更新に失敗しました",
-    "fetchError": "管理データの読み込みに失敗しました"
+    "fetchError": "管理データの読み込みに失敗しました",
+    "modelConfiguration": "モデル設定",
+    "opusModel": "Claude Opus",
+    "sonnetModel": "Claude Sonnet",
+    "haikuModel": "Claude Haiku",
+    "envDefault": "環境変数のデフォルト",
+    "resetToDefault": "デフォルトに戻す",
+    "fetchEndpointsError": "Serving Endpoint の取得に失敗しました",
+    "telemetryConfiguration": "テレメトリ設定",
+    "otelTableName": "OpenTelemetry メトリクステーブル",
+    "otelTableNamePlaceholder": "catalog.schema.table",
+    "otelTableNameDescription": "Unity Catalog テーブル名を設定すると、Claude Code のテレメトリメトリクスが有効になります"
   },
   "tools": {
     "updateTodos": "Update Todos",

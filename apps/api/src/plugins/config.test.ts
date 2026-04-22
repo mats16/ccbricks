@@ -86,29 +86,39 @@ describe('config plugin', () => {
       expect(app.config.PORT).toBe(9000);
     });
 
-    it('should construct ANTHROPIC_BASE_URL from DATABRICKS_HOST', async () => {
+    it('should construct ANTHROPIC_BASE_URL from DATABRICKS_WORKSPACE_ID', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
       process.env.DATABRICKS_HOST = 'myworkspace.databricks.com';
-      // Note: Default ANTHROPIC_BASE_URL is evaluated at module load time, so we need to set it explicitly
-      process.env.ANTHROPIC_BASE_URL =
-        'https://myworkspace.databricks.com/serving-endpoints/anthropic';
+      process.env.DATABRICKS_WORKSPACE_ID = '1234567890';
 
       await app.register(configPlugin);
 
       expect(app.config.ANTHROPIC_BASE_URL).toBe(
-        'https://myworkspace.databricks.com/serving-endpoints/anthropic'
+        'https://1234567890.ai-gateway.cloud.databricks.com/anthropic'
       );
     });
 
-    it('should use default Anthropic model values', async () => {
+    it('should honor explicitly set ANTHROPIC_BASE_URL', async () => {
+      process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
+      process.env.DATABRICKS_HOST = 'myworkspace.databricks.com';
+      process.env.DATABRICKS_WORKSPACE_ID = '1234567890';
+      process.env.ANTHROPIC_BASE_URL = 'https://custom.example.com/anthropic';
+
+      await app.register(configPlugin);
+
+      expect(app.config.ANTHROPIC_BASE_URL).toBe('https://custom.example.com/anthropic');
+    });
+
+    it('should not have Anthropic model config (now managed via app_settings)', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
       process.env.DATABRICKS_HOST = 'test.databricks.com';
 
       await app.register(configPlugin);
 
-      expect(app.config.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('databricks-claude-opus-4-6');
-      expect(app.config.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe('databricks-claude-sonnet-4-6');
-      expect(app.config.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('databricks-claude-haiku-4-5');
+      // Model settings are now stored in app_settings DB table, not in env vars
+      expect(app.config).not.toHaveProperty('ANTHROPIC_DEFAULT_OPUS_MODEL');
+      expect(app.config).not.toHaveProperty('ANTHROPIC_DEFAULT_SONNET_MODEL');
+      expect(app.config).not.toHaveProperty('ANTHROPIC_DEFAULT_HAIKU_MODEL');
     });
   });
 

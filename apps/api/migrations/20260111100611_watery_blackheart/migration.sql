@@ -54,7 +54,13 @@ CREATE TABLE "app_settings" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-INSERT INTO "app_settings" ("key", "value") VALUES ('new_user_role_default', 'admin');
+INSERT INTO "app_settings" ("key", "value") VALUES ('default_new_user_role', 'admin');
+--> statement-breakpoint
+INSERT INTO "app_settings" ("key", "value") VALUES ('default_opus_model', 'databricks-claude-opus-4-6');
+--> statement-breakpoint
+INSERT INTO "app_settings" ("key", "value") VALUES ('default_sonnet_model', 'databricks-claude-sonnet-4-6');
+--> statement-breakpoint
+INSERT INTO "app_settings" ("key", "value") VALUES ('default_haiku_model', 'databricks-claude-haiku-4-5');
 --> statement-breakpoint
 CREATE INDEX "oauth_tokens_user_id_idx" ON "oauth_tokens" ("user_id");--> statement-breakpoint
 CREATE INDEX "session_events_session_created_at_idx" ON "session_events" ("session_id","created_at");--> statement-breakpoint

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ShieldCheck, ShieldOff, Loader2 } from 'lucide-react';
-import type { AdminUserInfo, AppSettingsResponse } from '@repo/types';
+import { ArrowLeft, ShieldCheck, ShieldOff, Loader2, Save } from 'lucide-react';
+import type { AdminUserInfo, AppSettingsResponse, ServingEndpointsByTier } from '@repo/types';
 import { useUser } from '@/hooks/useUser';
 import { adminService } from '@/services';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -22,10 +23,15 @@ export function AdminContent() {
 
   const [users, setUsers] = useState<AdminUserInfo[]>([]);
   const [settings, setSettings] = useState<AppSettingsResponse | null>(null);
+  const [servingEndpoints, setServingEndpoints] = useState<ServingEndpointsByTier | null>(null);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [otelTableNameInput, setOtelTableNameInput] = useState('');
+
+  const MODEL_NULL_SENTINEL = '__default__';
 
   // 非 Admin はホームにリダイレクト
   useEffect(() => {
@@ -51,6 +57,7 @@ export function AdminContent() {
       setIsLoadingSettings(true);
       const data = await adminService.getSettings();
       setSettings(data);
+      setOtelTableNameInput(data.otel_table_name ?? '');
     } catch {
       toast.error(t('admin.fetchError'));
     } finally {
@@ -58,12 +65,25 @@ export function AdminContent() {
     }
   }, [t]);
 
+  const fetchServingEndpoints = useCallback(async () => {
+    try {
+      setIsLoadingEndpoints(true);
+      const data = await adminService.getServingEndpoints();
+      setServingEndpoints(data);
+    } catch {
+      toast.error(t('admin.fetchEndpointsError'));
+    } finally {
+      setIsLoadingEndpoints(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
       fetchSettings();
+      fetchServingEndpoints();
     }
-  }, [isAdmin, fetchUsers, fetchSettings]);
+  }, [isAdmin, fetchUsers, fetchSettings, fetchServingEndpoints]);
 
   const adminCount = useMemo(() => users.filter(u => u.is_admin).length, [users]);
 
@@ -80,12 +100,42 @@ export function AdminContent() {
     }
   };
 
+  const handleModelChange = async (
+    key: 'default_opus_model' | 'default_sonnet_model' | 'default_haiku_model',
+    value: string | null
+  ) => {
+    setIsSavingSettings(true);
+    try {
+      await adminService.updateSettings({ [key]: value });
+      setSettings(prev => (prev ? { ...prev, [key]: value } : prev));
+      toast.success(t('admin.updateSettingsSuccess'));
+    } catch {
+      toast.error(t('admin.updateSettingsError'));
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const handleDefaultRoleChange = async (value: string) => {
     const newDefault = value as 'admin' | 'member';
     setIsSavingSettings(true);
     try {
-      await adminService.updateSettings({ new_user_role_default: newDefault });
-      setSettings({ new_user_role_default: newDefault });
+      await adminService.updateSettings({ default_new_user_role: newDefault });
+      setSettings(prev => (prev ? { ...prev, default_new_user_role: newDefault } : prev));
+      toast.success(t('admin.updateSettingsSuccess'));
+    } catch {
+      toast.error(t('admin.updateSettingsError'));
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleOtelTableNameSave = async () => {
+    const value = otelTableNameInput.trim();
+    setIsSavingSettings(true);
+    try {
+      await adminService.updateSettings({ otel_table_name: value || null });
+      setSettings(prev => (prev ? { ...prev, otel_table_name: value || null } : prev));
       toast.success(t('admin.updateSettingsSuccess'));
     } catch {
       toast.error(t('admin.updateSettingsError'));
@@ -115,11 +165,9 @@ export function AdminContent() {
           ) : (
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">{t('admin.defaultRole')}</p>
-                </div>
+                <p className="text-sm font-medium">{t('admin.defaultRole')}</p>
                 <Select
-                  value={settings?.new_user_role_default ?? 'admin'}
+                  value={settings?.default_new_user_role ?? 'admin'}
                   onValueChange={handleDefaultRoleChange}
                   disabled={isSavingSettings}
                 >
@@ -131,6 +179,103 @@ export function AdminContent() {
                     <SelectItem value="member">{t('admin.roleMember')}</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-4">{t('admin.modelConfiguration')}</h2>
+          {isLoadingEndpoints || isLoadingSettings ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="border border-border rounded-lg p-4 space-y-4">
+              {(
+                [
+                  {
+                    key: 'default_opus_model',
+                    label: t('admin.opusModel'),
+                    options: servingEndpoints?.opus ?? [],
+                  },
+                  {
+                    key: 'default_sonnet_model',
+                    label: t('admin.sonnetModel'),
+                    options: servingEndpoints?.sonnet ?? [],
+                  },
+                  {
+                    key: 'default_haiku_model',
+                    label: t('admin.haikuModel'),
+                    options: servingEndpoints?.haiku ?? [],
+                  },
+                ] as const
+              ).map(({ key, label, options }) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-medium shrink-0">{label}</p>
+                  <Select
+                    value={settings?.[key] ?? MODEL_NULL_SENTINEL}
+                    onValueChange={v =>
+                      handleModelChange(key, v === MODEL_NULL_SENTINEL ? null : v)
+                    }
+                    disabled={isSavingSettings}
+                  >
+                    <SelectTrigger className="w-[320px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={MODEL_NULL_SENTINEL}>{t('admin.envDefault')}</SelectItem>
+                      {options.map(name => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-4">{t('admin.telemetryConfiguration')}</h2>
+          {isLoadingSettings ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="border border-border rounded-lg p-4 space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="shrink-0">
+                  <p className="text-sm font-medium">{t('admin.otelTableName')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('admin.otelTableNameDescription')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="w-[320px]"
+                    placeholder={t('admin.otelTableNamePlaceholder')}
+                    value={otelTableNameInput}
+                    onChange={e => setOtelTableNameInput(e.target.value)}
+                    disabled={isSavingSettings}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleOtelTableNameSave}
+                    disabled={
+                      isSavingSettings || otelTableNameInput === (settings?.otel_table_name ?? '')
+                    }
+                  >
+                    {isSavingSettings ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}

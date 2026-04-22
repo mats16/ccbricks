@@ -150,7 +150,10 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "updated_at" INTEGER NOT NULL DEFAULT ${TS},
       PRIMARY KEY ("user_id", "id")
     );
-    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('new_user_role_default', 'admin');
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_new_user_role', 'admin');
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_opus_model', 'databricks-claude-opus-4-6');
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_sonnet_model', 'databricks-claude-sonnet-4-6');
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_haiku_model', 'databricks-claude-haiku-4-5');
     CREATE INDEX IF NOT EXISTS "sessions_user_id_idx" ON "sessions" ("user_id");
     CREATE INDEX IF NOT EXISTS "sessions_updated_at_idx" ON "sessions" ("updated_at");
     CREATE INDEX IF NOT EXISTS "sessions_status_idx" ON "sessions" ("status");
