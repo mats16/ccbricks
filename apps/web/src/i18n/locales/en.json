@@ -333,7 +333,7 @@
     "customFetchError": "Failed to fetch custom MCP servers",
     "settingsSaveError": "Failed to save MCP settings",
     "managedSection": "Databricks Managed",
-    "addManagedServer": "Add Databricks MCP",
+    "addManagedServer": "Add MCP Server",
     "addManagedServerDescription": "Register a Databricks managed MCP server",
     "selectServerType": "Select server type",
     "dbsqlLabel": "Databricks SQL",
