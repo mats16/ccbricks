@@ -113,26 +113,6 @@ export interface McpServerListResponse {
 // External MCP Server Types (Unity AI Gateway)
 // =====================================================
 
-/** Unity Catalog Connection (バックエンド内部用) */
-export interface UnityCatalogConnection {
-  connection_id: string;
-  name: string;
-  full_name: string;
-  connection_type: string;
-  options: {
-    is_mcp_connection?: string;
-    host?: string;
-    base_path?: string;
-    port?: string;
-    auth_scheme?: string;
-  };
-  url: string;
-  owner: string;
-  provisioning_info?: {
-    state: string;
-  };
-}
-
 /** フロントエンド向け外部 MCP サーバー情報 */
 export interface ExternalMcpServer {
   id: string;

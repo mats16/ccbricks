@@ -21,6 +21,15 @@ const VALID_MANAGED_TYPES: ManagedMcpType[] = [
 /** 小文字英数とアンダースコアのみ、連続アンダースコア禁止 */
 const VALID_ID_PATTERN = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 
+/** 任意の文字列を VALID_ID_PATTERN に適合するセグメントにサニタイズする */
+function sanitizeToIdSegment(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_');
+}
+
 function toRecord(row: typeof mcpServers.$inferSelect): McpServerRecord {
   return {
     id: row.id,
@@ -125,8 +134,15 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
           });
         }
         const trimmedName = connectionName.trim();
-        // name のハイフンをアンダースコアに変換して ID パターンに適合させる
-        generatedId = `external_${trimmedName.replace(/-/g, '_')}`;
+        const sanitized = sanitizeToIdSegment(trimmedName);
+        if (!sanitized) {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: `Connection name "${trimmedName}" cannot be converted to a valid ID`,
+            statusCode: 400,
+          });
+        }
+        generatedId = `external_${sanitized}`;
         generatedUrl = `https://${databricksHost}/api/2.0/mcp/external/${trimmedName}`;
       } else {
         // Genie Space: id に space_id を渡す

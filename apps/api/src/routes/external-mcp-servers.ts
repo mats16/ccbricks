@@ -1,11 +1,26 @@
 import { FastifyPluginAsync } from 'fastify';
 import { createUserContext } from '../lib/user-context.js';
-import type {
-  UnityCatalogConnection,
-  ExternalMcpServer,
-  ExternalMcpServerListResponse,
-  ApiError,
-} from '@repo/types';
+import type { ExternalMcpServer, ExternalMcpServerListResponse, ApiError } from '@repo/types';
+
+/** Unity Catalog Connection (バックエンド内部用) */
+interface UnityCatalogConnection {
+  connection_id: string;
+  name: string;
+  full_name: string;
+  connection_type: string;
+  options: {
+    is_mcp_connection?: string;
+    host?: string;
+    base_path?: string;
+    port?: string;
+    auth_scheme?: string;
+  };
+  url: string;
+  owner: string;
+  provisioning_info?: {
+    state: string;
+  };
+}
 
 interface DatabricksConnectionsResponse {
   connections?: UnityCatalogConnection[];
