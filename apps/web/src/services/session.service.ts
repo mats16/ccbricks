@@ -28,6 +28,9 @@ export const sessionService = {
     if (options?.status !== undefined) {
       params.set('status', options.status);
     }
+    if (options?.after !== undefined) {
+      params.set('after', options.after);
+    }
     const queryString = params.toString();
     const url = `/api/sessions${queryString ? `?${queryString}` : ''}`;
     return apiClient<SessionListResponse>(url);

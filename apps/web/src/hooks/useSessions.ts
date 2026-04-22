@@ -25,8 +25,21 @@ export function useSessions(): UseSessionsReturn {
     setError(null);
 
     try {
-      const response = await sessionService.getSessions();
-      setSessions(response.data);
+      const allSessions: SessionResponse[] = [];
+      let cursor: string | undefined;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await sessionService.getSessions({
+          limit: 100,
+          after: cursor,
+        });
+        allSessions.push(...response.data);
+        hasMore = response.has_more;
+        cursor = response.last_id || undefined;
+      }
+
+      setSessions(allSessions);
     } catch (e) {
       setError(e instanceof Error ? e : new Error('Failed to load sessions'));
     } finally {
