@@ -25,18 +25,21 @@ export function useSessions(): UseSessionsReturn {
     setError(null);
 
     try {
-      const allSessions: SessionResponse[] = [];
+      let allSessions: SessionResponse[] = [];
       let cursor: string | undefined;
       let hasMore = true;
+      const maxPages = 50;
 
-      while (hasMore) {
+      for (let page = 0; page < maxPages && hasMore; page++) {
         const response = await sessionService.getSessions({
           limit: 100,
           after: cursor,
         });
-        allSessions.push(...response.data);
+        allSessions = allSessions.concat(response.data);
         hasMore = response.has_more;
-        cursor = response.last_id || undefined;
+        const nextCursor = response.last_id || undefined;
+        if (nextCursor === cursor) break;
+        cursor = nextCursor;
       }
 
       setSessions(allSessions);

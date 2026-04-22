@@ -603,7 +603,6 @@ export async function listSessions(
   const safeLimit = Math.min(Math.max(1, limit), 100);
 
   return fastify.withUserContext(userId, async tx => {
-    // after カーソルから updated_at を取得
     let cursorUpdatedAt: Date | null = null;
     if (after) {
       const [cursorSession] = await tx
@@ -615,7 +614,6 @@ export async function listSessions(
       }
     }
 
-    // フィルタ条件を構築
     const conditions = [];
     if (status) {
       conditions.push(eq(sessions.status, status));
