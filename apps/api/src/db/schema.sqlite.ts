@@ -120,7 +120,7 @@ export const mcpServers = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     id: text('id').notNull(),
-    displayName: text('display_name').notNull(),
+    name: text('name').notNull(),
     type: text('type').notNull(), // 'stdio' | 'http' | 'sse'
     url: text('url'),
     headers: text('headers', { mode: 'json' }), // Record<string, string>

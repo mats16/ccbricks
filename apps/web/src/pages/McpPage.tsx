@@ -40,7 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import { genieService, mcpServerService, externalMcpServerService } from '@/services';
 import { useUser } from '@/hooks/useUser';
-import { buildDbsqlMcpUrl, buildGenieMcpUrl, buildExternalMcpUrl } from '@/constants';
+import { buildDbsqlMcpUrl, buildGenieMcpUrl } from '@/constants';
 import type {
   GenieSpace,
   McpServerRecord,
@@ -170,7 +170,7 @@ function recordToPairs(record?: Record<string, string>): KeyValuePair[] {
 
 interface ServerFormState {
   id: string;
-  displayName: string;
+  serverName: string;
   type: McpServerType;
   url: string;
   headers: KeyValuePair[];
@@ -181,7 +181,7 @@ interface ServerFormState {
 
 const EMPTY_FORM: ServerFormState = {
   id: '',
-  displayName: '',
+  serverName: '',
   type: 'http',
   url: '',
   headers: [],
@@ -193,7 +193,7 @@ const EMPTY_FORM: ServerFormState = {
 function serverToFormState(server: McpServerRecord): ServerFormState {
   return {
     id: server.id,
-    displayName: server.display_name,
+    serverName: server.name,
     type: server.type,
     url: server.url ?? '',
     headers: recordToPairs(server.headers),
@@ -206,7 +206,7 @@ function serverToFormState(server: McpServerRecord): ServerFormState {
 function buildFormPayload(form: ServerFormState) {
   const trimmedArgs = form.args.trim();
   return {
-    display_name: form.displayName.trim(),
+    name: form.serverName.trim(),
     type: form.type,
     url: form.url.trim() || undefined,
     headers: pairsToRecord(form.headers),
@@ -285,8 +285,8 @@ function ServerFormDialog({
             <Label htmlFor={`${prefix}-display-name`}>{t('mcp.displayName')}</Label>
             <Input
               id={`${prefix}-display-name`}
-              value={form.displayName}
-              onChange={e => update({ displayName: e.target.value })}
+              value={form.serverName}
+              onChange={e => update({ serverName: e.target.value })}
               placeholder={t('mcp.displayNamePlaceholder')}
             />
           </div>
@@ -435,13 +435,11 @@ type AddMcpStep = 'select' | 'configure-managed' | 'configure-unity-gateway';
 // ─── Unity AI Gateway step (extracted) ───────────────────────
 
 function UnityAiGatewayStep({
-  databricksHost,
   existingServers,
   onBack,
   onCreated,
   onClose,
 }: {
-  databricksHost: string | null | undefined;
   existingServers: McpServerRecord[];
   onBack: () => void;
   onCreated: () => void;
@@ -486,13 +484,7 @@ function UnityAiGatewayStep({
   const availableUcMcpServers = useMemo(() => {
     const q = ucSearchQuery.toLowerCase().trim();
     return ucMcpServers.filter(s => {
-      const sanitized = s.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .replace(/_+/g, '_');
-      const generatedId = `external_${sanitized}`;
-      if (registeredUcConnectionIds.has(generatedId)) return false;
+      if (registeredUcConnectionIds.has(s.id)) return false;
       if (!q) return true;
       return s.name.toLowerCase().includes(q) || s.owner?.toLowerCase().includes(q);
     });
@@ -510,7 +502,7 @@ function UnityAiGatewayStep({
     try {
       await mcpServerService.create({
         id: selectedUcServer.name,
-        display_name: selectedUcServer.name,
+        name: selectedUcServer.name,
         type: 'http',
         managed_type: 'unity_ai_gateway',
       });
@@ -590,11 +582,11 @@ function UnityAiGatewayStep({
       </div>
 
       {/* URL preview */}
-      {selectedUcServer && databricksHost && (
+      {selectedUcServer && (
         <div className="space-y-1 shrink-0">
           <Label className="text-xs text-muted-foreground">{t('mcp.url')}</Label>
           <p className="text-xs font-mono text-muted-foreground/70 bg-muted p-2 rounded truncate">
-            {buildExternalMcpUrl(databricksHost, selectedUcServer.name)}
+            {selectedUcServer.url}
           </p>
         </div>
       )}
@@ -634,7 +626,7 @@ function AddMcpDialog({
 
   // Managed MCP state
   const [selectedManagedType, setSelectedManagedType] = useState<ManagedMcpType | null>(null);
-  const [displayName, setDisplayName] = useState('');
+  const [serverName, setServerName] = useState('');
   const [selectedGenieSpaceId, setSelectedGenieSpaceId] = useState('');
   const [genieSpaces, setGenieSpaces] = useState<GenieSpace[]>([]);
   const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
@@ -655,7 +647,7 @@ function AddMcpDialog({
   const reset = () => {
     setStep('select');
     setSelectedManagedType(null);
-    setDisplayName('');
+    setServerName('');
     setSelectedGenieSpaceId('');
     setGenieSpaces([]);
     setNextPageToken(undefined);
@@ -695,7 +687,7 @@ function AddMcpDialog({
     setSelectedGenieSpaceId(spaceId);
     const space = genieSpaces.find(s => s.space_id === spaceId);
     if (space) {
-      setDisplayName(space.title);
+      setServerName(space.title);
     }
   };
 
@@ -721,7 +713,7 @@ function AddMcpDialog({
   const handleManagedSubmit = async () => {
     setFormError(null);
 
-    if (!displayName.trim()) {
+    if (!serverName.trim()) {
       setFormError(t('mcp.displayNameRequired'));
       return;
     }
@@ -735,7 +727,7 @@ function AddMcpDialog({
     try {
       await mcpServerService.create({
         id: selectedManagedType === 'databricks_sql' ? 'dbsql' : selectedGenieSpaceId,
-        display_name: displayName.trim(),
+        name: serverName.trim(),
         type: 'http',
         managed_type: selectedManagedType!,
       });
@@ -767,7 +759,7 @@ function AddMcpDialog({
 
     if (tileType === 'databricks_sql') {
       setSelectedManagedType('databricks_sql');
-      setDisplayName('Databricks SQL');
+      setServerName('Databricks SQL');
       setStep('configure-managed');
       return;
     }
@@ -931,8 +923,8 @@ function AddMcpDialog({
               <Label htmlFor="managed-display-name">{t('mcp.displayName')}</Label>
               <Input
                 id="managed-display-name"
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
+                value={serverName}
+                onChange={e => setServerName(e.target.value)}
                 placeholder={t('mcp.displayNamePlaceholder')}
               />
             </div>
@@ -966,7 +958,6 @@ function AddMcpDialog({
         {/* ─── Step: Unity AI Gateway Configuration ─── */}
         {step === 'configure-unity-gateway' && (
           <UnityAiGatewayStep
-            databricksHost={databricksHost}
             existingServers={existingServers}
             onBack={() => {
               setStep('select');
@@ -1071,7 +1062,7 @@ export function McpContent() {
       if (!form.id.trim()) return t('mcp.idRequired');
       if (!/^[a-z0-9]+(_[a-z0-9]+)*$/.test(form.id.trim())) return t('mcp.idInvalid');
     }
-    if (!form.displayName.trim()) return t('mcp.displayNameRequired');
+    if (!form.serverName.trim()) return t('mcp.displayNameRequired');
     if ((form.type === 'http' || form.type === 'sse') && !form.url.trim())
       return t('mcp.urlRequired');
     if (form.type === 'stdio' && !form.command.trim()) return t('mcp.commandRequired');
@@ -1108,7 +1099,7 @@ export function McpContent() {
   };
 
   const handleDelete = async (server: McpServerRecord) => {
-    if (!confirm(t('mcp.deleteConfirm', { name: server.display_name }))) return;
+    if (!confirm(t('mcp.deleteConfirm', { name: server.name }))) return;
     try {
       await mcpServerService.remove(server.id);
       toast.success(t('mcp.deleteSuccess'));
@@ -1176,7 +1167,7 @@ export function McpContent() {
                         htmlFor={`managed-${server.id}`}
                         className="font-medium cursor-pointer"
                       >
-                        {server.display_name}
+                        {server.name}
                       </Label>
                       <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                         {server.id}
@@ -1248,7 +1239,7 @@ export function McpContent() {
                     <div className="flex items-center gap-2">
                       <ServerTypeIcon type={server.type} />
                       <Label htmlFor={`custom-${server.id}`} className="font-medium cursor-pointer">
-                        {server.display_name}
+                        {server.name}
                       </Label>
                       <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                         {server.type}

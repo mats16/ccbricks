@@ -82,7 +82,7 @@ export type ManagedMcpType =
 
 export interface McpServerRecord {
   id: string;
-  display_name: string;
+  name: string;
   type: McpServerType;
   managed_type?: ManagedMcpType;
   url?: string;
@@ -119,6 +119,7 @@ export interface ExternalMcpServer {
   name: string;
   url: string;
   owner: string;
+  options?: Record<string, string>;
 }
 
 export interface ExternalMcpServerListResponse {

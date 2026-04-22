@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { createUserContext } from '../lib/user-context.js';
+import { sanitizeToIdSegment } from '../utils/sanitize.js';
 import type { ExternalMcpServer, ExternalMcpServerListResponse, ApiError } from '@repo/types';
 
 /** Unity Catalog Connection (バックエンド内部用) */
@@ -8,13 +9,7 @@ interface UnityCatalogConnection {
   name: string;
   full_name: string;
   connection_type: string;
-  options: {
-    is_mcp_connection?: string;
-    host?: string;
-    base_path?: string;
-    port?: string;
-    auth_scheme?: string;
-  };
+  options: Record<string, string>;
   url: string;
   owner: string;
   provisioning_info?: {
@@ -78,11 +73,18 @@ const externalMcpServersRoute: FastifyPluginAsync = async fastify => {
 
         for (const conn of connections) {
           if (conn.options?.is_mcp_connection === 'true') {
+            const sanitized = sanitizeToIdSegment(conn.name);
+            const gatewayUrl = `https://${databricksHost}/api/2.0/mcp/external/${conn.name}`;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { is_mcp_connection: _mcp, ...filteredOptions } = conn.options;
+
             allServers.push({
-              id: conn.connection_id,
+              id: sanitized ? `external_${sanitized}` : conn.connection_id,
               name: conn.name,
-              url: conn.url,
+              url: gatewayUrl,
               owner: conn.owner,
+              options:
+                Object.keys(filteredOptions).length > 0 ? filteredOptions : undefined,
             });
           }
         }

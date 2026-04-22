@@ -68,7 +68,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
 
       result.push({
         space_id: server.id,
-        title: server.display_name,
+        title: server.name,
         mcp_url: displayUrl,
         enabled: sessionOverrides[server.id] ?? true,
       });

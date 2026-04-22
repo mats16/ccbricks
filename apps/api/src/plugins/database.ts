@@ -134,7 +134,7 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
     CREATE TABLE IF NOT EXISTS "mcp_servers" (
       "user_id" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
       "id" TEXT NOT NULL,
-      "display_name" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
       "type" TEXT NOT NULL,
       "url" TEXT,
       "headers" TEXT,

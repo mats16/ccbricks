@@ -12,6 +12,8 @@ import type {
 import { mcpServers, type InsertMcpServer } from '../db/schema.js';
 
 const VALID_TYPES: McpServerType[] = ['stdio', 'http', 'sse'];
+import { sanitizeToIdSegment } from '../utils/sanitize.js';
+
 const VALID_MANAGED_TYPES: ManagedMcpType[] = [
   'databricks_sql',
   'databricks_genie',
@@ -21,19 +23,10 @@ const VALID_MANAGED_TYPES: ManagedMcpType[] = [
 /** 小文字英数とアンダースコアのみ、連続アンダースコア禁止 */
 const VALID_ID_PATTERN = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 
-/** 任意の文字列を VALID_ID_PATTERN に適合するセグメントにサニタイズする */
-function sanitizeToIdSegment(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .replace(/_+/g, '_');
-}
-
 function toRecord(row: typeof mcpServers.$inferSelect): McpServerRecord {
   return {
     id: row.id,
-    display_name: row.displayName,
+    name: row.name,
     type: row.type as McpServerType,
     managed_type: (row.managedType as ManagedMcpType) ?? undefined,
     url: row.url ?? undefined,
@@ -107,11 +100,11 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         });
       }
 
-      const { display_name } = request.body;
-      if (!display_name || typeof display_name !== 'string' || !display_name.trim()) {
+      const { name } = request.body;
+      if (!name || typeof name !== 'string' || !name.trim()) {
         return reply.status(400).send({
           error: 'BadRequest',
-          message: 'display_name is required',
+          message: 'name is required',
           statusCode: 400,
         });
       }
@@ -164,7 +157,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
         .values({
           userId: user.id,
           id: generatedId,
-          displayName: display_name.trim(),
+          name: name.trim(),
           type: 'http',
           url: generatedUrl,
           managedType: managed_type,
@@ -184,7 +177,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
     }
 
     // --- Custom MCP サーバー登録 ---
-    const { id, display_name, type, url, headers, command, args, env } = request.body;
+    const { id, name, type, url, headers, command, args, env } = request.body;
 
     if (!id || typeof id !== 'string' || !id.trim()) {
       return reply.status(400).send({
@@ -203,10 +196,10 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
-    if (!display_name || typeof display_name !== 'string' || !display_name.trim()) {
+    if (!name || typeof name !== 'string' || !name.trim()) {
       return reply.status(400).send({
         error: 'BadRequest',
-        message: 'display_name is required',
+        message: 'name is required',
         statusCode: 400,
       });
     }
@@ -241,7 +234,7 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
       .values({
         userId: user.id,
         id: trimmedId,
-        displayName: display_name.trim(),
+        name: name.trim(),
         type,
         url: url?.trim() || null,
         headers: headers ?? null,
@@ -279,19 +272,19 @@ const mcpServersRoute: FastifyPluginAsync = async fastify => {
     }
 
     const { id } = request.params;
-    const { display_name, type, url, headers, command, args, env, is_disabled } = request.body;
+    const { name, type, url, headers, command, args, env, is_disabled } = request.body;
 
     const updates: Partial<InsertMcpServer> = {};
 
-    if (display_name !== undefined) {
-      if (typeof display_name !== 'string' || !display_name.trim()) {
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) {
         return reply.status(400).send({
           error: 'BadRequest',
-          message: 'display_name must be a non-empty string',
+          message: 'name must be a non-empty string',
           statusCode: 400,
         });
       }
-      updates.displayName = display_name.trim();
+      updates.name = name.trim();
     }
 
     if (type !== undefined) {
