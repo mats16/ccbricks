@@ -344,7 +344,9 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ANTHROPIC_DEFAULT_HAIKU_MODEL: fastify.config.ANTHROPIC_DEFAULT_HAIKU_MODEL,
           ANTHROPIC_CUSTOM_HEADERS: 'x-databricks-use-coding-agent-mode: true',
           CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: '1',
-          ...authProvider.getEnvVars(),
+          // Databricks CLI 認証: OBO トークンを使用
+          DATABRICKS_HOST: `https://${fastify.config.DATABRICKS_HOST}`,
+          DATABRICKS_TOKEN: oboToken ?? '',
         },
       },
     });
