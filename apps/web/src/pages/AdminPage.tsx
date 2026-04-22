@@ -146,9 +146,7 @@ function AdminSettingsContent() {
                 <p className="text-sm font-medium shrink-0">{label}</p>
                 <Select
                   value={settings?.[key] ?? MODEL_NULL_SENTINEL}
-                  onValueChange={v =>
-                    handleModelChange(key, v === MODEL_NULL_SENTINEL ? null : v)
-                  }
+                  onValueChange={v => handleModelChange(key, v === MODEL_NULL_SENTINEL ? null : v)}
                   disabled={isSavingSettings}
                 >
                   <SelectTrigger className="w-[320px]">
