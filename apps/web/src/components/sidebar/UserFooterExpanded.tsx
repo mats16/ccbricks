@@ -69,7 +69,7 @@ export function UserFooterExpanded({
           {isAdmin && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/admin')}>
+              <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
                 <ShieldCheck className="h-4 w-4 mr-2" />
                 {t('user.admin')}
               </DropdownMenuItem>

@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { UserProvider } from '@/contexts/UserContext';
 import { useUser } from '@/hooks/useUser';
@@ -38,7 +38,9 @@ function AppContent() {
       <Route path="/skills" element={<AppLayout />} />
       <Route path="/agents" element={<AppLayout />} />
       <Route path="/mcp" element={<AppLayout />} />
-      <Route path="/admin" element={<AppLayout />} />
+      <Route path="/admin" element={<Navigate to="/admin/settings" replace />} />
+      <Route path="/admin/settings" element={<AppLayout />} />
+      <Route path="/admin/users" element={<AppLayout />} />
       <Route path="/sessions/:sessionId" element={<AppLayout />} />
     </Routes>
   );

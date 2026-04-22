@@ -24,7 +24,7 @@ export function AppLayout() {
   const isSkillsPage = location.pathname === '/skills';
   const isAgentsPage = location.pathname === '/agents';
   const isMcpPage = location.pathname === '/mcp';
-  const isAdminPage = location.pathname === '/admin';
+  const isAdminPage = location.pathname.startsWith('/admin/');
   const {
     sessions,
     isLoading: isSessionsLoading,

@@ -19,7 +19,7 @@ export const adminService = {
 
   updateSettings: (settings: UpdateAppSettingsRequest) =>
     apiClient<{ success: true }>('/api/admin/settings', {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(settings),
     }),
 

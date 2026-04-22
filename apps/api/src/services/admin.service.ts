@@ -103,22 +103,19 @@ export async function updateAppSettings(
 
   if (entries.length === 0) return;
 
-  await fastify.db.transaction(async tx => {
-    for (const entry of entries) {
-      if (entry.value === null) {
-        // null の場合はキーを削除（デフォルトに戻す）
-        await tx.delete(appSettings).where(eq(appSettings.key, entry.key));
-      } else {
-        await tx
-          .insert(appSettings)
-          .values({ key: entry.key, value: entry.value })
-          .onConflictDoUpdate({
-            target: appSettings.key,
-            set: { value: entry.value },
-          });
-      }
+  for (const entry of entries) {
+    if (entry.value === null) {
+      await fastify.db.delete(appSettings).where(eq(appSettings.key, entry.key));
+    } else {
+      await fastify.db
+        .insert(appSettings)
+        .values({ key: entry.key, value: entry.value })
+        .onConflictDoUpdate({
+          target: appSettings.key,
+          set: { value: entry.value },
+        });
     }
-  });
+  }
 }
 
 /**

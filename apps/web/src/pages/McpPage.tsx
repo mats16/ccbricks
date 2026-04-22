@@ -450,6 +450,7 @@ function UnityAiGatewayStep({
   const [isLoadingUcServers, setIsLoadingUcServers] = useState(true);
   const [selectedUcServerId, setSelectedUcServerId] = useState('');
   const [ucSearchQuery, setUcSearchQuery] = useState('');
+  const [serverName, setServerName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -481,6 +482,13 @@ function UnityAiGatewayStep({
     [ucMcpServers, selectedUcServerId]
   );
 
+  // コネクション選択時にデフォルト表示名をセット
+  useEffect(() => {
+    if (selectedUcServer) {
+      setServerName(selectedUcServer.name);
+    }
+  }, [selectedUcServer]);
+
   const availableUcMcpServers = useMemo(() => {
     const q = ucSearchQuery.toLowerCase().trim();
     return ucMcpServers.filter(s => {
@@ -498,11 +506,16 @@ function UnityAiGatewayStep({
       return;
     }
 
+    if (!serverName.trim()) {
+      setFormError(t('mcp.displayNameRequired'));
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await mcpServerService.create({
         id: selectedUcServer.name,
-        name: selectedUcServer.name,
+        name: serverName.trim(),
         type: 'http',
         managed_type: 'unity_ai_gateway',
       });
@@ -580,6 +593,18 @@ function UnityAiGatewayStep({
           </div>
         )}
       </div>
+
+      {selectedUcServer && (
+        <div className="space-y-2 shrink-0">
+          <Label htmlFor="unity-display-name">{t('mcp.displayName')}</Label>
+          <Input
+            id="unity-display-name"
+            value={serverName}
+            onChange={e => setServerName(e.target.value)}
+            placeholder={t('mcp.displayNamePlaceholder')}
+          />
+        </div>
+      )}
 
       {/* URL preview */}
       {selectedUcServer && (
