@@ -70,8 +70,8 @@ const adminRoute: FastifyPluginAsync = async fastify => {
     }
   );
 
-  // アプリ設定更新
-  fastify.put<{
+  // アプリ設定更新（部分更新）
+  fastify.patch<{
     Body: UpdateAppSettingsRequest;
     Reply: { success: true } | ApiError;
   }>('/admin/settings', { preHandler: guard }, async (request, reply) => {
