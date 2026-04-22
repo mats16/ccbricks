@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, FolderCode, Settings, Logs } from 'lucide-react';
+import { Rocket, FolderCode, Settings, Logs, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { APP_STATUS_POLLING_INTERVAL_MS, APP_STATUS_POLLING_STABLE_INTERVAL_MS } from '@/constants';
 import { useUser } from '@/hooks/useUser';
+import { workspaceService } from '@/services';
+import { toast } from 'sonner';
 import type { DatabricksApp } from '@repo/types';
 
 interface FloatingButtonsProps {
   sessionId: string;
   showAppButton: boolean;
-  /** Workspace object ID - ボタン表示は id の有無で判定 */
-  workspaceObjectId?: number;
+  /** Workspace パス - ボタン表示は path の有無で判定 */
+  workspacePath?: string;
 }
 
 type AppStateType = 'RUNNING' | 'DEPLOYING' | 'CRASHED' | 'UNAVAILABLE' | 'UNKNOWN';
@@ -62,15 +64,13 @@ function getPollingInterval(state: string | undefined): number {
     : APP_STATUS_POLLING_INTERVAL_MS;
 }
 
-export function FloatingButtons({
-  sessionId,
-  showAppButton,
-  workspaceObjectId,
-}: FloatingButtonsProps) {
-  const showWorkspaceButton = workspaceObjectId !== undefined;
+export function FloatingButtons({ sessionId, showAppButton, workspacePath }: FloatingButtonsProps) {
+  const showWorkspaceButton = !!workspacePath;
   const { t } = useTranslation();
   const { databricksHost } = useUser();
   const [appInfo, setAppInfo] = useState<DatabricksApp | null>(null);
+  const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false);
+  const workspaceObjectIdRef = useRef<number | undefined>(undefined);
   const fetchAppInfoRef = useRef<() => Promise<void>>(undefined);
   const appStateRef = useRef<string | undefined>(undefined);
 
@@ -121,6 +121,19 @@ export function FloatingButtons({
     return () => clearTimeout(timeoutId);
   }, [showAppButton]);
 
+  // Workspace object_id を pre-fetch してキャッシュ（クリック時の同期 window.open に必要）
+  useEffect(() => {
+    if (!workspacePath) return;
+    workspaceService
+      .getStatus(workspacePath)
+      .then(status => {
+        workspaceObjectIdRef.current = status.object_id;
+      })
+      .catch(() => {
+        // pre-fetch failure is non-fatal; click handler will retry
+      });
+  }, [workspacePath]);
+
   const appState = appInfo?.app_status?.state ?? 'UNKNOWN';
   const style = getAppStateStyle(appState);
 
@@ -144,9 +157,37 @@ export function FloatingButtons({
   };
 
   const handleOpenWorkspace = () => {
-    if (!workspaceObjectId || !databricksHost) return;
-    const workspaceUrl = `https://${databricksHost}/browse/folders/${workspaceObjectId}`;
-    window.open(workspaceUrl, '_blank');
+    if (!workspacePath || !databricksHost) return;
+
+    // pre-fetch 済み: 同期的に開く（ポップアップブロッカー回避）
+    if (workspaceObjectIdRef.current !== undefined) {
+      window.open(
+        `https://${databricksHost}/browse/folders/${workspaceObjectIdRef.current}`,
+        '_blank'
+      );
+      return;
+    }
+
+    // pre-fetch 未完了: 先にウィンドウを確保してから API 呼び出し
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      toast.error(t('databricksApp.workspaceOpenError'));
+      return;
+    }
+    setIsOpeningWorkspace(true);
+    workspaceService
+      .getStatus(workspacePath)
+      .then(status => {
+        workspaceObjectIdRef.current = status.object_id;
+        newWindow.location.href = `https://${databricksHost}/browse/folders/${status.object_id}`;
+      })
+      .catch(() => {
+        newWindow.close();
+        toast.error(t('databricksApp.workspaceOpenError'));
+      })
+      .finally(() => {
+        setIsOpeningWorkspace(false);
+      });
   };
 
   if (!showAppButton && !showWorkspaceButton) {
@@ -200,10 +241,15 @@ export function FloatingButtons({
           {showWorkspaceButton && (
             <div className="flex items-center h-8 px-3 rounded-lg shadow-lg bg-background border">
               <button
-                className="flex items-center gap-1 hover:opacity-70"
+                className="flex items-center gap-1 hover:opacity-70 disabled:opacity-50"
                 onClick={handleOpenWorkspace}
+                disabled={isOpeningWorkspace}
               >
-                <FolderCode className="h-4 w-4 text-foreground" />
+                {isOpeningWorkspace ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-foreground" />
+                ) : (
+                  <FolderCode className="h-4 w-4 text-foreground" />
+                )}
                 <span className="text-sm font-medium">{t('databricksApp.workspace')}</span>
               </button>
             </div>

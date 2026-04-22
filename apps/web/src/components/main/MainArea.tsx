@@ -148,7 +148,6 @@ export function MainArea({
                 {
                   type: 'databricks_workspace',
                   path: workspaceSelection.path,
-                  id: workspaceSelection.object_id,
                 },
               ]
             : [],
@@ -156,7 +155,6 @@ export function MainArea({
             {
               type: 'databricks_workspace',
               path: '/Workspace/Shared/ccbricks/sessions/{session_id}',
-              id: 0,
             },
             ...(enableDatabricksApps
               ? [{ type: 'databricks_apps' as const, name: titleResult?.app_name }]
@@ -244,7 +242,7 @@ export function MainArea({
         <FloatingButtons
           sessionId={sessionId}
           showAppButton={!!databricksAppsOutcome}
-          workspaceObjectId={databricksWorkspaceOutcome?.id}
+          workspacePath={databricksWorkspaceOutcome?.path}
         />
       )}
     </div>
