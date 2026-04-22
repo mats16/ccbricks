@@ -2,11 +2,11 @@ import { FastifyPluginAsync } from 'fastify';
 import type { GenerateTitleRequest, GenerateTitleResponse, ApiError } from '@repo/types';
 import { TitleService } from '../services/title.service.js';
 import { createUserContext } from '../lib/user-context.js';
+import { getModelSettings } from '../services/admin.service.js';
 
 const titleRoute: FastifyPluginAsync = async fastify => {
   const titleService = new TitleService({
     databricksHost: fastify.config.DATABRICKS_HOST,
-    model: fastify.config.ANTHROPIC_DEFAULT_HAIKU_MODEL,
   });
 
   fastify.post<{
@@ -41,9 +41,11 @@ const titleRoute: FastifyPluginAsync = async fastify => {
     }
 
     try {
+      const modelSettings = await getModelSettings(fastify);
       const result = await titleService.generateTitle({
         firstSessionMessage: first_session_message,
         accessToken,
+        model: modelSettings.haikuModel,
       });
 
       return reply.send(result);

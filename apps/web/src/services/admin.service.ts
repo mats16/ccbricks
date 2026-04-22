@@ -1,6 +1,7 @@
 import type {
   AdminUserListResponse,
   AppSettingsResponse,
+  ServingEndpointsByTier,
   UpdateAppSettingsRequest,
 } from '@repo/types';
 import { apiClient } from './api-client';
@@ -21,4 +22,6 @@ export const adminService = {
       method: 'PUT',
       body: JSON.stringify(settings),
     }),
+
+  getServingEndpoints: () => apiClient<ServingEndpointsByTier>('/api/models'),
 };

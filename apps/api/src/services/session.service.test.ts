@@ -86,9 +86,6 @@ describe('session.service', () => {
         CCBRICKS_BASE_DIR: '/home/app',
         PATH: '/usr/bin',
         ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
-        ANTHROPIC_DEFAULT_OPUS_MODEL: 'opus',
-        ANTHROPIC_DEFAULT_SONNET_MODEL: 'sonnet',
-        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'haiku',
       },
     } as unknown as FastifyInstance;
   };

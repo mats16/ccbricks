@@ -20,8 +20,8 @@ describe('TitleService', () => {
   let service: TitleService;
   const defaultConfig: TitleServiceConfig = {
     databricksHost: 'test.databricks.com',
-    model: 'databricks-claude-haiku-4-5',
   };
+  const defaultModel = 'databricks-claude-haiku-4-5';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -32,7 +32,6 @@ describe('TitleService', () => {
     it('should initialize with config', () => {
       const config: TitleServiceConfig = {
         databricksHost: 'custom.databricks.com',
-        model: 'custom-model',
       };
       const customService = new TitleService(config);
       expect(customService).toBeInstanceOf(TitleService);
@@ -57,6 +56,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Help me create a React component',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result).toEqual({
@@ -92,6 +92,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Test message',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('General coding session');
@@ -106,6 +107,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Test message',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('General coding session');
@@ -126,6 +128,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Test message',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('General coding session');
@@ -139,6 +142,7 @@ describe('TitleService', () => {
         service.generateTitle({
           firstSessionMessage: 'Test message',
           accessToken: 'test-token',
+          model: defaultModel,
         })
       ).rejects.toThrow('API error');
     });
@@ -160,6 +164,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Analyze CSV',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('Python Data Analysis');
@@ -183,6 +188,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Create React component',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('React Component');
@@ -205,6 +211,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Integrate API',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('API Integration');
@@ -227,6 +234,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Create React component',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('React Component Development');
@@ -249,6 +257,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Create React component',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('React Component Development');
@@ -271,6 +280,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Analyze data',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('Python Data Analysis');
@@ -293,6 +303,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Reactコンポーネントを作成してください',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('React Component Implementation');
@@ -324,6 +335,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Test',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('General coding session');
@@ -346,6 +358,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Test',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('Valid Title');
@@ -366,6 +379,7 @@ describe('TitleService', () => {
       const result = await service.generateTitle({
         firstSessionMessage: 'Test',
         accessToken: 'test-token',
+        model: defaultModel,
       });
 
       expect(result.title).toBe('General coding session');

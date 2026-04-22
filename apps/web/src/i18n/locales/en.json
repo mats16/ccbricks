@@ -380,7 +380,14 @@
     "updateRoleError": "Failed to update role",
     "updateSettingsSuccess": "Settings updated successfully",
     "updateSettingsError": "Failed to update settings",
-    "fetchError": "Failed to load admin data"
+    "fetchError": "Failed to load admin data",
+    "modelConfiguration": "Model Configuration",
+    "opusModel": "Claude Opus",
+    "sonnetModel": "Claude Sonnet",
+    "haikuModel": "Claude Haiku",
+    "envDefault": "Environment default",
+    "resetToDefault": "Reset to default",
+    "fetchEndpointsError": "Failed to load serving endpoints"
   },
   "tools": {
     "updateTodos": "Update Todos",

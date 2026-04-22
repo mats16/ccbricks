@@ -20,9 +20,21 @@ export interface UpdateUserRoleRequest {
 export type UserRole = 'admin' | 'member';
 
 export interface AppSettingsResponse {
-  new_user_role_default: UserRole;
+  default_new_user_role: UserRole;
+  default_opus_model: string | null;
+  default_sonnet_model: string | null;
+  default_haiku_model: string | null;
 }
 
 export interface UpdateAppSettingsRequest {
-  new_user_role_default: UserRole;
+  default_new_user_role?: UserRole;
+  default_opus_model?: string | null;
+  default_sonnet_model?: string | null;
+  default_haiku_model?: string | null;
+}
+
+export interface ServingEndpointsByTier {
+  opus: string[];
+  sonnet: string[];
+  haiku: string[];
 }

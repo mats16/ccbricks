@@ -84,7 +84,6 @@ function generateFallbackAppName(): string {
 
 export interface TitleServiceConfig {
   databricksHost: string;
-  model: string;
 }
 
 export interface GenerateTitleParams {
@@ -104,8 +103,8 @@ export class TitleService {
    * Uses structured output (JSON schema) for reliable parsing.
    * @throws Error if the LLM call fails
    */
-  async generateTitle(params: GenerateTitleParams): Promise<GenerateTitleResponse> {
-    const { firstSessionMessage, accessToken } = params;
+  async generateTitle(params: GenerateTitleParams & { model: string }): Promise<GenerateTitleResponse> {
+    const { firstSessionMessage, accessToken, model } = params;
 
     const client = new OpenAI({
       baseURL: `https://${this.config.databricksHost}/serving-endpoints`,
@@ -114,7 +113,7 @@ export class TitleService {
     });
 
     const response = await client.chat.completions.create({
-      model: this.config.model,
+      model,
       max_tokens: MAX_TOKENS,
       response_format: RESPONSE_FORMAT,
       messages: [

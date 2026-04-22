@@ -32,6 +32,7 @@ import { validatePathWithinBase } from '../utils/path-validation.js';
 import { fromUUID } from 'typeid-js';
 import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
 import { getAuthProvider } from '../lib/databricks-auth.js';
+import { getModelSettings } from './admin.service.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -310,6 +311,9 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
       (o): o is ResolvedDatabricksAppsOutcome => o.type === 'databricks_apps'
     )?.name;
 
+    // DB のモデル設定を取得（未設定なら環境変数デフォルトにフォールバック）
+    const modelSettings = await getModelSettings(fastify);
+
     const response = query({
       prompt,
       options: {
@@ -339,9 +343,9 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ...(appsOutcomeName ? { SESSION_APP_NAME: appsOutcomeName } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
-          ANTHROPIC_DEFAULT_OPUS_MODEL: fastify.config.ANTHROPIC_DEFAULT_OPUS_MODEL,
-          ANTHROPIC_DEFAULT_SONNET_MODEL: fastify.config.ANTHROPIC_DEFAULT_SONNET_MODEL,
-          ANTHROPIC_DEFAULT_HAIKU_MODEL: fastify.config.ANTHROPIC_DEFAULT_HAIKU_MODEL,
+          ANTHROPIC_DEFAULT_OPUS_MODEL: modelSettings.opusModel,
+          ANTHROPIC_DEFAULT_SONNET_MODEL: modelSettings.sonnetModel,
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: modelSettings.haikuModel,
           ANTHROPIC_CUSTOM_HEADERS: 'x-databricks-use-coding-agent-mode: true',
           CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: '1',
           // Databricks CLI 認証: OBO トークンを使用

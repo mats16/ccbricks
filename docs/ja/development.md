@@ -132,8 +132,8 @@ DATABRICKS_USER_EMAIL=your-email@example.com
 # SQL Warehouse（Databricks SQL を使用する場合）
 WAREHOUSE_ID=your-warehouse-id
 
-# Anthropic API（デフォルトは Databricks サービングエンドポイント）
-ANTHROPIC_BASE_URL=https://your-workspace.databricks.com/serving-endpoints/anthropic
+# Anthropic API（DATABRICKS_WORKSPACE_ID から自動構築; 必要に応じてオーバーライド）
+ANTHROPIC_BASE_URL=https://your-workspace-id.ai-gateway.cloud.databricks.com/anthropic
 ANTHROPIC_DEFAULT_OPUS_MODEL=databricks-claude-opus-4-6
 ANTHROPIC_DEFAULT_SONNET_MODEL=databricks-claude-sonnet-4-6
 ANTHROPIC_DEFAULT_HAIKU_MODEL=databricks-claude-haiku-4-5
