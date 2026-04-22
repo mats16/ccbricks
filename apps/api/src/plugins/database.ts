@@ -92,21 +92,24 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   client.pragma('journal_mode = WAL');
   client.pragma('foreign_keys = ON');
   client.pragma('busy_timeout = 5000');
+  client.pragma('recursive_triggers = OFF');
 
   // テーブル作成（CREATE TABLE IF NOT EXISTS）
+  // updated_at は ORM ではなく DB トリガーで管理し、PG/SQLite 間の一貫性を保つ
+  const TS = `(CAST(unixepoch('subsec') * 1000 AS INTEGER))`;
   client.exec(`
     CREATE TABLE IF NOT EXISTS "users" (
       "id" TEXT PRIMARY KEY,
       "email" TEXT,
       "is_admin" INTEGER NOT NULL DEFAULT 1,
-      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
-      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+      "created_at" INTEGER NOT NULL DEFAULT ${TS},
+      "updated_at" INTEGER NOT NULL DEFAULT ${TS}
     );
     CREATE TABLE IF NOT EXISTS "user_settings" (
       "user_id" TEXT PRIMARY KEY REFERENCES "users"("id") ON DELETE CASCADE,
       "claude_config_backup" TEXT NOT NULL DEFAULT 'auto',
-      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
-      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+      "created_at" INTEGER NOT NULL DEFAULT ${TS},
+      "updated_at" INTEGER NOT NULL DEFAULT ${TS}
     );
     CREATE TABLE IF NOT EXISTS "sessions" (
       "id" TEXT PRIMARY KEY,
@@ -115,8 +118,8 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "status" TEXT NOT NULL DEFAULT 'init',
       "sdk_session_id" TEXT,
       "context" TEXT,
-      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
-      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+      "created_at" INTEGER NOT NULL DEFAULT ${TS},
+      "updated_at" INTEGER NOT NULL DEFAULT ${TS}
     );
     CREATE TABLE IF NOT EXISTS "session_events" (
       "uuid" TEXT PRIMARY KEY,
@@ -124,12 +127,12 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "type" TEXT NOT NULL,
       "subtype" TEXT,
       "message" TEXT NOT NULL,
-      "created_at" INTEGER NOT NULL DEFAULT (unixepoch())
+      "created_at" INTEGER NOT NULL DEFAULT ${TS}
     );
     CREATE TABLE IF NOT EXISTS "app_settings" (
       "key" TEXT PRIMARY KEY,
       "value" TEXT NOT NULL,
-      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+      "updated_at" INTEGER NOT NULL DEFAULT ${TS}
     );
     CREATE TABLE IF NOT EXISTS "mcp_servers" (
       "user_id" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -143,8 +146,8 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "env" TEXT,
       "managed_type" TEXT,
       "is_disabled" INTEGER NOT NULL DEFAULT 0,
-      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
-      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "created_at" INTEGER NOT NULL DEFAULT ${TS},
+      "updated_at" INTEGER NOT NULL DEFAULT ${TS},
       PRIMARY KEY ("user_id", "id")
     );
     INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('new_user_role_default', 'admin');
@@ -152,6 +155,34 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
     CREATE INDEX IF NOT EXISTS "sessions_updated_at_idx" ON "sessions" ("updated_at");
     CREATE INDEX IF NOT EXISTS "sessions_status_idx" ON "sessions" ("status");
     CREATE INDEX IF NOT EXISTS "session_events_session_created_at_idx" ON "session_events" ("session_id", "created_at");
+
+    -- updated_at 自動更新トリガー（ミリ秒精度）
+    -- WHEN ガードで updated_at が変更されていない場合のみ発火（再帰防止）
+    DROP TRIGGER IF EXISTS "set_updated_at_users";
+    CREATE TRIGGER "set_updated_at_users"
+      AFTER UPDATE ON "users" FOR EACH ROW
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "users" SET "updated_at" = ${TS} WHERE "id" = NEW."id"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_user_settings";
+    CREATE TRIGGER "set_updated_at_user_settings"
+      AFTER UPDATE ON "user_settings" FOR EACH ROW
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "user_settings" SET "updated_at" = ${TS} WHERE "user_id" = NEW."user_id"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_sessions";
+    CREATE TRIGGER "set_updated_at_sessions"
+      AFTER UPDATE ON "sessions" FOR EACH ROW
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "sessions" SET "updated_at" = ${TS} WHERE "id" = NEW."id"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_app_settings";
+    CREATE TRIGGER "set_updated_at_app_settings"
+      AFTER UPDATE ON "app_settings" FOR EACH ROW
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "app_settings" SET "updated_at" = ${TS} WHERE "key" = NEW."key"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_mcp_servers";
+    CREATE TRIGGER "set_updated_at_mcp_servers"
+      AFTER UPDATE ON "mcp_servers" FOR EACH ROW
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "mcp_servers" SET "updated_at" = ${TS} WHERE "user_id" = NEW."user_id" AND "id" = NEW."id"; END;
   `);
 
   // Drizzle ORM 初期化

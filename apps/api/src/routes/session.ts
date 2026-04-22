@@ -111,12 +111,20 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
       return sendError(reply, 401, 'Unauthorized', 'User ID not found in request context');
     }
 
-    const { limit, status } = request.query;
+    const { limit, status, after } = request.query;
+
+    if (after) {
+      const cursorId = parseSessionId(after, request.log);
+      if (!cursorId) {
+        return sendError(reply, 400, 'BadRequest', 'Invalid cursor format for "after" parameter');
+      }
+    }
 
     try {
       const result = await listSessions(fastify, user.id, {
         limit: limit ? Number(limit) : undefined,
         status: status ?? undefined,
+        after: after ?? undefined,
       });
       return reply.send(result);
     } catch (error) {

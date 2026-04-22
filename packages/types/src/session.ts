@@ -129,6 +129,8 @@ export interface SessionListQuery {
   limit?: number;
   /** ステータスでフィルタリング */
   status?: SessionStatus;
+  /** カーソル: この session ID の updated_at より古いセッションを取得 */
+  after?: string;
 }
 
 // =====================================================

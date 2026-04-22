@@ -11,6 +11,9 @@ interface AppSidebarProps {
   onSelectSession?: (sessionId: string) => void;
   onArchiveSession?: (sessionId: string) => void;
   isSessionsLoading?: boolean;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
   collapsible?: 'offcanvas' | 'icon' | 'none';
 }
 
@@ -20,6 +23,9 @@ export function AppSidebar({
   onSelectSession,
   onArchiveSession,
   isSessionsLoading = false,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
   collapsible = 'none',
 }: AppSidebarProps) {
   const { user, databricksHost, isLoading, error, refetch } = useUser();
@@ -36,6 +42,9 @@ export function AppSidebar({
           onSelectSession={onSelectSession}
           onArchiveSession={onArchiveSession}
           isLoading={isSessionsLoading}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={onLoadMore}
         />
       </SidebarContent>
       <SidebarFooter className="p-0">

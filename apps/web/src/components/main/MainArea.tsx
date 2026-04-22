@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { isNewSessionNavigationState } from '@/types/navigation';
 import type {
   SessionCreateRequest,
+  SessionResponse,
   UserMessageContentBlock,
   DatabricksWorkspaceSource,
   ResolvedDatabricksAppsOutcome,
@@ -23,7 +24,7 @@ interface MainAreaProps {
   branchName?: string;
   onSendMessage?: (content: UserMessageContentBlock[]) => void;
   onSessionArchived?: (sessionId: string) => void;
-  onSessionCreated?: () => void;
+  onSessionCreated?: (session: SessionResponse) => void;
 }
 
 export function MainArea({
@@ -171,7 +172,14 @@ export function MainArea({
       };
 
       const response = await sessionService.createSession(request);
-      onSessionCreated?.();
+      onSessionCreated?.({
+        id: response.id,
+        title: response.title,
+        session_status: response.session_status,
+        created_at: response.created_at,
+        updated_at: response.updated_at,
+        session_context: response.session_context,
+      });
 
       // navigate state に初期メッセージを渡す
       navigate(`/sessions/${response.id}`, {

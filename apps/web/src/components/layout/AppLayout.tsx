@@ -28,7 +28,10 @@ export function AppLayout() {
   const {
     sessions,
     isLoading: isSessionsLoading,
-    refetch: refetchSessions,
+    isLoadingMore: isLoadingMoreSessions,
+    hasMore: hasMoreSessions,
+    loadMore: loadMoreSessions,
+    addSession,
     updateSession,
     getSession,
   } = useSessions();
@@ -82,8 +85,20 @@ export function AppLayout() {
       onSelectSession: handleSelectSession,
       onArchiveSession: handleArchiveSession,
       isSessionsLoading,
+      hasMore: hasMoreSessions,
+      isLoadingMore: isLoadingMoreSessions,
+      onLoadMore: loadMoreSessions,
     }),
-    [sessions, sessionId, handleSelectSession, handleArchiveSession, isSessionsLoading]
+    [
+      sessions,
+      sessionId,
+      handleSelectSession,
+      handleArchiveSession,
+      isSessionsLoading,
+      hasMoreSessions,
+      isLoadingMoreSessions,
+      loadMoreSessions,
+    ]
   );
 
   // Mobile: SidebarProvider manages open state internally via SidebarTrigger (offcanvas mode)
@@ -110,7 +125,7 @@ export function AppLayout() {
                 ) : (
                   <MainArea
                     onSessionArchived={handleMainAreaArchive}
-                    onSessionCreated={refetchSessions}
+                    onSessionCreated={addSession}
                   />
                 )}
               </div>
@@ -147,10 +162,7 @@ export function AppLayout() {
             ) : isMcpPage ? (
               <McpContent />
             ) : (
-              <MainArea
-                onSessionArchived={handleMainAreaArchive}
-                onSessionCreated={refetchSessions}
-              />
+              <MainArea onSessionArchived={handleMainAreaArchive} onSessionCreated={addSession} />
             )}
           </div>
         </div>

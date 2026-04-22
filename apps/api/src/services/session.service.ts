@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { eq, desc, and, inArray } from 'drizzle-orm';
+import { eq, desc, and, inArray, lt } from 'drizzle-orm';
 import {
   query,
   type McpServerConfig,
@@ -597,14 +597,27 @@ export async function listSessions(
   userId: string,
   options: SessionListQuery = {}
 ): Promise<SessionListResponse> {
-  const { limit = 20, status } = options;
+  const { limit = 20, status, after } = options;
 
   // limit のバリデーション（1-100）
   const safeLimit = Math.min(Math.max(1, limit), 100);
 
   return fastify.withUserContext(userId, async tx => {
-    // フィルタ条件を構築
-    const whereClause = status ? eq(sessions.status, status) : undefined;
+    const conditions = [];
+    if (status) {
+      conditions.push(eq(sessions.status, status));
+    }
+    if (after) {
+      const [cursorSession] = await tx
+        .select({ updatedAt: sessions.updatedAt })
+        .from(sessions)
+        .where(eq(sessions.id, after))
+        .limit(1);
+      if (cursorSession) {
+        conditions.push(lt(sessions.updatedAt, cursorSession.updatedAt));
+      }
+    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // limit + 1 で取得して has_more を判定
     const rows = await tx

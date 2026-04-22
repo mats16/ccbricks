@@ -46,7 +46,7 @@ export function useSessionEvents({
     }
   }, [initialSessionStatus]);
 
-  // 過去イベントの取得
+  // 過去イベントの取得（ページネーションで全件取得）
   const loadPastEvents = useCallback(
     async (targetSessionId: string) => {
       if (!targetSessionId) return;
@@ -56,10 +56,24 @@ export function useSessionEvents({
       setShouldAutoConnect(false);
 
       try {
-        const response = await sessionService.getSessionEvents(targetSessionId);
+        const allEvents: SDKMessage[] = [];
+        let cursor: string | undefined;
+        let hasMore = true;
+
+        for (let page = 0; page < 20 && hasMore; page++) {
+          const response = await sessionService.getSessionEvents(targetSessionId, {
+            after: cursor,
+            limit: 1000,
+          });
+          allEvents.push(...response.data);
+          hasMore = response.has_more;
+          const nextCursor = response.last_id || undefined;
+          if (nextCursor === cursor) break;
+          cursor = nextCursor;
+        }
 
         // 既存の seenUuidsRef を保持しながら更新
-        response.data.forEach(e => {
+        allEvents.forEach(e => {
           if ('uuid' in e && e.uuid) {
             seenUuidsRef.current.add(e.uuid as string);
           }
@@ -70,7 +84,7 @@ export function useSessionEvents({
           const existingUuids = new Set(
             prev.filter(e => 'uuid' in e && e.uuid).map(e => e.uuid as string)
           );
-          const newEvents = response.data.filter(e => {
+          const newEvents = allEvents.filter(e => {
             if ('uuid' in e && e.uuid) {
               return !existingUuids.has(e.uuid as string);
             }
