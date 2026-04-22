@@ -288,7 +288,8 @@
     "workspace": "Workspace",
     "app": "App",
     "logs": "Logs",
-    "enableApps": "Deploy to Databricks Apps"
+    "enableApps": "Deploy to Databricks Apps",
+    "workspaceOpenError": "Failed to open workspace"
   },
   "mcp": {
     "title": "MCP Server Management",

@@ -57,7 +57,7 @@ describe('buildSystemPromptConfig', () => {
 
   it('should return config with Workspace instruction for workspace-only outcome', () => {
     const outcomes: ResolvedSessionOutcome[] = [
-      { type: 'databricks_workspace', path: '/Workspace/test', id: 12345 },
+      { type: 'databricks_workspace', path: '/Workspace/test' },
     ];
 
     const result = buildSystemPromptConfig(outcomes);
@@ -72,8 +72,8 @@ describe('buildSystemPromptConfig', () => {
 
   it('should use first workspace path when multiple workspaces exist', () => {
     const outcomes: ResolvedSessionOutcome[] = [
-      { type: 'databricks_workspace', path: '/Workspace/first', id: 12345 },
-      { type: 'databricks_workspace', path: '/Workspace/second', id: 67890 },
+      { type: 'databricks_workspace', path: '/Workspace/first' },
+      { type: 'databricks_workspace', path: '/Workspace/second' },
     ];
 
     const result = buildSystemPromptConfig(outcomes);
@@ -98,7 +98,7 @@ describe('buildSystemPromptConfig', () => {
 
   it('should return config with both instructions for workspace + apps outcomes', () => {
     const outcomes: ResolvedSessionOutcome[] = [
-      { type: 'databricks_workspace', path: '/Workspace/test', id: 12345 },
+      { type: 'databricks_workspace', path: '/Workspace/test' },
       { type: 'databricks_apps', name: 'app-xyz789' },
     ];
 

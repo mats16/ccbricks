@@ -288,7 +288,8 @@
     "workspace": "ワークスペース",
     "app": "アプリ",
     "logs": "ログ",
-    "enableApps": "Databricks Apps にデプロイ"
+    "enableApps": "Databricks Apps にデプロイ",
+    "workspaceOpenError": "ワークスペースを開けませんでした"
   },
   "mcp": {
     "title": "MCP サーバー管理",
