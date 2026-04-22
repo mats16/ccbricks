@@ -121,6 +121,19 @@ export function FloatingButtons({ sessionId, showAppButton, workspacePath }: Flo
     return () => clearTimeout(timeoutId);
   }, [showAppButton]);
 
+  // Workspace object_id を pre-fetch してキャッシュ（クリック時の同期 window.open に必要）
+  useEffect(() => {
+    if (!workspacePath) return;
+    workspaceService
+      .getStatus(workspacePath)
+      .then(status => {
+        workspaceObjectIdRef.current = status.object_id;
+      })
+      .catch(() => {
+        // pre-fetch failure is non-fatal; click handler will retry
+      });
+  }, [workspacePath]);
+
   const appState = appInfo?.app_status?.state ?? 'UNKNOWN';
   const style = getAppStateStyle(appState);
 
@@ -143,22 +156,38 @@ export function FloatingButtons({ sessionId, showAppButton, workspacePath }: Flo
     }
   };
 
-  const handleOpenWorkspace = async () => {
+  const handleOpenWorkspace = () => {
     if (!workspacePath || !databricksHost) return;
+
+    // pre-fetch 済み: 同期的に開く（ポップアップブロッカー回避）
     if (workspaceObjectIdRef.current !== undefined) {
-      window.open(`https://${databricksHost}/browse/folders/${workspaceObjectIdRef.current}`, '_blank');
+      window.open(
+        `https://${databricksHost}/browse/folders/${workspaceObjectIdRef.current}`,
+        '_blank'
+      );
+      return;
+    }
+
+    // pre-fetch 未完了: 先にウィンドウを確保してから API 呼び出し
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      toast.error(t('databricksApp.workspaceOpenError'));
       return;
     }
     setIsOpeningWorkspace(true);
-    try {
-      const status = await workspaceService.getStatus(workspacePath);
-      workspaceObjectIdRef.current = status.object_id;
-      window.open(`https://${databricksHost}/browse/folders/${status.object_id}`, '_blank');
-    } catch {
-      toast.error(t('databricksApp.workspaceOpenError'));
-    } finally {
-      setIsOpeningWorkspace(false);
-    }
+    workspaceService
+      .getStatus(workspacePath)
+      .then(status => {
+        workspaceObjectIdRef.current = status.object_id;
+        newWindow.location.href = `https://${databricksHost}/browse/folders/${status.object_id}`;
+      })
+      .catch(() => {
+        newWindow.close();
+        toast.error(t('databricksApp.workspaceOpenError'));
+      })
+      .finally(() => {
+        setIsOpeningWorkspace(false);
+      });
   };
 
   if (!showAppButton && !showWorkspaceButton) {
