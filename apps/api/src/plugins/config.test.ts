@@ -106,9 +106,7 @@ describe('config plugin', () => {
 
       await app.register(configPlugin);
 
-      expect(app.config.ANTHROPIC_BASE_URL).toBe(
-        'https://custom.example.com/anthropic'
-      );
+      expect(app.config.ANTHROPIC_BASE_URL).toBe('https://custom.example.com/anthropic');
     });
 
     it('should not have Anthropic model config (now managed via app_settings)', async () => {

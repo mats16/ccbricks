@@ -103,7 +103,9 @@ export class TitleService {
    * Uses structured output (JSON schema) for reliable parsing.
    * @throws Error if the LLM call fails
    */
-  async generateTitle(params: GenerateTitleParams & { model: string }): Promise<GenerateTitleResponse> {
+  async generateTitle(
+    params: GenerateTitleParams & { model: string }
+  ): Promise<GenerateTitleResponse> {
     const { firstSessionMessage, accessToken, model } = params;
 
     const client = new OpenAI({

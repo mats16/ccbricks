@@ -194,9 +194,21 @@ export function AdminContent() {
             <div className="border border-border rounded-lg p-4 space-y-4">
               {(
                 [
-                  { key: 'default_opus_model', label: t('admin.opusModel'), options: servingEndpoints?.opus ?? [] },
-                  { key: 'default_sonnet_model', label: t('admin.sonnetModel'), options: servingEndpoints?.sonnet ?? [] },
-                  { key: 'default_haiku_model', label: t('admin.haikuModel'), options: servingEndpoints?.haiku ?? [] },
+                  {
+                    key: 'default_opus_model',
+                    label: t('admin.opusModel'),
+                    options: servingEndpoints?.opus ?? [],
+                  },
+                  {
+                    key: 'default_sonnet_model',
+                    label: t('admin.sonnetModel'),
+                    options: servingEndpoints?.sonnet ?? [],
+                  },
+                  {
+                    key: 'default_haiku_model',
+                    label: t('admin.haikuModel'),
+                    options: servingEndpoints?.haiku ?? [],
+                  },
                 ] as const
               ).map(({ key, label, options }) => (
                 <div key={key} className="flex items-center justify-between gap-4">
@@ -212,9 +224,7 @@ export function AdminContent() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={MODEL_NULL_SENTINEL}>
-                        {t('admin.envDefault')}
-                      </SelectItem>
+                      <SelectItem value={MODEL_NULL_SENTINEL}>{t('admin.envDefault')}</SelectItem>
                       {options.map(name => (
                         <SelectItem key={name} value={name}>
                           {name}
@@ -239,7 +249,9 @@ export function AdminContent() {
               <div className="flex items-center justify-between gap-4">
                 <div className="shrink-0">
                   <p className="text-sm font-medium">{t('admin.otelTableName')}</p>
-                  <p className="text-xs text-muted-foreground">{t('admin.otelTableNameDescription')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('admin.otelTableNameDescription')}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Input
@@ -253,7 +265,9 @@ export function AdminContent() {
                     variant="outline"
                     size="icon"
                     onClick={handleOtelTableNameSave}
-                    disabled={isSavingSettings || otelTableNameInput === (settings?.otel_table_name ?? '')}
+                    disabled={
+                      isSavingSettings || otelTableNameInput === (settings?.otel_table_name ?? '')
+                    }
                   >
                     {isSavingSettings ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

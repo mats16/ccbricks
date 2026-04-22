@@ -37,15 +37,12 @@ const modelsRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
-    const response = await fetch(
-      `https://${databricksHost}/api/2.0/serving-endpoints`,
-      {
-        method: 'GET',
-        headers: {
-          authorization: `Bearer ${oboToken}`,
-        },
-      }
-    );
+    const response = await fetch(`https://${databricksHost}/api/2.0/serving-endpoints`, {
+      method: 'GET',
+      headers: {
+        authorization: `Bearer ${oboToken}`,
+      },
+    });
 
     if (!response.ok) {
       const errorText = await response.text();

@@ -9,7 +9,11 @@ const MODEL_SETTINGS_KEYS = [
   'default_haiku_model',
 ] as const;
 
-const ALL_SETTINGS_KEYS = ['default_new_user_role', ...MODEL_SETTINGS_KEYS, 'otel_table_name'] as const;
+const ALL_SETTINGS_KEYS = [
+  'default_new_user_role',
+  ...MODEL_SETTINGS_KEYS,
+  'otel_table_name',
+] as const;
 
 /**
  * 全ユーザーを取得する（管理者用）
@@ -97,20 +101,24 @@ export async function updateAppSettings(
     }
   }
 
-  for (const entry of entries) {
-    if (entry.value === null) {
-      // null の場合はキーを削除（環境変数デフォルトに戻す）
-      await fastify.db.delete(appSettings).where(eq(appSettings.key, entry.key));
-    } else {
-      await fastify.db
-        .insert(appSettings)
-        .values({ key: entry.key, value: entry.value })
-        .onConflictDoUpdate({
-          target: appSettings.key,
-          set: { value: entry.value },
-        });
+  if (entries.length === 0) return;
+
+  await fastify.db.transaction(async tx => {
+    for (const entry of entries) {
+      if (entry.value === null) {
+        // null の場合はキーを削除（デフォルトに戻す）
+        await tx.delete(appSettings).where(eq(appSettings.key, entry.key));
+      } else {
+        await tx
+          .insert(appSettings)
+          .values({ key: entry.key, value: entry.value })
+          .onConflictDoUpdate({
+            target: appSettings.key,
+            set: { value: entry.value },
+          });
+      }
     }
-  }
+  });
 }
 
 /**
