@@ -60,7 +60,7 @@ export function useSessionEvents({
         let cursor: string | undefined;
         let hasMore = true;
 
-        for (let page = 0; page < 100 && hasMore; page++) {
+        for (let page = 0; page < 20 && hasMore; page++) {
           const response = await sessionService.getSessionEvents(targetSessionId, {
             after: cursor,
             limit: 1000,

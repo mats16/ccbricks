@@ -603,13 +603,19 @@ export async function listSessions(
   const safeLimit = Math.min(Math.max(1, limit), 100);
 
   return fastify.withUserContext(userId, async tx => {
-    // UUIDv7 は時間順なので id DESC で作成順（新しい順）にソート
     const conditions = [];
     if (status) {
       conditions.push(eq(sessions.status, status));
     }
     if (after) {
-      conditions.push(lt(sessions.id, after));
+      const [cursorSession] = await tx
+        .select({ updatedAt: sessions.updatedAt })
+        .from(sessions)
+        .where(eq(sessions.id, after))
+        .limit(1);
+      if (cursorSession) {
+        conditions.push(lt(sessions.updatedAt, cursorSession.updatedAt));
+      }
     }
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -618,7 +624,7 @@ export async function listSessions(
       .select(SESSION_SELECT_COLUMNS)
       .from(sessions)
       .where(whereClause)
-      .orderBy(desc(sessions.id))
+      .orderBy(desc(sessions.updatedAt))
       .limit(safeLimit + 1);
 
     // has_more 判定

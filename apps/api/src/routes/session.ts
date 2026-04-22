@@ -113,6 +113,13 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
 
     const { limit, status, after } = request.query;
 
+    if (after) {
+      const cursorId = parseSessionId(after, request.log);
+      if (!cursorId) {
+        return sendError(reply, 400, 'BadRequest', 'Invalid cursor format for "after" parameter');
+      }
+    }
+
     try {
       const result = await listSessions(fastify, user.id, {
         limit: limit ? Number(limit) : undefined,

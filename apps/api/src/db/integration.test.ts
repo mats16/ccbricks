@@ -337,32 +337,40 @@ describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
     beforeEach(async () => {
       await db.insert(schema.users).values({ id: TEST_USER_1 });
 
-      await withTestUserContext(TEST_USER_1, async tx => {
-        await tx.insert(schema.sessions).values(
-          sessionIds.map(id => ({
+      // 各セッションを個別に INSERT し、updated_at に時間差をつける
+      for (const [i, id] of sessionIds.entries()) {
+        await withTestUserContext(TEST_USER_1, async tx => {
+          await tx.insert(schema.sessions).values({
             id,
             userId: TEST_USER_1,
             title: `Session ${id.slice(-1)}`,
-          }))
-        );
-      });
+          });
+          // updated_at を明示的に設定（ID 順と一致するようにずらす）
+          await tx
+            .update(schema.sessions)
+            .set({ updatedAt: new Date(1700000000000 + i * 1000) })
+            .where(eq(schema.sessions.id, id));
+        });
+      }
     });
 
-    it('should paginate through all sessions using id DESC cursor', async () => {
+    it('should paginate through all sessions using updated_at DESC cursor', async () => {
       const allCollected: string[] = [];
-      let cursor: string | undefined;
+      let cursorUpdatedAt: Date | undefined;
       let hasMore = true;
       let pages = 0;
 
       while (hasMore && pages < 10) {
         const result = await withTestUserContext(TEST_USER_1, async tx => {
-          // listSessions と同じクエリロジックを再現（id DESC ソート）
-          const whereClause = cursor ? lt(schema.sessions.id, cursor) : undefined;
+          // listSessions と同じクエリロジックを再現（updated_at DESC ソート）
+          const whereClause = cursorUpdatedAt
+            ? lt(schema.sessions.updatedAt, cursorUpdatedAt)
+            : undefined;
           const rows = await tx
-            .select({ id: schema.sessions.id })
+            .select({ id: schema.sessions.id, updatedAt: schema.sessions.updatedAt })
             .from(schema.sessions)
             .where(whereClause)
-            .orderBy(desc(schema.sessions.id))
+            .orderBy(desc(schema.sessions.updatedAt))
             .limit(3); // limit=2 + 1 for has_more check
 
           const fetchedHasMore = rows.length > 2;
@@ -370,13 +378,14 @@ describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
 
           return {
             ids: resultRows.map(r => r.id),
-            lastId: resultRows.length > 0 ? resultRows[resultRows.length - 1].id : undefined,
+            lastUpdatedAt:
+              resultRows.length > 0 ? resultRows[resultRows.length - 1].updatedAt : undefined,
             hasMore: fetchedHasMore,
           };
         });
 
         allCollected.push(...result.ids);
-        cursor = result.lastId;
+        cursorUpdatedAt = result.lastUpdatedAt;
         hasMore = result.hasMore;
         pages++;
       }
@@ -385,7 +394,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
       expect(allCollected).toHaveLength(5);
       expect(new Set(allCollected).size).toBe(5);
 
-      // desc(id) 順で返されること
+      // desc(updated_at) 順で返されること（updated_at が大きい = ID が大きい順）
       expect(allCollected).toEqual([
         '01900000-0000-7000-8000-000000000005',
         '01900000-0000-7000-8000-000000000004',
@@ -403,7 +412,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
         const rows = await tx
           .select({ id: schema.sessions.id })
           .from(schema.sessions)
-          .orderBy(desc(schema.sessions.id))
+          .orderBy(desc(schema.sessions.updatedAt))
           .limit(6); // 5件しかないので has_more=false
 
         return { count: rows.length, hasMore: rows.length > 5 };

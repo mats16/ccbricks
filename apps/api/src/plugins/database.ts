@@ -92,6 +92,7 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   client.pragma('journal_mode = WAL');
   client.pragma('foreign_keys = ON');
   client.pragma('busy_timeout = 5000');
+  client.pragma('recursive_triggers = OFF');
 
   // テーブル作成（CREATE TABLE IF NOT EXISTS）
   // updated_at は ORM ではなく DB トリガーで管理し、PG/SQLite 間の一貫性を保つ
@@ -156,21 +157,32 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
     CREATE INDEX IF NOT EXISTS "session_events_session_created_at_idx" ON "session_events" ("session_id", "created_at");
 
     -- updated_at 自動更新トリガー（ミリ秒精度）
-    CREATE TRIGGER IF NOT EXISTS "set_updated_at_users"
+    -- WHEN ガードで updated_at が変更されていない場合のみ発火（再帰防止）
+    DROP TRIGGER IF EXISTS "set_updated_at_users";
+    CREATE TRIGGER "set_updated_at_users"
       AFTER UPDATE ON "users" FOR EACH ROW
-      BEGIN UPDATE "users" SET "updated_at" = CAST(unixepoch('subsec') * 1000 AS INTEGER) WHERE "id" = NEW."id"; END;
-    CREATE TRIGGER IF NOT EXISTS "set_updated_at_user_settings"
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "users" SET "updated_at" = ${TS} WHERE "id" = NEW."id"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_user_settings";
+    CREATE TRIGGER "set_updated_at_user_settings"
       AFTER UPDATE ON "user_settings" FOR EACH ROW
-      BEGIN UPDATE "user_settings" SET "updated_at" = CAST(unixepoch('subsec') * 1000 AS INTEGER) WHERE "user_id" = NEW."user_id"; END;
-    CREATE TRIGGER IF NOT EXISTS "set_updated_at_sessions"
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "user_settings" SET "updated_at" = ${TS} WHERE "user_id" = NEW."user_id"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_sessions";
+    CREATE TRIGGER "set_updated_at_sessions"
       AFTER UPDATE ON "sessions" FOR EACH ROW
-      BEGIN UPDATE "sessions" SET "updated_at" = CAST(unixepoch('subsec') * 1000 AS INTEGER) WHERE "id" = NEW."id"; END;
-    CREATE TRIGGER IF NOT EXISTS "set_updated_at_app_settings"
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "sessions" SET "updated_at" = ${TS} WHERE "id" = NEW."id"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_app_settings";
+    CREATE TRIGGER "set_updated_at_app_settings"
       AFTER UPDATE ON "app_settings" FOR EACH ROW
-      BEGIN UPDATE "app_settings" SET "updated_at" = CAST(unixepoch('subsec') * 1000 AS INTEGER) WHERE "key" = NEW."key"; END;
-    CREATE TRIGGER IF NOT EXISTS "set_updated_at_mcp_servers"
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "app_settings" SET "updated_at" = ${TS} WHERE "key" = NEW."key"; END;
+    DROP TRIGGER IF EXISTS "set_updated_at_mcp_servers";
+    CREATE TRIGGER "set_updated_at_mcp_servers"
       AFTER UPDATE ON "mcp_servers" FOR EACH ROW
-      BEGIN UPDATE "mcp_servers" SET "updated_at" = CAST(unixepoch('subsec') * 1000 AS INTEGER) WHERE "user_id" = NEW."user_id" AND "id" = NEW."id"; END;
+      WHEN NEW."updated_at" = OLD."updated_at"
+      BEGIN UPDATE "mcp_servers" SET "updated_at" = ${TS} WHERE "user_id" = NEW."user_id" AND "id" = NEW."id"; END;
   `);
 
   // Drizzle ORM 初期化

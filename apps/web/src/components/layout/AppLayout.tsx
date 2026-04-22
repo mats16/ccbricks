@@ -28,6 +28,9 @@ export function AppLayout() {
   const {
     sessions,
     isLoading: isSessionsLoading,
+    isLoadingMore: isLoadingMoreSessions,
+    hasMore: hasMoreSessions,
+    loadMore: loadMoreSessions,
     addSession,
     updateSession,
     getSession,
@@ -82,8 +85,20 @@ export function AppLayout() {
       onSelectSession: handleSelectSession,
       onArchiveSession: handleArchiveSession,
       isSessionsLoading,
+      hasMore: hasMoreSessions,
+      isLoadingMore: isLoadingMoreSessions,
+      onLoadMore: loadMoreSessions,
     }),
-    [sessions, sessionId, handleSelectSession, handleArchiveSession, isSessionsLoading]
+    [
+      sessions,
+      sessionId,
+      handleSelectSession,
+      handleArchiveSession,
+      isSessionsLoading,
+      hasMoreSessions,
+      isLoadingMoreSessions,
+      loadMoreSessions,
+    ]
   );
 
   // Mobile: SidebarProvider manages open state internally via SidebarTrigger (offcanvas mode)
