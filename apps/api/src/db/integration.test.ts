@@ -8,7 +8,7 @@ import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { sql, eq } from 'drizzle-orm';
+import { sql, eq, desc, lt } from 'drizzle-orm';
 import postgres from 'postgres';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -321,6 +321,96 @@ describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
 
         expect(updated.claudeConfigBackup).toBe('disabled');
       });
+    });
+  });
+
+  describe('listSessions pagination', () => {
+    // UUIDv7 風に辞書順で並ぶ UUID を使用
+    const sessionIds = [
+      '01900000-0000-7000-8000-000000000001',
+      '01900000-0000-7000-8000-000000000002',
+      '01900000-0000-7000-8000-000000000003',
+      '01900000-0000-7000-8000-000000000004',
+      '01900000-0000-7000-8000-000000000005',
+    ];
+
+    beforeEach(async () => {
+      await db.insert(schema.users).values({ id: TEST_USER_1 });
+
+      await withTestUserContext(TEST_USER_1, async tx => {
+        await tx.insert(schema.sessions).values(
+          sessionIds.map(id => ({
+            id,
+            userId: TEST_USER_1,
+            title: `Session ${id.slice(-1)}`,
+          }))
+        );
+      });
+    });
+
+    it('should paginate through all sessions using id DESC cursor', async () => {
+      const allCollected: string[] = [];
+      let cursor: string | undefined;
+      let hasMore = true;
+      let pages = 0;
+
+      while (hasMore && pages < 10) {
+        const result = await withTestUserContext(TEST_USER_1, async tx => {
+          // listSessions と同じクエリロジックを再現（id DESC ソート）
+          const whereClause = cursor ? lt(schema.sessions.id, cursor) : undefined;
+          const rows = await tx
+            .select({ id: schema.sessions.id })
+            .from(schema.sessions)
+            .where(whereClause)
+            .orderBy(desc(schema.sessions.id))
+            .limit(3); // limit=2 + 1 for has_more check
+
+          const fetchedHasMore = rows.length > 2;
+          const resultRows = fetchedHasMore ? rows.slice(0, 2) : rows;
+
+          return {
+            ids: resultRows.map(r => r.id),
+            lastId: resultRows.length > 0 ? resultRows[resultRows.length - 1].id : undefined,
+            hasMore: fetchedHasMore,
+          };
+        });
+
+        allCollected.push(...result.ids);
+        cursor = result.lastId;
+        hasMore = result.hasMore;
+        pages++;
+      }
+
+      // 5つ全てのセッションが取得されること（重複なし・スキップなし）
+      expect(allCollected).toHaveLength(5);
+      expect(new Set(allCollected).size).toBe(5);
+
+      // desc(id) 順で返されること
+      expect(allCollected).toEqual([
+        '01900000-0000-7000-8000-000000000005',
+        '01900000-0000-7000-8000-000000000004',
+        '01900000-0000-7000-8000-000000000003',
+        '01900000-0000-7000-8000-000000000002',
+        '01900000-0000-7000-8000-000000000001',
+      ]);
+
+      // 3ページで取得されること (2, 2, 1)
+      expect(pages).toBe(3);
+    });
+
+    it('should return has_more=false on the last page', async () => {
+      const result = await withTestUserContext(TEST_USER_1, async tx => {
+        const rows = await tx
+          .select({ id: schema.sessions.id })
+          .from(schema.sessions)
+          .orderBy(desc(schema.sessions.id))
+          .limit(6); // 5件しかないので has_more=false
+
+        return { count: rows.length, hasMore: rows.length > 5 };
+      });
+
+      expect(result.count).toBe(5);
+      expect(result.hasMore).toBe(false);
     });
   });
 });

@@ -34,8 +34,7 @@ export const users = pgTable('users', {
     .default(sql`now()`),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .notNull()
-    .default(sql`now()`)
-    .$onUpdate(() => new Date()),
+    .default(sql`now()`),
 });
 
 /**
@@ -52,8 +51,7 @@ export const userSettings = pgTable('user_settings', {
     .default(sql`now()`),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .notNull()
-    .default(sql`now()`)
-    .$onUpdate(() => new Date()),
+    .default(sql`now()`),
 }).enableRLS();
 
 /**
@@ -85,8 +83,7 @@ export const sessions = pgTable(
       .default(sql`now()`),
     updatedAt: timestamp('updated_at', { mode: 'date' })
       .notNull()
-      .default(sql`now()`)
-      .$onUpdate(() => new Date()),
+      .default(sql`now()`),
   },
   table => ({
     // user_id インデックス（RLSクエリ高速化）
@@ -152,8 +149,7 @@ export const appSettings = pgTable('app_settings', {
   value: text('value').notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .notNull()
-    .default(sql`now()`)
-    .$onUpdate(() => new Date()),
+    .default(sql`now()`),
 });
 
 /**
@@ -182,8 +178,7 @@ export const mcpServers = pgTable(
       .default(sql`now()`),
     updatedAt: timestamp('updated_at', { mode: 'date' })
       .notNull()
-      .default(sql`now()`)
-      .$onUpdate(() => new Date()),
+      .default(sql`now()`),
   },
   table => ({
     pk: primaryKey({ columns: [table.userId, table.id] }),

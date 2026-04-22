@@ -2,9 +2,8 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
-// =====================================================
-// Tables (SQLite version)
-// =====================================================
+// updated_at は ORM ではなく DB トリガーで管理し、PG/SQLite 間の一貫性を保つ
+const CURRENT_TIMESTAMP_MS = sql`(CAST(unixepoch('subsec') * 1000 AS INTEGER))`;
 
 /**
  * users テーブル
@@ -14,13 +13,12 @@ export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email'),
   isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' })
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .default(CURRENT_TIMESTAMP_MS),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
     .notNull()
-    .default(sql`(unixepoch())`)
-    .$onUpdate(() => new Date()),
+    .default(CURRENT_TIMESTAMP_MS),
 });
 
 /**
@@ -32,13 +30,12 @@ export const userSettings = sqliteTable('user_settings', {
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
   claudeConfigBackup: text('claude_config_backup').notNull().default('auto'),
-  createdAt: integer('created_at', { mode: 'timestamp' })
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .default(CURRENT_TIMESTAMP_MS),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
     .notNull()
-    .default(sql`(unixepoch())`)
-    .$onUpdate(() => new Date()),
+    .default(CURRENT_TIMESTAMP_MS),
 });
 
 /**
@@ -54,13 +51,12 @@ export const sessions = sqliteTable(
     status: text('status').notNull().default('init'),
     sdkSessionId: text('sdk_session_id'),
     context: text('context', { mode: 'json' }),
-    createdAt: integer('created_at', { mode: 'timestamp' })
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .notNull()
-      .default(sql`(unixepoch())`),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .default(CURRENT_TIMESTAMP_MS),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .notNull()
-      .default(sql`(unixepoch())`)
-      .$onUpdate(() => new Date()),
+      .default(CURRENT_TIMESTAMP_MS),
   },
   table => ({
     userIdIdx: index('sessions_user_id_idx').on(table.userId),
@@ -83,9 +79,9 @@ export const sessionEvents = sqliteTable(
     type: text('type').notNull(),
     subtype: text('subtype'),
     message: text('message', { mode: 'json' }).notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(CURRENT_TIMESTAMP_MS),
   },
   table => ({
     sessionCreatedAtIdx: index('session_events_session_created_at_idx').on(
@@ -102,10 +98,9 @@ export const sessionEvents = sqliteTable(
 export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
     .notNull()
-    .default(sql`(unixepoch())`)
-    .$onUpdate(() => new Date()),
+    .default(CURRENT_TIMESTAMP_MS),
 });
 
 /**
@@ -129,13 +124,12 @@ export const mcpServers = sqliteTable(
     env: text('env', { mode: 'json' }), // Record<string, string>
     managedType: text('managed_type'), // null = custom, 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search'
     isDisabled: integer('is_disabled', { mode: 'boolean' }).notNull().default(false),
-    createdAt: integer('created_at', { mode: 'timestamp' })
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .notNull()
-      .default(sql`(unixepoch())`),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .default(CURRENT_TIMESTAMP_MS),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .notNull()
-      .default(sql`(unixepoch())`)
-      .$onUpdate(() => new Date()),
+      .default(CURRENT_TIMESTAMP_MS),
   },
   table => ({
     pk: primaryKey({ columns: [table.userId, table.id] }),

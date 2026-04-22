@@ -68,4 +68,21 @@ ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fkey" FOREIGN K
 ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_users_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;--> statement-breakpoint
 CREATE POLICY "oauth_tokens_user_isolation_policy" ON "oauth_tokens" AS PERMISSIVE FOR ALL TO public USING (user_id = current_setting('app.user_id', true)) WITH CHECK (user_id = current_setting('app.user_id', true));--> statement-breakpoint
 CREATE POLICY "sessions_user_isolation_policy" ON "sessions" AS PERMISSIVE FOR ALL TO public USING (user_id = current_setting('app.user_id', true)) WITH CHECK (user_id = current_setting('app.user_id', true));--> statement-breakpoint
-CREATE POLICY "user_settings_user_isolation_policy" ON "user_settings" AS PERMISSIVE FOR ALL TO public USING (user_id = current_setting('app.user_id', true)) WITH CHECK (user_id = current_setting('app.user_id', true));
+CREATE POLICY "user_settings_user_isolation_policy" ON "user_settings" AS PERMISSIVE FOR ALL TO public USING (user_id = current_setting('app.user_id', true)) WITH CHECK (user_id = current_setting('app.user_id', true));--> statement-breakpoint
+-- Force Row Level Security for all RLS-enabled tables
+ALTER TABLE "sessions" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "user_settings" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "oauth_tokens" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
+-- DB-managed updated_at triggers (microsecond precision via now())
+CREATE OR REPLACE FUNCTION trigger_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;--> statement-breakpoint
+CREATE TRIGGER set_updated_at_users BEFORE UPDATE ON "users" FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();--> statement-breakpoint
+CREATE TRIGGER set_updated_at_user_settings BEFORE UPDATE ON "user_settings" FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();--> statement-breakpoint
+CREATE TRIGGER set_updated_at_sessions BEFORE UPDATE ON "sessions" FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();--> statement-breakpoint
+CREATE TRIGGER set_updated_at_app_settings BEFORE UPDATE ON "app_settings" FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();--> statement-breakpoint
+CREATE TRIGGER set_updated_at_oauth_tokens BEFORE UPDATE ON "oauth_tokens" FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();

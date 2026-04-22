@@ -147,10 +147,7 @@ export function AppLayout() {
             ) : isMcpPage ? (
               <McpContent />
             ) : (
-              <MainArea
-                onSessionArchived={handleMainAreaArchive}
-                onSessionCreated={addSession}
-              />
+              <MainArea onSessionArchived={handleMainAreaArchive} onSessionCreated={addSession} />
             )}
           </div>
         </div>
