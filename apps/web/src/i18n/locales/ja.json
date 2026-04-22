@@ -348,7 +348,18 @@
     "managedEmpty": "Databricks マネージド MCP サーバーはありません",
     "genieSpaceFetchError": "Genie スペースの取得に失敗しました",
     "duplicateError": "このサーバーは既に登録されています",
-    "deleteConfirm": "\"{{name}}\" を削除しますか？"
+    "deleteConfirm": "\"{{name}}\" を削除しますか？",
+    "addMcpServer": "MCP サーバーを追加",
+    "addMcpServerDescription": "追加するサーバータイプを選択",
+    "unityAiGatewayLabel": "Unity AI Gateway",
+    "unityAiGatewayDescription": "Unity AI Gateway 経由で MCP サーバーに接続",
+    "unityAiGatewayFetchError": "MCP サーバーの取得に失敗しました",
+    "selectConnection": "接続を選択",
+    "connectionSearchPlaceholder": "接続を検索...",
+    "connectionNotFound": "接続が見つかりません",
+    "login": "Login",
+    "customMcpLabel": "カスタム MCP",
+    "customMcpDescription": "カスタム設定で任意の MCP サーバーを登録"
   },
   "admin": {
     "title": "管理",

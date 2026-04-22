@@ -132,8 +132,9 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
     );
     CREATE TABLE IF NOT EXISTS "mcp_servers" (
-      "id" TEXT PRIMARY KEY,
-      "display_name" TEXT NOT NULL,
+      "user_id" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+      "id" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
       "type" TEXT NOT NULL,
       "url" TEXT,
       "headers" TEXT,
@@ -141,18 +142,12 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "args" TEXT,
       "env" TEXT,
       "managed_type" TEXT,
-      "created_by" TEXT NOT NULL REFERENCES "users"("id"),
+      "is_disabled" INTEGER NOT NULL DEFAULT 0,
       "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
-      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      PRIMARY KEY ("user_id", "id")
     );
     INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('new_user_role_default', 'admin');
-    CREATE TABLE IF NOT EXISTS "user_settings_mcp" (
-      "user_id" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-      "server_id" TEXT NOT NULL REFERENCES "mcp_servers"("id") ON DELETE CASCADE,
-      "enabled" INTEGER NOT NULL,
-      "updated_at" INTEGER NOT NULL DEFAULT (unixepoch()),
-      PRIMARY KEY ("user_id", "server_id")
-    );
     CREATE INDEX IF NOT EXISTS "sessions_user_id_idx" ON "sessions" ("user_id");
     CREATE INDEX IF NOT EXISTS "sessions_updated_at_idx" ON "sessions" ("updated_at");
     CREATE INDEX IF NOT EXISTS "sessions_status_idx" ON "sessions" ("status");

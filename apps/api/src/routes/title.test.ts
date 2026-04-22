@@ -22,7 +22,7 @@ vi.mock('openai', () => {
 // Mock typeid-js for deterministic fallback
 vi.mock('typeid-js', () => ({
   typeid: vi.fn(() => ({
-    toString: () => 'app_01abc2def3ghi4jkl5mno6pqrs',
+    toString: () => '01abc2def3ghi4jkl5mno6pqrs',
   })),
 }));
 
@@ -324,7 +324,7 @@ describe('title route', () => {
       const body = response.json();
       expect(body.title).toBe('General coding session');
       // Fallback uses typeid mock
-      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+      expect(body.app_name).toBe('01abc2def3ghi4jkl5mno6pqrs');
     });
 
     it('should return fallback when LLM returns null choices', async () => {
@@ -345,7 +345,7 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('General coding session');
-      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+      expect(body.app_name).toBe('01abc2def3ghi4jkl5mno6pqrs');
     });
 
     it('should return fallback app_name when LLM returns invalid app_name', async () => {
@@ -369,10 +369,10 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('Valid Title');
-      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+      expect(body.app_name).toBe('01abc2def3ghi4jkl5mno6pqrs');
     });
 
-    it('should return fallback app_name when app_name exceeds 30 characters', async () => {
+    it('should return fallback app_name when app_name exceeds 26 characters', async () => {
       mockCreate.mockResolvedValue(
         createStructuredResponse({
           title: 'Valid Title',
@@ -393,7 +393,7 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('Valid Title');
-      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+      expect(body.app_name).toBe('01abc2def3ghi4jkl5mno6pqrs');
     });
 
     it('should return fallback when LLM returns invalid JSON', async () => {
@@ -420,7 +420,7 @@ describe('title route', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.title).toBe('General coding session');
-      expect(body.app_name).toBe('app-01abc2def3ghi4jkl5mno6pqrs');
+      expect(body.app_name).toBe('01abc2def3ghi4jkl5mno6pqrs');
     });
 
     it('should clean up LLM artifacts - remove surrounding quotes from title', async () => {

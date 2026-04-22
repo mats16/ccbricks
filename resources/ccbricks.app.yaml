@@ -13,12 +13,14 @@ resources:
       #      permission: READ
       user_api_scopes:
         - sql
+        - vectorsearch.vector-search-indexes
         - serving.serving-endpoints
         - files.files
         - dashboards.genie
         - catalog.catalogs:read
         - catalog.schemas:read
         - catalog.tables:read
+        - catalog.connections
         - mcp.external
         - mcp.genie
         - mcp.functions

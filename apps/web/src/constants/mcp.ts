@@ -12,3 +12,14 @@ export function buildGenieMcpUrl(
 ): string {
   return databricksHost ? `https://${databricksHost}${MCP_GENIE_URL_PREFIX}/${spaceId}` : '';
 }
+
+export const MCP_EXTERNAL_URL_PREFIX = '/api/2.0/mcp/external';
+
+export function buildExternalMcpUrl(
+  databricksHost: string | null | undefined,
+  connectionName: string
+): string {
+  return databricksHost
+    ? `https://${databricksHost}${MCP_EXTERNAL_URL_PREFIX}/${connectionName}`
+    : '';
+}

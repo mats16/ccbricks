@@ -95,7 +95,7 @@ describe('TitleService', () => {
       });
 
       expect(result.title).toBe('General coding session');
-      expect(result.app_name).toMatch(/^app-/);
+      expect(result.app_name).toMatch(/^[a-z0-9]{26}$/);
     });
 
     it('should return fallback title when choices array is empty', async () => {
@@ -109,7 +109,7 @@ describe('TitleService', () => {
       });
 
       expect(result.title).toBe('General coding session');
-      expect(result.app_name).toMatch(/^app-/);
+      expect(result.app_name).toMatch(/^[a-z0-9]{26}$/);
     });
 
     it('should return fallback title when message content is null', async () => {
@@ -129,7 +129,7 @@ describe('TitleService', () => {
       });
 
       expect(result.title).toBe('General coding session');
-      expect(result.app_name).toMatch(/^app-/);
+      expect(result.app_name).toMatch(/^[a-z0-9]{26}$/);
     });
 
     it('should throw error when API fails', async () => {
@@ -349,7 +349,7 @@ describe('TitleService', () => {
       });
 
       expect(result.title).toBe('Valid Title');
-      expect(result.app_name).toMatch(/^app-/);
+      expect(result.app_name).toMatch(/^[a-z0-9]{26}$/);
     });
 
     it('should return fallback when JSON parsing fails', async () => {
@@ -369,7 +369,7 @@ describe('TitleService', () => {
       });
 
       expect(result.title).toBe('General coding session');
-      expect(result.app_name).toMatch(/^app-/);
+      expect(result.app_name).toMatch(/^[a-z0-9]{26}$/);
     });
   });
 });

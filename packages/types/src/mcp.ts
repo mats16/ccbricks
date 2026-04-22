@@ -70,15 +70,19 @@ export interface UpdateOutcomeResponse {
 }
 
 // =====================================================
-// Custom MCP Server Types (管理者が登録するカスタムサーバー)
+// Custom MCP Server Types (ユーザーごとの MCP サーバー設定)
 // =====================================================
 
 /** Databricks managed MCP サーバーの種別 */
-export type ManagedMcpType = 'databricks_sql' | 'databricks_genie' | 'databricks_vector_search';
+export type ManagedMcpType =
+  | 'databricks_sql'
+  | 'databricks_genie'
+  | 'databricks_vector_search'
+  | 'unity_ai_gateway';
 
 export interface McpServerRecord {
   id: string;
-  display_name: string;
+  name: string;
   type: McpServerType;
   managed_type?: ManagedMcpType;
   url?: string;
@@ -86,20 +90,19 @@ export interface McpServerRecord {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
-  /** ユーザーごとの有効/無効設定（未設定時は undefined） */
-  enabled?: boolean;
-  created_by: string;
+  /** サーバーが無効化されているかどうか */
+  is_disabled: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export type McpServerCreateRequest = Omit<
   McpServerRecord,
-  'enabled' | 'created_by' | 'created_at' | 'updated_at'
+  'is_disabled' | 'created_at' | 'updated_at'
 >;
 
 export type McpServerUpdateRequest = Partial<
-  Omit<McpServerRecord, 'id' | 'enabled' | 'created_by' | 'created_at' | 'updated_at'>
+  Omit<McpServerRecord, 'id' | 'managed_type' | 'created_at' | 'updated_at'>
 >;
 
 export interface McpServerListResponse {
@@ -107,14 +110,18 @@ export interface McpServerListResponse {
 }
 
 // =====================================================
-// User MCP Settings Types (ユーザーごとの MCP 有効/無効設定)
+// External MCP Server Types (Unity AI Gateway)
 // =====================================================
 
-export interface UserSettingsMcpUpdateRequest {
-  enabled: boolean;
+/** フロントエンド向け外部 MCP サーバー情報 */
+export interface ExternalMcpServer {
+  id: string;
+  name: string;
+  url: string;
+  owner: string;
+  options?: Record<string, string>;
 }
 
-export interface UserSettingsMcpUpdateResponse {
-  server_id: string;
-  enabled: boolean;
+export interface ExternalMcpServerListResponse {
+  mcp_servers: ExternalMcpServer[];
 }
