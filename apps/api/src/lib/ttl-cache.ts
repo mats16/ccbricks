@@ -11,10 +11,7 @@ export class TtlCache<T> {
 
   constructor(ttlMs: number, sweepIntervalMs?: number) {
     this.ttlMs = ttlMs;
-    this.sweepTimer = setInterval(
-      () => this.sweep(),
-      sweepIntervalMs ?? ttlMs * 2
-    );
+    this.sweepTimer = setInterval(() => this.sweep(), sweepIntervalMs ?? ttlMs * 2);
     this.sweepTimer.unref();
   }
 
