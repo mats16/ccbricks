@@ -321,6 +321,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
         cwd: sessionContext.cwd,
         model: sessionContext.model,
         maxTurns: 100,
+        thinking: { type: 'adaptive' },
         settingSources: ['user', 'project', 'local'],
         permissionMode: 'bypassPermissions',
         systemPrompt: systemPromptConfig,
@@ -343,8 +344,14 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: spToken,
           ANTHROPIC_DEFAULT_OPUS_MODEL: modelSettings.opusModel,
+          ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES:
+            'thinking,adaptive_thinking,effort,interleaved_thinking,max_effort',
           ANTHROPIC_DEFAULT_SONNET_MODEL: modelSettings.sonnetModel,
+          ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES:
+            'thinking,adaptive_thinking,effort,interleaved_thinking',
           ANTHROPIC_DEFAULT_HAIKU_MODEL: modelSettings.haikuModel,
+          ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES:
+            'thinking,adaptive_thinking,effort,interleaved_thinking',
           ANTHROPIC_CUSTOM_HEADERS: 'x-databricks-use-coding-agent-mode: true',
           CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: '1',
           // Databricks CLI 認証: OBO トークンを使用
