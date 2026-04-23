@@ -116,7 +116,7 @@ export function getToolUseId(block: unknown): string | null {
  */
 export function getToolInputDisplay(
   name: string,
-  input: Record<string, unknown>,
+  input: Record<string, unknown>
 ): string | undefined {
   if (TOOL_NAMES_OMIT_INPUT_SUMMARY.has(name)) return undefined;
 

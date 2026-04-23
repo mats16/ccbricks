@@ -60,7 +60,7 @@ export function MainArea({
 
   // AskUserQuestion の pending 状態管理
   const [pendingQuestions, setPendingQuestions] = useState<Map<string, Record<string, unknown>>>(
-    () => new Map(),
+    () => new Map()
   );
   const handleAskUserQuestion = useCallback((req: WsAskUserQuestionRequest) => {
     setPendingQuestions(prev => {
@@ -87,7 +87,7 @@ export function MainArea({
         return next;
       });
     },
-    [answerQuestion],
+    [answerQuestion]
   );
 
   // session が idle に戻ったら pending をクリア
@@ -99,7 +99,7 @@ export function MainArea({
 
   const askUserQuestionCtx = useMemo(
     () => ({ pendingQuestions, submitAnswer }),
-    [pendingQuestions, submitAnswer],
+    [pendingQuestions, submitAnswer]
   );
 
   // session status が init または running の場合、エージェントが応答中

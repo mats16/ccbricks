@@ -14,9 +14,7 @@ interface AskUserQuestionProviderProps {
 
 export function AskUserQuestionProvider({ value, children }: AskUserQuestionProviderProps) {
   return (
-    <AskUserQuestionContext.Provider value={value}>
-      {children}
-    </AskUserQuestionContext.Provider>
+    <AskUserQuestionContext.Provider value={value}>{children}</AskUserQuestionContext.Provider>
   );
 }
 

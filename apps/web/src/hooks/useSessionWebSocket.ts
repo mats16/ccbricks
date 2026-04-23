@@ -254,7 +254,7 @@ export function useSessionWebSocket({
       };
       wsRef.current.send(JSON.stringify(request));
     },
-    [sessionId],
+    [sessionId]
   );
 
   // Agent を abort する

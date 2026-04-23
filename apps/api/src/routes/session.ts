@@ -364,10 +364,7 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
             if (controlRequest.request.subtype === 'ask_user_question_answer') {
               // AskUserQuestion の回答を受信 → 保留中の Promise を resolve
               const answerRequest = controlRequest.request as WsAskUserQuestionAnswerRequest;
-              const resolved = resolveUserAnswer(
-                answerRequest.tool_use_id,
-                answerRequest.answers,
-              );
+              const resolved = resolveUserAnswer(answerRequest.tool_use_id, answerRequest.answers);
               const response: WsControlResponse = {
                 type: 'control_response',
                 response: resolved

@@ -339,7 +339,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
               sessionId.toString(),
               options.toolUseID,
               input,
-              options.signal,
+              options.signal
             );
             return { behavior: 'allow', updatedInput: { ...input, answers } };
           }

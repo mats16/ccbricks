@@ -25,7 +25,7 @@ export function waitForUserAnswer(
   sessionId: string,
   toolUseId: string,
   input: Record<string, unknown>,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Record<string, string | string[]>> {
   return new Promise<Record<string, string | string[]>>((resolve, reject) => {
     const cleanup = () => {
@@ -48,8 +48,14 @@ export function waitForUserAnswer(
     }
 
     pendingQuestions.set(toolUseId, {
-      resolve: (answers) => { cleanup(); resolve(answers); },
-      reject: (err) => { cleanup(); reject(err); },
+      resolve: answers => {
+        cleanup();
+        resolve(answers);
+      },
+      reject: err => {
+        cleanup();
+        reject(err);
+      },
       timeoutId,
     });
 
@@ -70,7 +76,7 @@ export function waitForUserAnswer(
  */
 export function resolveUserAnswer(
   toolUseId: string,
-  answers: Record<string, string | string[]>,
+  answers: Record<string, string | string[]>
 ): boolean {
   const pending = pendingQuestions.get(toolUseId);
   if (!pending) return false;

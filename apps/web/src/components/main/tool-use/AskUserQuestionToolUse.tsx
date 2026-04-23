@@ -58,9 +58,8 @@ export function AskUserQuestionToolUse({ input, result, toolUseId }: AskUserQues
   const isPending = toolUseId ? pendingQuestions.has(toolUseId) : false;
 
   // 結果がある場合、回答をパースして初期選択状態に反映
-  const answeredSelections = result && !result.isError
-    ? parseAnswersFromResult(result.content)
-    : undefined;
+  const answeredSelections =
+    result && !result.isError ? parseAnswersFromResult(result.content) : undefined;
 
   const handleSubmit = useCallback(
     (answers: Record<string, string | string[]>) => {
@@ -68,13 +67,18 @@ export function AskUserQuestionToolUse({ input, result, toolUseId }: AskUserQues
         submitAnswer(toolUseId, answers);
       }
     },
-    [toolUseId, submitAnswer],
+    [toolUseId, submitAnswer]
   );
 
   return (
     <div className="py-1">
       <div className="flex items-start gap-1">
-        <StatusDot isRunning={isRunning} isSuccess={!!isSuccess} isError={!!isError} className="mt-1.5" />
+        <StatusDot
+          isRunning={isRunning}
+          isSuccess={!!isSuccess}
+          isError={!!isError}
+          className="mt-1.5"
+        />
         <span className="font-bold text-sm flex-shrink-0">{t('tools.askUserQuestion')}</span>
       </div>
 
@@ -104,7 +108,12 @@ interface TabbedQuestionsProps {
   onSubmit: (answers: Record<string, string | string[]>) => void;
 }
 
-function TabbedQuestions({ questions, isPending, answeredSelections, onSubmit }: TabbedQuestionsProps) {
+function TabbedQuestions({
+  questions,
+  isPending,
+  answeredSelections,
+  onSubmit,
+}: TabbedQuestionsProps) {
   const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -135,11 +144,11 @@ function TabbedQuestions({ questions, isPending, answeredSelections, onSubmit }:
   };
 
   const handleSelect = (header: string, label: string, multiSelect: boolean) => {
-    setSelections((prev) => {
+    setSelections(prev => {
       if (multiSelect) {
         const current = (prev[header] as string[]) ?? [];
         const next = current.includes(label)
-          ? current.filter((l) => l !== label)
+          ? current.filter(l => l !== label)
           : [...current, label];
         return { ...prev, [header]: next };
       }
@@ -148,7 +157,7 @@ function TabbedQuestions({ questions, isPending, answeredSelections, onSubmit }:
   };
 
   // 全質問で少なくとも1つ選択されているか
-  const allAnswered = questions.every((q) => {
+  const allAnswered = questions.every(q => {
     const sel = selections[q.header];
     if (q.multiSelect) return (sel as string[]).length > 0;
     return (sel as string) !== '';
@@ -164,12 +173,14 @@ function TabbedQuestions({ questions, isPending, answeredSelections, onSubmit }:
     <div className="mt-2 ml-5">
       <QuestionPanel
         question={activeQuestion}
-        stepLabel={questions.length > 1
-          ? t('tools.askQuestionStep', { current: activeIndex + 1, total: questions.length })
-          : undefined}
+        stepLabel={
+          questions.length > 1
+            ? t('tools.askQuestionStep', { current: activeIndex + 1, total: questions.length })
+            : undefined
+        }
         selection={selections[activeQuestion.header]}
         isPending={isPending}
-        onSelect={(label) =>
+        onSelect={label =>
           handleSelect(activeQuestion.header, label, activeQuestion.multiSelect ?? false)
         }
       />
@@ -185,7 +196,7 @@ function TabbedQuestions({ questions, isPending, answeredSelections, onSubmit }:
                 'text-xs px-2.5 py-1 rounded-md border border-border transition-colors',
                 isFirstTab
                   ? 'text-muted-foreground/40 cursor-not-allowed'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )}
             >
               {t('tools.askQuestionPrev')}
@@ -199,7 +210,7 @@ function TabbedQuestions({ questions, isPending, answeredSelections, onSubmit }:
                   'text-xs px-3 py-1 rounded-md transition-colors font-medium',
                   allAnswered
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed',
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
                 )}
               >
                 {t('tools.askQuestionSubmit')}
@@ -213,7 +224,7 @@ function TabbedQuestions({ questions, isPending, answeredSelections, onSubmit }:
                   'text-xs px-2.5 py-1 rounded-md border border-border transition-colors',
                   isLastTab
                     ? 'text-muted-foreground/40 cursor-not-allowed'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                 )}
               >
                 {t('tools.askQuestionNext')}
@@ -234,7 +245,13 @@ interface QuestionPanelProps {
   onSelect: (label: string) => void;
 }
 
-function QuestionPanel({ question, stepLabel, selection, isPending, onSelect }: QuestionPanelProps) {
+function QuestionPanel({
+  question,
+  stepLabel,
+  selection,
+  isPending,
+  onSelect,
+}: QuestionPanelProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
@@ -245,7 +262,7 @@ function QuestionPanel({ question, stepLabel, selection, isPending, onSelect }: 
       </div>
       {question.options && question.options.length > 0 && (
         <div className="space-y-1.5">
-          {question.options.map((option) => {
+          {question.options.map(option => {
             const isSelected = question.multiSelect
               ? (selection as string[]).includes(option.label)
               : selection === option.label;
@@ -284,9 +301,7 @@ function OptionCard({ option, isMultiSelect, isSelected, isPending, onSelect }: 
         'flex items-start gap-2.5 rounded-md border p-2.5 w-full text-left transition-colors',
         isPending && 'cursor-pointer hover:bg-accent/50',
         !isPending && 'cursor-default',
-        isSelected
-          ? 'border-primary bg-primary/5'
-          : 'border-border bg-card',
+        isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card'
       )}
     >
       <div className="flex-shrink-0 mt-0.5">
@@ -294,9 +309,7 @@ function OptionCard({ option, isMultiSelect, isSelected, isPending, onSelect }: 
           <div
             className={cn(
               'h-3.5 w-3.5 rounded-sm border flex items-center justify-center',
-              isSelected
-                ? 'border-primary bg-primary'
-                : 'border-muted-foreground/40',
+              isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/40'
             )}
           >
             {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
@@ -305,9 +318,7 @@ function OptionCard({ option, isMultiSelect, isSelected, isPending, onSelect }: 
           <div
             className={cn(
               'h-3.5 w-3.5 rounded-full border flex items-center justify-center',
-              isSelected
-                ? 'border-primary'
-                : 'border-muted-foreground/40',
+              isSelected ? 'border-primary' : 'border-muted-foreground/40'
             )}
           >
             {isSelected && <div className="h-2 w-2 rounded-full bg-primary" />}

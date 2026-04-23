@@ -40,12 +40,7 @@ export function ToolUseBlock({
 
     case 'AskUserQuestion':
       return (
-        <AskUserQuestionToolUse
-          name={name}
-          input={input}
-          result={result}
-          toolUseId={toolUseId}
-        />
+        <AskUserQuestionToolUse name={name} input={input} result={result} toolUseId={toolUseId} />
       );
 
     case 'Task':
