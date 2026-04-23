@@ -15,6 +15,7 @@ import type {
   AgentRestoreResponse,
 } from '@repo/types';
 import type { UserContext } from '../lib/user-context.js';
+import { DatabricksWorkspaceClient } from '../lib/databricks-workspace-client.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
 
@@ -765,71 +766,12 @@ function getWorkspaceAgentsPath(userName: string): string {
 }
 
 /**
- * Databricks CLI を実行するヘルパー関数
- * 認証情報を環境変数として渡す
- */
-function spawnDatabricksCli(
-  args: string[],
-  options: {
-    env: Record<string, string>;
-    timeout?: number;
-    cwd?: string;
-  }
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn('databricks', args, {
-      cwd: options.cwd,
-      shell: false,
-      env: {
-        PATH: process.env.PATH,
-        HOME: process.env.HOME,
-        ...options.env,
-      },
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    const timeoutMs = options.timeout ?? 120000; // デフォルト2分
-    const timeoutId = setTimeout(() => {
-      child.kill('SIGTERM');
-      reject(new Error(`Databricks CLI timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    child.on('close', code => {
-      clearTimeout(timeoutId);
-      if (code === 0) {
-        resolve({ stdout, stderr });
-      } else {
-        reject(new Error(`Databricks CLI failed with exit code ${code}: ${stderr}`));
-      }
-    });
-
-    child.on('error', err => {
-      clearTimeout(timeoutId);
-      reject(err);
-    });
-  });
-}
-
-/**
  * エージェントを Workspace にバックアップ
  * ローカルの .claude/agents/ → /Workspace/Users/{user}/.assistant/agents/
  */
 export async function backupAgentsToWorkspace(ctx: UserContext): Promise<AgentBackupResponse> {
   const localAgentsDir = getAgentsDir(ctx);
   const workspacePath = getWorkspaceAgentsPath(ctx.userName);
-
-  // OBO トークンで CLI を実行するための環境変数を取得
-  const cliEnv = ctx.getOboCliEnv();
 
   // ローカルエージェントディレクトリが存在するか確認
   try {
@@ -845,24 +787,13 @@ export async function backupAgentsToWorkspace(ctx: UserContext): Promise<AgentBa
     throw error;
   }
 
-  // 1. Workspace 上の既存ディレクトリを削除（エラーは無視）
-  try {
-    await spawnDatabricksCli(['workspace', 'delete', workspacePath, '--recursive'], {
-      env: cliEnv,
-      timeout: 30000,
-    });
-  } catch {
-    // ディレクトリが存在しない場合のエラーは無視
-  }
+  const client = new DatabricksWorkspaceClient(ctx.databricksHost, ctx.oboAccessToken!);
+
+  // 1. Workspace 上の既存ディレクトリを削除（404 は無視される）
+  await client.delete(workspacePath, true);
 
   // 2. Workspace にインポート
-  await spawnDatabricksCli(
-    ['workspace', 'import-dir', localAgentsDir, workspacePath, '--overwrite'],
-    {
-      env: cliEnv,
-      timeout: 120000,
-    }
-  );
+  await client.importDir(localAgentsDir, workspacePath);
 
   return {
     success: true,
@@ -879,9 +810,6 @@ export async function restoreAgentsFromWorkspace(ctx: UserContext): Promise<Agen
   const localAgentsDir = getAgentsDir(ctx);
   const workspacePath = getWorkspaceAgentsPath(ctx.userName);
 
-  // OBO トークンで CLI を実行するための環境変数を取得
-  const cliEnv = ctx.getOboCliEnv();
-
   // 1. ローカルの既存ディレクトリを削除
   // セキュリティ: ユーザーホーム配下であることを検証
   const safeAgentsDir = await validatePathWithinBase(localAgentsDir, ctx.userHome);
@@ -891,13 +819,8 @@ export async function restoreAgentsFromWorkspace(ctx: UserContext): Promise<Agen
   await ensureDirectory(localAgentsDir);
 
   // 3. Workspace からエクスポート
-  await spawnDatabricksCli(
-    ['workspace', 'export-dir', workspacePath, localAgentsDir, '--overwrite'],
-    {
-      env: cliEnv,
-      timeout: 120000,
-    }
-  );
+  const client = new DatabricksWorkspaceClient(ctx.databricksHost, ctx.oboAccessToken!);
+  await client.exportDir(workspacePath, localAgentsDir);
 
   return {
     success: true,

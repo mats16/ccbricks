@@ -85,9 +85,9 @@ The workspace path is provided via the \`SESSION_WORKSPACE_PATH\` environment va
 ### CLI Reference:
 
 - To push all files from the session directory to workspace:
-  \`databricks sync --include "*" --exclude .claude/settings.local.json . "$SESSION_WORKSPACE_PATH"\`
+  \`workspace-push . "$SESSION_WORKSPACE_PATH"\`
 - To check the upload result:
-  \`databricks workspace list "$SESSION_WORKSPACE_PATH"\`
+  \`workspace-push --list "$SESSION_WORKSPACE_PATH"\`
 `.trim();
 }
 

@@ -31,17 +31,14 @@ import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
 import { fromUUID } from 'typeid-js';
 import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
+import { DatabricksWorkspaceClient } from '../lib/databricks-workspace-client.js';
 import { getAuthProvider } from '../lib/databricks-auth.js';
 import { getAppSettings, resolveModelSettings } from './admin.service.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
 import type { UserContext } from '../lib/user-context.js';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import path from 'node:path';
-
-const execFileAsync = promisify(execFile);
 
 /** セッションID → AbortController のマッピング（abort 用） */
 const sessionAbortControllers = new Map<string, AbortController>();
@@ -534,26 +531,14 @@ export async function createSession(
 
   // 10. バックグラウンドで workspace export → query pipeline を実行
   (async () => {
-    // Workspace ソースからファイルをインポート（OBO トークンで直接実行）
+    // Workspace ソースからファイルをインポート（OBO トークンで REST API 直接呼び出し）
     if (workspaceSources.length > 0) {
       const oboToken = ctx.oboAccessToken;
       if (oboToken) {
+        const wsClient = new DatabricksWorkspaceClient(fastify.config.DATABRICKS_HOST, oboToken);
         for (const source of workspaceSources) {
           try {
-            await execFileAsync(
-              'databricks',
-              ['workspace', 'export-dir', source.path, '.', '--overwrite'],
-              {
-                cwd,
-                env: {
-                  PATH: fastify.config.PATH,
-                  HOME: ctx.userHome,
-                  DATABRICKS_HOST: `https://${fastify.config.DATABRICKS_HOST}`,
-                  DATABRICKS_TOKEN: oboToken,
-                },
-                timeout: 60_000,
-              }
-            );
+            await wsClient.exportDir(source.path, cwd);
             fastify.log.info(
               { sessionId: sessionId.toString(), sourcePath: source.path },
               'Exported workspace directory to session cwd'
