@@ -343,13 +343,9 @@ fastify.get('/users/:id', async (request, reply) => {
 
 ## Databricks Workspace Integration
 
-### SessionStart Hooks
+### Workspace Source Fetching
 
-When creating a session with `databricks_workspace` sources, the system automatically:
-1. Generates `.claude/settings.local.json` with SessionStart hooks
-2. Executes `databricks workspace export-dir` to pull files into the session
-
-See: `src/models/claude-settings.model.ts`
+When creating a session with `databricks_workspace` sources, the system uses `DatabricksWorkspaceClient` to pull files from Workspace into the session directory via REST API.
 
 ### Workspace Push Instructions
 
@@ -364,7 +360,7 @@ See: `src/utils/system-prompt.helper.ts`
 
 | File | Description |
 |------|-------------|
-| `src/models/claude-settings.model.ts` | ClaudeSettings class for settings.local.json |
+| `src/lib/databricks-workspace-client.ts` | Workspace REST API client (import/export) |
 | `src/utils/system-prompt.helper.ts` | systemPrompt.append generation |
 | `src/services/session.service.ts` | Session creation with Workspace integration |
 
