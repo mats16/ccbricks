@@ -31,13 +31,6 @@ vi.mock('../lib/databricks-auth.js', () => ({
   }),
 }));
 
-vi.mock('../models/claude-settings.model.js', () => ({
-  ClaudeSettings: vi.fn().mockImplementation(() => ({
-    addSessionStartHooks: vi.fn().mockReturnThis(),
-    saveToSession: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
 // Import after mocking
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';

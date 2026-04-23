@@ -44,6 +44,13 @@ export class UserContext {
   }
 
   /**
+   * Databricks ワークスペースホスト名を取得（プロトコルなし）
+   */
+  get databricksHost(): string {
+    return this.fastify.config.DATABRICKS_HOST;
+  }
+
+  /**
    * OBO トークンを取得（即時）
    * リクエストヘッダーから取得済みなので同期的
    */
