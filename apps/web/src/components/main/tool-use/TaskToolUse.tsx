@@ -43,16 +43,18 @@ export function TaskToolUse({ name, input, result, childEvents, toolResultMap }:
           )}
         />
         <span className="font-bold text-sm flex-shrink-0">{name}</span>
-        <button
-          type="button"
-          onClick={() => setIsInputExpanded(!isInputExpanded)}
-          className={cn(
-            'text-sm text-muted-foreground font-mono text-left',
-            isInputExpanded ? 'whitespace-pre-wrap break-all' : 'truncate'
-          )}
-        >
-          {inputDisplay}
-        </button>
+        {inputDisplay && (
+          <button
+            type="button"
+            onClick={() => setIsInputExpanded(!isInputExpanded)}
+            className={cn(
+              'text-sm text-muted-foreground font-mono text-left',
+              isInputExpanded ? 'whitespace-pre-wrap break-all' : 'truncate'
+            )}
+          >
+            {inputDisplay}
+          </button>
+        )}
       </div>
 
       {hasChildEvents ? (

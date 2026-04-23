@@ -33,12 +33,22 @@ export interface WsAbortRequest {
 }
 
 /**
+ * AskUserQuestion 回答リクエスト（クライアント -> サーバー）
+ */
+export interface WsAskUserQuestionAnswerRequest {
+  subtype: 'ask_user_question_answer';
+  tool_use_id: string;
+  /** header → 選択された label (single) または label[] (multi) のマッピング */
+  answers: Record<string, string | string[]>;
+}
+
+/**
  * Control リクエスト（クライアント -> サーバー）
  */
 export interface WsControlRequest {
   type: 'control_request';
   request_id: string;
-  request: WsAbortRequest;
+  request: WsAbortRequest | WsAskUserQuestionAnswerRequest;
 }
 
 /**
@@ -67,6 +77,16 @@ export interface WsControlResponse {
 }
 
 /**
+ * AskUserQuestion リクエスト（サーバー -> クライアント）
+ * canUseTool コールバックで AskUserQuestion を検知した際に送信
+ */
+export interface WsAskUserQuestionRequest {
+  type: 'ask_user_question';
+  tool_use_id: string;
+  input: Record<string, unknown>;
+}
+
+/**
  * WebSocket サーバー -> クライアントメッセージ
  */
 export type WsServerMessage =
@@ -74,7 +94,8 @@ export type WsServerMessage =
   | SDKMessage
   | SDKAuthStatusMessage
   | WsErrorMessage
-  | WsControlResponse;
+  | WsControlResponse
+  | WsAskUserQuestionRequest;
 
 /**
  * WebSocket KeepAlive メッセージ（クライアント -> サーバー）

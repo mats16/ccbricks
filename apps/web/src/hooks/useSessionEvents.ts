@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   SDKMessage,
   SDKUserMessage,
+  WsAskUserQuestionRequest,
   UserMessageContentBlock,
   SessionStatus,
 } from '@repo/types';
+import { isSDKResultMessageEvent, isSDKSystemMessageEvent } from '@repo/types';
 import { sessionService } from '@/services/session.service';
 import { useSessionWebSocket } from './useSessionWebSocket';
 
@@ -14,6 +16,8 @@ interface UseSessionEventsOptions {
   initialSessionStatus?: SessionStatus | null;
   /** 新規セッション作成時に navigate state から渡される初期メッセージ */
   initialMessage?: SDKUserMessage;
+  /** AskUserQuestion リクエスト受信時のコールバック */
+  onAskUserQuestion?: (request: WsAskUserQuestionRequest) => void;
 }
 
 interface UseSessionEventsReturn {
@@ -24,6 +28,10 @@ interface UseSessionEventsReturn {
   /** WebSocket からの result 受信で更新される session status */
   sessionStatus: SessionStatus | null;
   sendMessage: (content: UserMessageContentBlock[]) => void;
+  answerQuestion: (
+    toolUseId: string,
+    answers: Record<string, string | string[]>
+  ) => Promise<boolean>;
   abort: () => Promise<boolean>;
 }
 
@@ -31,6 +39,7 @@ export function useSessionEvents({
   sessionId,
   initialSessionStatus,
   initialMessage,
+  onAskUserQuestion,
 }: UseSessionEventsOptions): UseSessionEventsReturn {
   const [events, setEvents] = useState<SDKMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,11 +128,11 @@ export function useSessionEvents({
     setEvents(prev => [...prev, event]);
 
     // result イベント受信時に sessionStatus を idle に更新
-    if (event.type === 'result') {
+    if (isSDKResultMessageEvent(event)) {
       setSessionStatus('idle');
     }
     // init イベント受信時に sessionStatus を running に更新
-    if (event.type === 'system' && 'subtype' in event && event.subtype === 'init') {
+    if (isSDKSystemMessageEvent(event) && event.subtype === 'init') {
       setSessionStatus('running');
     }
   }, []);
@@ -134,11 +143,12 @@ export function useSessionEvents({
   }, []);
 
   // WebSocket 接続（shouldAutoConnect に基づいて自動接続を制御）
-  const { isConnected, sendMessage, abort } = useSessionWebSocket({
+  const { isConnected, sendMessage, answerQuestion, abort } = useSessionWebSocket({
     sessionId,
     autoConnect: shouldAutoConnect,
     onEvent: handleEvent,
     onConnected: handleConnected,
+    onAskUserQuestion,
   });
 
   // セッション ID が変わったら過去イベントを取得
@@ -166,6 +176,7 @@ export function useSessionEvents({
     error,
     sessionStatus,
     sendMessage,
+    answerQuestion,
     abort,
   };
 }

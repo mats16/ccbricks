@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { isNewSessionNavigationState } from '@/types/navigation';
@@ -6,6 +6,7 @@ import type {
   SessionCreateRequest,
   SessionResponse,
   UserMessageContentBlock,
+  WsAskUserQuestionRequest,
   DatabricksWorkspaceSource,
   ResolvedDatabricksAppsOutcome,
 } from '@repo/types';
@@ -17,6 +18,7 @@ import { SessionNotFound } from './SessionNotFound';
 import { FloatingButtons } from './FloatingButtons';
 import { useSessionEvents } from '@/hooks/useSessionEvents';
 import { useSession } from '@/hooks/useSession';
+import { AskUserQuestionProvider } from '@/contexts/AskUserQuestionContext';
 import { sessionService } from '@/services/session.service';
 import { extractTextFromContent } from '@/lib/content-builder';
 
@@ -56,16 +58,59 @@ export function MainArea({
     sessionId: sessionId ?? null,
   });
 
-  const { events, isLoading, error, sessionStatus, sendMessage, abort } = useSessionEvents({
-    sessionId: sessionId ?? null,
-    initialSessionStatus: session?.session_status,
-    initialMessage,
-  });
+  // AskUserQuestion の pending 状態管理
+  const [pendingQuestions, setPendingQuestions] = useState<Map<string, Record<string, unknown>>>(
+    () => new Map()
+  );
+  const handleAskUserQuestion = useCallback((req: WsAskUserQuestionRequest) => {
+    setPendingQuestions(prev => {
+      const next = new Map(prev);
+      next.set(req.tool_use_id, req.input);
+      return next;
+    });
+  }, []);
+
+  const { events, isLoading, error, sessionStatus, sendMessage, answerQuestion, abort } =
+    useSessionEvents({
+      sessionId: sessionId ?? null,
+      initialSessionStatus: session?.session_status,
+      initialMessage,
+      onAskUserQuestion: handleAskUserQuestion,
+    });
+
+  const submitAnswer = useCallback(
+    (toolUseId: string, answers: Record<string, string | string[]>) => {
+      answerQuestion(toolUseId, answers).then(success => {
+        if (success) {
+          setPendingQuestions(prev => {
+            const next = new Map(prev);
+            next.delete(toolUseId);
+            return next;
+          });
+        }
+      });
+    },
+    [answerQuestion]
+  );
+
+  // session が idle に戻ったら pending をクリア
+  useEffect(() => {
+    if (sessionStatus === 'idle' && pendingQuestions.size > 0) {
+      setPendingQuestions(new Map());
+    }
+  }, [sessionStatus, pendingQuestions.size]);
+
+  const askUserQuestionCtx = useMemo(
+    () => ({ pendingQuestions, submitAnswer }),
+    [pendingQuestions, submitAnswer]
+  );
 
   // session status が init または running の場合、エージェントが応答中
+  // ただし AskUserQuestion の回答待ち中は除外
   const isAgentThinking = useMemo(() => {
+    if (pendingQuestions.size > 0) return false;
     return sessionStatus === 'init' || sessionStatus === 'running';
-  }, [sessionStatus]);
+  }, [sessionStatus, pendingQuestions.size]);
 
   // Workspace ソースがあり init 状態の場合、データ同期中
   const isSyncing = useMemo(() => {
@@ -215,36 +260,38 @@ export function MainArea({
   }
 
   return (
-    <div className="relative z-0 flex flex-col w-full h-full min-w-0 overflow-hidden bg-background">
-      <MainHeader
-        title={session?.title ?? 'New Session'}
-        branchName={branchName}
-        sessionId={sessionId}
-        onTitleUpdate={handleTitleUpdate}
-        onArchive={handleArchive}
-      />
-      <MessageArea
-        events={events}
-        isLoading={isLoading}
-        error={error}
-        isAgentThinking={isAgentThinking}
-        isSyncing={isSyncing}
-        hasFloatingButton={hasFloatingButtons}
-      />
-      <InputArea
-        sessionId={sessionId}
-        onSend={handleSend}
-        onAbort={abort}
-        isAgentThinking={isAgentThinking}
-        disabled={session?.session_status === 'archived'}
-      />
-      {hasFloatingButtons && (
-        <FloatingButtons
+    <AskUserQuestionProvider value={askUserQuestionCtx}>
+      <div className="relative z-0 flex flex-col w-full h-full min-w-0 overflow-hidden bg-background">
+        <MainHeader
+          title={session?.title ?? 'New Session'}
+          branchName={branchName}
           sessionId={sessionId}
-          showAppButton={!!databricksAppsOutcome}
-          workspacePath={databricksWorkspaceOutcome?.path}
+          onTitleUpdate={handleTitleUpdate}
+          onArchive={handleArchive}
         />
-      )}
-    </div>
+        <MessageArea
+          events={events}
+          isLoading={isLoading}
+          error={error}
+          isAgentThinking={isAgentThinking}
+          isSyncing={isSyncing}
+          hasFloatingButton={hasFloatingButtons}
+        />
+        <InputArea
+          sessionId={sessionId}
+          onSend={handleSend}
+          onAbort={abort}
+          isAgentThinking={isAgentThinking}
+          disabled={session?.session_status === 'archived'}
+        />
+        {hasFloatingButtons && (
+          <FloatingButtons
+            sessionId={sessionId}
+            showAppButton={!!databricksAppsOutcome}
+            workspacePath={databricksWorkspaceOutcome?.path}
+          />
+        )}
+      </div>
+    </AskUserQuestionProvider>
   );
 }

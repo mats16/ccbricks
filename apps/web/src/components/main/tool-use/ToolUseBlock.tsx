@@ -3,11 +3,13 @@ import { WriteToolUse } from './WriteToolUse';
 import { EditToolUse } from './EditToolUse';
 import { ReadToolUse } from './ReadToolUse';
 import { TodoWriteToolUse } from './TodoWriteToolUse';
+import { AskUserQuestionToolUse } from './AskUserQuestionToolUse';
 import { TaskToolUse } from './TaskToolUse';
 import { DefaultToolUse } from './DefaultToolUse';
 import type { ToolResult } from './types';
 
 interface ToolUseBlockProps {
+  toolUseId?: string;
   name: string;
   input: Record<string, unknown>;
   result?: ToolResult;
@@ -16,28 +18,32 @@ interface ToolUseBlockProps {
 }
 
 export function ToolUseBlock({
+  toolUseId,
   name,
   input,
   result,
   childEvents,
   toolResultMap,
 }: ToolUseBlockProps) {
-  const lowerName = name.toLowerCase();
-
-  switch (lowerName) {
-    case 'write':
+  switch (name) {
+    case 'Write':
       return <WriteToolUse name={name} input={input} result={result} />;
 
-    case 'edit':
+    case 'Edit':
       return <EditToolUse name={name} input={input} result={result} />;
 
-    case 'read':
+    case 'Read':
       return <ReadToolUse name={name} input={input} result={result} />;
 
-    case 'todowrite':
+    case 'TodoWrite':
       return <TodoWriteToolUse name={name} input={input} result={result} />;
 
-    case 'task':
+    case 'AskUserQuestion':
+      return (
+        <AskUserQuestionToolUse name={name} input={input} result={result} toolUseId={toolUseId} />
+      );
+
+    case 'Task':
       return (
         <TaskToolUse
           name={name}

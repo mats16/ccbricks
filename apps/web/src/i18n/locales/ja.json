@@ -411,6 +411,11 @@
     "showRemainingLines": "残り {{count}} 行を表示",
     "collapseContent": "コンテンツを折りたたむ",
     "showRemainingLinesContent": "残り {{count}} 行を表示",
-    "showFullDiff": "すべての差分を表示 (+{{count}} 行)"
+    "showFullDiff": "すべての差分を表示 (+{{count}} 行)",
+    "askUserQuestion": "質問",
+    "askQuestionStep": "{{current}} / {{total}}",
+    "askQuestionPrev": "前へ",
+    "askQuestionNext": "次へ",
+    "askQuestionSubmit": "送信"
   }
 }

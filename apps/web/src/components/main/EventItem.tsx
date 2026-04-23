@@ -182,11 +182,6 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
       return null;
     }
 
-    // stream_event（部分レスポンス）はスキップ
-    if (event.type === 'stream_event') {
-      return null;
-    }
-
     return null;
   }, [event, toolResultMap]);
 
@@ -250,6 +245,7 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
             return (
               <ToolUseBlock
                 key={content.toolUse.id}
+                toolUseId={content.toolUse.id}
                 name={content.toolUse.name}
                 input={content.toolUse.input}
                 result={content.result}
