@@ -20,6 +20,8 @@ interface WorkspaceObject {
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
 const MAX_CONCURRENCY = 10;
+/** Workspace import API の payload 上限 (~10MB) を考慮した raw ファイルサイズ上限。base64 で ~33% 膨張するため ~7.5MB */
+const MAX_IMPORT_FILE_SIZE = 7_500_000;
 
 /**
  * インスタンス横断でリクエスト同時実行数を制限するセマフォ。
@@ -134,9 +136,12 @@ export class DatabricksWorkspaceClient {
     const response = await this.request('POST', '/api/2.0/workspace/delete', {
       body: { path, recursive },
     });
-    if (response.status !== 404) {
-      await this.throwIfNotOk(response, 'delete');
+    if (response.status === 404) {
+      // レスポンスボディを消費してコネクションを解放
+      await response.text();
+      return;
     }
+    await this.throwIfNotOk(response, 'delete');
   }
 
   async mkdirs(path: string): Promise<void> {
@@ -151,6 +156,13 @@ export class DatabricksWorkspaceClient {
     content: Buffer,
     options?: { overwrite?: boolean }
   ): Promise<void> {
+    if (content.length > MAX_IMPORT_FILE_SIZE) {
+      throw new DatabricksApiError(
+        413,
+        `File too large for Workspace import: ${(content.length / 1_000_000).toFixed(1)}MB exceeds the ~${(MAX_IMPORT_FILE_SIZE / 1_000_000).toFixed(1)}MB limit (path: ${path})`
+      );
+    }
+
     const body = {
       path,
       content: content.toString('base64'),
@@ -160,19 +172,22 @@ export class DatabricksWorkspaceClient {
 
     const response = await this.request('POST', '/api/2.0/workspace/import', { body });
 
+    if (response.ok) return;
+
+    const errorText = await response.text();
+
     // 型不一致 (FILE vs NOTEBOOK) の場合は削除してリトライ
-    if (response.status === 400) {
-      const errorText = await response.text();
-      if (errorText.includes('type mismatch')) {
-        await this.delete(path, false);
-        const retry = await this.request('POST', '/api/2.0/workspace/import', { body });
-        await this.throwIfNotOk(retry, 'import');
-        return;
-      }
-      throw new DatabricksApiError(400, `Workspace import failed (400): ${errorText}`);
+    if (response.status === 400 && errorText.includes('type mismatch')) {
+      await this.delete(path, false);
+      const retry = await this.request('POST', '/api/2.0/workspace/import', { body });
+      await this.throwIfNotOk(retry, 'import');
+      return;
     }
 
-    await this.throwIfNotOk(response, 'import');
+    throw new DatabricksApiError(
+      response.status,
+      `Workspace import failed (${response.status}): ${errorText}`
+    );
   }
 
   /**
@@ -183,7 +198,11 @@ export class DatabricksWorkspaceClient {
     const response = await this.request('GET', '/api/2.0/workspace/list', {
       searchParams: { path },
     });
-    if (response.status === 404) return [];
+    if (response.status === 404) {
+      // レスポンスボディを消費してコネクションを解放
+      await response.text();
+      return [];
+    }
     await this.throwIfNotOk(response, 'list');
 
     const data = (await response.json()) as { objects?: WorkspaceObject[] };
@@ -241,7 +260,10 @@ export class DatabricksWorkspaceClient {
 
         if (obj.object_type === 'DIRECTORY') {
           await this.exportDir(obj.path, localEntryPath);
-        } else if (obj.object_type === 'FILE') {
+        } else if (obj.object_type === 'REPO') {
+          // REPO はエクスポート不可のためスキップ
+        } else {
+          // FILE, NOTEBOOK, LIBRARY, DASHBOARD などをエクスポート
           await this.semaphore.run(async () => {
             const content = await this.exportFile(obj.path);
             await writeFile(localEntryPath, content);

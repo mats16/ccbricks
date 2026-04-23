@@ -112,12 +112,28 @@ describe('DatabricksWorkspaceClient', () => {
       );
     });
 
+    it('ファイルサイズ制限を超える場合にエラーを投げること', async () => {
+      const largeContent = Buffer.alloc(8_000_000); // 8MB > 7.5MB limit
+
+      await expect(client.importFile('/test/large-file.bin', largeContent)).rejects.toThrow(
+        'File too large for Workspace import'
+      );
+    });
+
+    it('ファイルサイズ制限内のファイルは送信できること', async () => {
+      fetchSpy.mockResolvedValueOnce(createMockResponse(200, {}));
+
+      const content = Buffer.alloc(100); // well within limit
+      await expect(client.importFile('/test/ok-file.bin', content)).resolves.toBeUndefined();
+    });
+
     it('型不一致エラー時に削除してリトライすること', async () => {
       // 1回目: 型不一致エラー
       fetchSpy.mockResolvedValueOnce(
         createMockResponse(400, {
           error_code: 'INVALID_PARAMETER_VALUE',
-          message: 'Cannot overwrite the asset at /test/hello.py due to type mismatch (asked: FILE, actual: NOTEBOOK).',
+          message:
+            'Cannot overwrite the asset at /test/hello.py due to type mismatch (asked: FILE, actual: NOTEBOOK).',
         })
       );
       // 2回目: delete 成功
@@ -317,6 +333,42 @@ describe('DatabricksWorkspaceClient', () => {
 
       const entries = await readdir(tempDir);
       expect(entries).toEqual([]);
+    });
+
+    it('NOTEBOOK オブジェクトもダウンロードすること', async () => {
+      const notebookContent = '# Databricks notebook source\nprint("hello")';
+      const base64Content = Buffer.from(notebookContent).toString('base64');
+
+      // 1. list: NOTEBOOK を含むディレクトリ
+      fetchSpy.mockResolvedValueOnce(
+        createMockResponse(200, {
+          objects: [{ path: '/ws/root/notebook.py', object_type: 'NOTEBOOK' }],
+        })
+      );
+
+      // 2. export: notebook.py
+      fetchSpy.mockResolvedValueOnce(createMockResponse(200, { content: base64Content }));
+
+      await client.exportDir('/ws/root', tempDir);
+
+      const file = await readFile(join(tempDir, 'notebook.py'), 'utf-8');
+      expect(file).toBe(notebookContent);
+    });
+
+    it('REPO オブジェクトをスキップすること', async () => {
+      fetchSpy.mockResolvedValueOnce(
+        createMockResponse(200, {
+          objects: [{ path: '/ws/root/my-repo', object_type: 'REPO' }],
+        })
+      );
+
+      await client.exportDir('/ws/root', tempDir);
+
+      // export API が呼ばれていないことを確認
+      const exportCalls = (fetchSpy.mock.calls as [string, RequestInit][]).filter(call =>
+        call[0].includes('/workspace/export')
+      );
+      expect(exportCalls).toHaveLength(0);
     });
   });
 });

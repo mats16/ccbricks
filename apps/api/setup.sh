@@ -33,6 +33,8 @@ fi
 
 # Install workspace-push wrapper
 # REST API 経由で Workspace にファイルをアップロードする CLI ラッパー
+# Note: APP_DIR はビルド時に展開され、wrapper に絶対パスとして埋め込まれる。
+# dist/ は tsc 実行後に生成されるが、wrapper の実行はランタイムなので問題ない。
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "Installing workspace-push wrapper..."
 cat > "$TARGET/workspace-push" << WRAPPER
