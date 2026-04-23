@@ -355,7 +355,7 @@ See: `src/models/claude-settings.model.ts`
 
 When outcomes include `databricks_workspace` targets, Claude receives additional system prompts to:
 - Develop changes locally in the session directory
-- Push completed work using `databricks sync`
+- Push completed work using `databricks workspace import-dir`
 - Verify successful uploads
 
 See: `src/utils/system-prompt.helper.ts`

@@ -79,15 +79,11 @@ ccbricks uses different authentication methods depending on the type of operatio
 
 ### Authentication by Operation Type
 
-| Category | Token Used | PAT Registration | Description |
-|----------|------------|------------------|-------------|
-| **Claude Code Model** | PAT → SP | Recommended | Databricks-hosted Foundation Model API |
-| **CLI in Hooks** | PAT → SP | Recommended | `workspace export-dir` in SessionStart hooks |
-| **Databricks CLI (Claude execution)** | PAT → SP | Recommended | CLI commands like `databricks sync` |
-| **Databricks Apps Operations (MCP)** | PAT → SP | Recommended | Create/deploy apps, get logs |
-| **Databricks SQL (MCP)** | OBO | Not required | Execute SQL with user permissions |
-
-※ "PAT → SP" means PAT is used if registered, otherwise falls back to Service Principal
+| Category | Token Used | Description |
+|----------|------------|-------------|
+| **Claude Code Model** | SP | Databricks-hosted Foundation Model API |
+| **Databricks CLI (Claude execution)** | OBO | CLI commands like `databricks workspace import-dir`, app create/deploy |
+| **Databricks SQL (MCP)** | OBO | Execute SQL with user permissions |
 
 ### Authentication Method Details
 
@@ -95,42 +91,15 @@ ccbricks uses different authentication methods depending on the type of operatio
 
 A token automatically provided by the Databricks Apps authentication proxy. **No user action required** - it's available just by accessing the app.
 
-- **Use case**: Databricks SQL execution via MCP
+- **Use case**: CLI commands executed by Claude, Databricks SQL execution via MCP
 - **Permissions**: User's own Databricks permissions
-
-#### PAT (Personal Access Token)
-
-A token that users generate in Databricks and register with the app.
-
-- **Use case**: CLI commands executed by Claude, Apps operations
-- **Permissions**: User's own Databricks permissions
-- **How to register**:
-  1. Generate in Databricks UI → Settings → Developer → Access tokens
-  2. Register the token in ccbricks's settings screen
-
-**Note**: PAT must start with `dapi`.
 
 #### Service Principal (SP)
 
-A service account token configured in the application. Automatically used when PAT is not registered.
+A service account token configured in the application.
 
-- **Use case**: Fallback for PAT
+- **Use case**: Claude Code's foundation model calls
 - **Permissions**: Limited to permissions granted to the SP
-
-### Why PAT Registration is Required
-
-Ideally, all operations would use OBO tokens, but the current OBO token lacks the following authorization scopes, requiring PAT:
-
-- **Workspace operations**: File read/write and sync
-- **Model Serving Endpoint**: Claude Code's foundation model calls
-
-Registering a PAT provides the following benefits:
-
-1. **User permission execution**: Claude can operate all resources you have access to
-2. **Audit logging**: Operations are recorded under your user name
-3. **Bypass SP limitations**: Use permissions not granted to the SP
-
-Without a PAT registered, operations are limited to the SP's permission scope.
 
 ## Skills System
 
@@ -204,7 +173,7 @@ Skills are backed up to the following path:
 
 #### Important Notes
 
-- **PAT Required**: Backup/restore operations require PAT registration
+- **OBO Token Used**: Backup/restore operations are executed with the user's OBO token
 - **Overwrite Behavior**: Backup overwrites existing Workspace skills; restore overwrites existing local skills completely
 - **Entire Directory**: The entire skills directory is synced, not individual skills
 
@@ -244,7 +213,7 @@ In ccbricks, we adopt the policy of **having Claude Code perform** Workspace and
 │      ↓                                                         │
 │  Claude: Edits the file                                        │
 │      ↓                                                         │
-│  Claude: Syncs to Workspace with databricks sync               │
+│  Claude: Uploads to Workspace with databricks workspace import-dir │
 │      ↓                                                         │
 │  Claude: Reports "Done"                                        │
 └────────────────────────────────────────────────────────────────┘
@@ -265,7 +234,6 @@ Main CLI commands used by Claude within sessions:
 |---------|-------|
 | `databricks workspace export-dir` | Download files from Workspace |
 | `databricks workspace import-dir` | Upload files to Workspace |
-| `databricks sync` | Sync local and Workspace |
 | `databricks fs` | Unity Catalog Volumes operations |
 | `databricks clusters` | Cluster management |
 | `databricks jobs` | Job management |
@@ -292,7 +260,7 @@ The database uses PostgreSQL RLS to restrict users to accessing only their own d
 
 #### Encryption
 
-Sensitive tokens like PAT are encrypted with AES-256-GCM:
+Sensitive tokens are encrypted with AES-256-GCM:
 
 - **Algorithm**: AES-256-GCM (authenticated encryption)
 - **Key length**: 256 bits (64 hexadecimal characters)

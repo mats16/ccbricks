@@ -13,7 +13,7 @@ describe('createWorkspacePushInstruction', () => {
 
     expect(result).toContain('Databricks Workspace Push Requirements');
     expect(result).toContain('/Workspace/Users/test@example.com/project');
-    expect(result).toContain('databricks sync');
+    expect(result).toContain('databricks workspace import-dir');
   });
 
   it('should include CLI reference with environment variable', () => {
@@ -23,7 +23,7 @@ describe('createWorkspacePushInstruction', () => {
     expect(result).toContain('SESSION_WORKSPACE_PATH');
     expect(result).toContain('databricks workspace list "$SESSION_WORKSPACE_PATH"');
     expect(result).toContain(
-      'databricks sync --include "*" --exclude .claude/settings.local.json . "$SESSION_WORKSPACE_PATH"'
+      'databricks workspace import-dir . "$SESSION_WORKSPACE_PATH" --overwrite'
     );
   });
 
