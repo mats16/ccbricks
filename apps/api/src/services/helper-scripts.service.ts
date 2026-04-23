@@ -35,7 +35,12 @@ HOST="\${HOST#http://}"
 RESPONSE=$(curl -s -X POST "https://\${HOST}/oidc/v1/token" \\
   -H "Content-Type: application/x-www-form-urlencoded" \\
   -d "grant_type=client_credentials&client_id=\${DATABRICKS_CLIENT_ID}&client_secret=\${DATABRICKS_CLIENT_SECRET}&scope=all-apis")
-echo "\${RESPONSE}" | jq -r '.access_token'
+TOKEN=$(echo "\${RESPONSE}" | jq -r '.access_token')
+if [ -z "\${TOKEN}" ] || [ "\${TOKEN}" = "null" ]; then
+  echo "ERROR: Failed to obtain access token from \${DATABRICKS_HOST}" >&2
+  exit 1
+fi
+echo "\${TOKEN}"
 `;
 
 /**
@@ -51,6 +56,10 @@ RESPONSE=$(curl -s -X POST "https://\${HOST}/oidc/v1/token" \\
   -H "Content-Type: application/x-www-form-urlencoded" \\
   -d "grant_type=client_credentials&client_id=\${DATABRICKS_CLIENT_ID}&client_secret=\${DATABRICKS_CLIENT_SECRET}&scope=all-apis")
 TOKEN=$(echo "\${RESPONSE}" | jq -r '.access_token')
+if [ -z "\${TOKEN}" ] || [ "\${TOKEN}" = "null" ]; then
+  echo "ERROR: Failed to obtain access token from \${DATABRICKS_HOST}" >&2
+  exit 1
+fi
 echo "{\\"Authorization\\": \\"Bearer \${TOKEN}\\"}"
 `;
 
