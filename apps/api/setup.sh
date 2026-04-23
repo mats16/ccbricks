@@ -30,3 +30,14 @@ if [ ! -f "$TARGET/jq" ]; then
 else
     echo "jq already installed"
 fi
+
+# Install workspace-push wrapper
+# REST API 経由で Workspace にファイルをアップロードする CLI ラッパー
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+echo "Installing workspace-push wrapper..."
+cat > "$TARGET/workspace-push" << WRAPPER
+#!/bin/bash
+exec node "${APP_DIR}/dist/cli/workspace-push.js" "\$@"
+WRAPPER
+chmod +x "$TARGET/workspace-push"
+echo "workspace-push installed to $TARGET/workspace-push"

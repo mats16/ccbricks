@@ -111,6 +111,36 @@ describe('DatabricksWorkspaceClient', () => {
         DatabricksApiError
       );
     });
+
+    it('型不一致エラー時に削除してリトライすること', async () => {
+      // 1回目: 型不一致エラー
+      fetchSpy.mockResolvedValueOnce(
+        createMockResponse(400, {
+          error_code: 'INVALID_PARAMETER_VALUE',
+          message: 'Cannot overwrite the asset at /test/hello.py due to type mismatch (asked: FILE, actual: NOTEBOOK).',
+        })
+      );
+      // 2回目: delete 成功
+      fetchSpy.mockResolvedValueOnce(createMockResponse(200, {}));
+      // 3回目: リトライ import 成功
+      fetchSpy.mockResolvedValueOnce(createMockResponse(200, {}));
+
+      await client.importFile('/test/hello.py', Buffer.from('print("hello")'));
+
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+
+      // delete が呼ばれたことを確認
+      const [deleteUrl, deleteOptions] = fetchSpy.mock.calls[1] as [string, RequestInit];
+      expect(deleteUrl).toBe('https://test-workspace.databricks.com/api/2.0/workspace/delete');
+      expect(JSON.parse(deleteOptions.body as string)).toEqual({
+        path: '/test/hello.py',
+        recursive: false,
+      });
+
+      // リトライ import が呼ばれたことを確認
+      const [retryUrl] = fetchSpy.mock.calls[2] as [string];
+      expect(retryUrl).toBe('https://test-workspace.databricks.com/api/2.0/workspace/import');
+    });
   });
 
   describe('list', () => {

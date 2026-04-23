@@ -104,6 +104,8 @@ export class DatabricksWorkspaceClient {
         ? retryAfterSec * 1000
         : INITIAL_BACKOFF_MS * Math.pow(2, attempt);
 
+      // レスポンスボディを消費してコネクションを解放
+      await response.text();
       await new Promise(resolve => setTimeout(resolve, waitMs));
     }
 
@@ -149,14 +151,27 @@ export class DatabricksWorkspaceClient {
     content: Buffer,
     options?: { overwrite?: boolean }
   ): Promise<void> {
-    const response = await this.request('POST', '/api/2.0/workspace/import', {
-      body: {
-        path,
-        content: content.toString('base64'),
-        format: 'AUTO',
-        overwrite: options?.overwrite ?? true,
-      },
-    });
+    const body = {
+      path,
+      content: content.toString('base64'),
+      format: 'AUTO',
+      overwrite: options?.overwrite ?? true,
+    };
+
+    const response = await this.request('POST', '/api/2.0/workspace/import', { body });
+
+    // 型不一致 (FILE vs NOTEBOOK) の場合は削除してリトライ
+    if (response.status === 400) {
+      const errorText = await response.text();
+      if (errorText.includes('type mismatch')) {
+        await this.delete(path, false);
+        const retry = await this.request('POST', '/api/2.0/workspace/import', { body });
+        await this.throwIfNotOk(retry, 'import');
+        return;
+      }
+      throw new DatabricksApiError(400, `Workspace import failed (400): ${errorText}`);
+    }
+
     await this.throwIfNotOk(response, 'import');
   }
 
