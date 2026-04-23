@@ -34,6 +34,7 @@ import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
 import { DatabricksWorkspaceClient } from '../lib/databricks-workspace-client.js';
 import { getAuthProvider } from '../lib/databricks-auth.js';
 import { getAppSettings, resolveModelSettings } from './admin.service.js';
+import { writeHelperScripts } from './helper-scripts.service.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -273,8 +274,6 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
 
     const systemPromptConfig = buildSystemPromptConfig(sessionContext.outcomes);
     const abortController = new AbortController();
-    const authProvider = ctx.getAuthProvider();
-
     // MCP サーバーを構築（フロントエンドの mcp_config から、OBO トークンを注入）
     const mcpServers: Record<string, McpServerConfig> = {};
     const oboToken = ctx.oboAccessToken;
@@ -314,7 +313,9 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     const otelLogsTable = appSettings.otel_logs_table_name;
     const otelTracesTable = appSettings.otel_traces_table_name;
     const otelEnabled = !!(otelMetricsTable || otelLogsTable || otelTracesTable);
-    const spToken = await authProvider.getToken();
+
+    // ヘルパースクリプトを配置（apiKeyHelper / otelHeadersHelper）
+    const helperPaths = await writeHelperScripts(userHome);
 
     const response = query({
       prompt,
@@ -325,6 +326,10 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
         model: sessionContext.model,
         maxTurns: 100,
         thinking: { type: 'adaptive' },
+        settings: {
+          apiKeyHelper: helperPaths.apiKeyHelper,
+          otelHeadersHelper: helperPaths.otelHeadersHelper,
+        },
         settingSources: ['user', 'project', 'local'],
         permissionMode: 'bypassPermissions',
         systemPrompt: systemPromptConfig,
@@ -345,7 +350,6 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ...(workspacePath ? { SESSION_WORKSPACE_PATH: workspacePath } : {}),
           ...(appsOutcomeName ? { SESSION_APP_NAME: appsOutcomeName } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
-          ANTHROPIC_AUTH_TOKEN: spToken,
           ANTHROPIC_DEFAULT_OPUS_MODEL: modelSettings.opusModel,
           ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES:
             'thinking,adaptive_thinking,effort,interleaved_thinking,max_effort',
@@ -360,6 +364,9 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           // Databricks CLI 認証: OBO トークンを使用
           DATABRICKS_HOST: `https://${fastify.config.DATABRICKS_HOST}`,
           DATABRICKS_TOKEN: oboToken ?? '',
+          // SP 認証情報: ヘルパースクリプトが OAuth トークン取得に使用
+          DATABRICKS_CLIENT_ID: fastify.config.DATABRICKS_CLIENT_ID,
+          DATABRICKS_CLIENT_SECRET: fastify.config.DATABRICKS_CLIENT_SECRET,
           // OpenTelemetry: 共通フラグ（いずれかのシグナルが有効な場合）
           ...(otelEnabled
             ? {
@@ -376,7 +383,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
                 OTEL_METRICS_EXPORTER: 'otlp',
                 OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: 'http/protobuf',
                 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/otel/v1/metrics`,
-                OTEL_EXPORTER_OTLP_METRICS_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelMetricsTable}`,
+                OTEL_EXPORTER_OTLP_METRICS_HEADERS: `content-type=application/x-protobuf,X-Databricks-UC-Table-Name=${otelMetricsTable}`,
                 OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: 'delta',
                 OTEL_METRIC_EXPORT_INTERVAL: '10000',
               }
@@ -387,7 +394,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
                 OTEL_LOGS_EXPORTER: 'otlp',
                 OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: 'http/protobuf',
                 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/otel/v1/logs`,
-                OTEL_EXPORTER_OTLP_LOGS_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelLogsTable}`,
+                OTEL_EXPORTER_OTLP_LOGS_HEADERS: `content-type=application/x-protobuf,X-Databricks-UC-Table-Name=${otelLogsTable}`,
                 OTEL_LOGS_EXPORT_INTERVAL: '5000',
               }
             : {}),
@@ -397,7 +404,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
                 OTEL_TRACES_EXPORTER: 'otlp',
                 OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: 'http/protobuf',
                 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/otel/v1/traces`,
-                OTEL_EXPORTER_OTLP_TRACES_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelTracesTable}`,
+                OTEL_EXPORTER_OTLP_TRACES_HEADERS: `content-type=application/x-protobuf,X-Databricks-UC-Table-Name=${otelTracesTable}`,
                 OTEL_TRACES_EXPORT_INTERVAL: '1000',
               }
             : {}),
