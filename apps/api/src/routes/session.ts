@@ -15,10 +15,12 @@ import type {
   WsErrorMessage,
   WsControlRequest,
   WsControlResponse,
+  WsAskUserQuestionAnswerRequest,
   SDKAuthStatusMessage,
   ApiError,
 } from '@repo/types';
 import { isAuthError } from '@repo/types';
+import { resolveUserAnswer } from '../services/ask-user-question.service.js';
 import {
   createSession,
   listSessions,
@@ -356,10 +358,28 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
               socket.send(JSON.stringify(authStatusMsg));
             }
           } else if (msg.type === 'control_request') {
-            // control_request を受信 → abort 処理
+            // control_request を受信
             const controlRequest = msg as WsControlRequest;
 
-            if (controlRequest.request.subtype === 'abort') {
+            if (controlRequest.request.subtype === 'ask_user_question_answer') {
+              // AskUserQuestion の回答を受信 → 保留中の Promise を resolve
+              const answerRequest = controlRequest.request as WsAskUserQuestionAnswerRequest;
+              const resolved = resolveUserAnswer(
+                answerRequest.tool_use_id,
+                answerRequest.answers,
+              );
+              const response: WsControlResponse = {
+                type: 'control_response',
+                response: resolved
+                  ? { subtype: 'success', request_id: controlRequest.request_id }
+                  : {
+                      subtype: 'error',
+                      request_id: controlRequest.request_id,
+                      error: 'No pending question found for this tool_use_id',
+                    },
+              };
+              socket.send(JSON.stringify(response));
+            } else if (controlRequest.request.subtype === 'abort') {
               // 1. まず control_response を返す
               if (canAbortSession(sessionId)) {
                 const response: WsControlResponse = {

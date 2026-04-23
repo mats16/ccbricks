@@ -6,6 +6,7 @@ import type {
   WsConnectedMessage,
   WsControlRequest,
   WsControlResponse,
+  WsAskUserQuestionRequest,
   UserMessageContentBlock,
 } from '@repo/types';
 import {
@@ -19,6 +20,7 @@ interface UseSessionWebSocketOptions {
   autoConnect?: boolean;
   onEvent?: (event: SDKMessage) => void;
   onConnected?: (message: WsConnectedMessage) => void;
+  onAskUserQuestion?: (request: WsAskUserQuestionRequest) => void;
   onError?: (error: Error) => void;
 }
 
@@ -29,6 +31,7 @@ interface UseSessionWebSocketReturn {
   reconnect: () => void;
   connect: () => void;
   sendMessage: (content: UserMessageContentBlock[]) => void;
+  answerQuestion: (toolUseId: string, answers: Record<string, string | string[]>) => void;
   abort: () => Promise<boolean>;
 }
 
@@ -40,6 +43,7 @@ export function useSessionWebSocket({
   autoConnect = true,
   onEvent,
   onConnected,
+  onAskUserQuestion,
   onError,
 }: UseSessionWebSocketOptions): UseSessionWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
@@ -57,11 +61,13 @@ export function useSessionWebSocket({
   // stale closure 問題を回避するため、コールバックを ref で保持
   const onEventRef = useRef(onEvent);
   const onConnectedRef = useRef(onConnected);
+  const onAskUserQuestionRef = useRef(onAskUserQuestion);
   const onErrorRef = useRef(onError);
 
   // 毎レンダリングで ref を更新
   onEventRef.current = onEvent;
   onConnectedRef.current = onConnected;
+  onAskUserQuestionRef.current = onAskUserQuestion;
   onErrorRef.current = onError;
 
   const connect = useCallback(() => {
@@ -128,6 +134,9 @@ export function useSessionWebSocket({
             pendingControlRequestsRef.current.delete(response.response.request_id);
             pending.resolve(response.response.subtype === 'success');
           }
+        } else if (message.type === 'ask_user_question') {
+          // AskUserQuestion リクエスト
+          onAskUserQuestionRef.current?.(message as WsAskUserQuestionRequest);
         } else if ('session_id' in message) {
           // SDKMessage - ref 経由で最新のコールバックを呼び出す
           onEventRef.current?.(message as SDKMessage);
@@ -229,6 +238,25 @@ export function useSessionWebSocket({
     [sessionId, connect]
   );
 
+  // AskUserQuestion に回答する
+  const answerQuestion = useCallback(
+    (toolUseId: string, answers: Record<string, string | string[]>) => {
+      if (!sessionId || wsRef.current?.readyState !== WebSocket.OPEN) return;
+
+      const request: WsControlRequest = {
+        type: 'control_request',
+        request_id: crypto.randomUUID(),
+        request: {
+          subtype: 'ask_user_question_answer',
+          tool_use_id: toolUseId,
+          answers,
+        },
+      };
+      wsRef.current.send(JSON.stringify(request));
+    },
+    [sessionId],
+  );
+
   // Agent を abort する
   const abort = useCallback(async (): Promise<boolean> => {
     if (!sessionId || wsRef.current?.readyState !== WebSocket.OPEN) {
@@ -268,6 +296,7 @@ export function useSessionWebSocket({
     reconnect,
     connect,
     sendMessage,
+    answerQuestion,
     abort,
   };
 }

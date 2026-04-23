@@ -3,11 +3,13 @@ import { WriteToolUse } from './WriteToolUse';
 import { EditToolUse } from './EditToolUse';
 import { ReadToolUse } from './ReadToolUse';
 import { TodoWriteToolUse } from './TodoWriteToolUse';
+import { AskUserQuestionToolUse } from './AskUserQuestionToolUse';
 import { TaskToolUse } from './TaskToolUse';
 import { DefaultToolUse } from './DefaultToolUse';
 import type { ToolResult } from './types';
 
 interface ToolUseBlockProps {
+  toolUseId?: string;
   name: string;
   input: Record<string, unknown>;
   result?: ToolResult;
@@ -16,6 +18,7 @@ interface ToolUseBlockProps {
 }
 
 export function ToolUseBlock({
+  toolUseId,
   name,
   input,
   result,
@@ -34,6 +37,16 @@ export function ToolUseBlock({
 
     case 'TodoWrite':
       return <TodoWriteToolUse name={name} input={input} result={result} />;
+
+    case 'AskUserQuestion':
+      return (
+        <AskUserQuestionToolUse
+          name={name}
+          input={input}
+          result={result}
+          toolUseId={toolUseId}
+        />
+      );
 
     case 'Task':
       return (

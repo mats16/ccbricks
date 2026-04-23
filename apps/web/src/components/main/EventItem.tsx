@@ -245,6 +245,7 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
             return (
               <ToolUseBlock
                 key={content.toolUse.id}
+                toolUseId={content.toolUse.id}
                 name={content.toolUse.name}
                 input={content.toolUse.input}
                 result={content.result}

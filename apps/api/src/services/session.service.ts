@@ -37,6 +37,7 @@ import { getAppSettings, resolveModelSettings } from './admin.service.js';
 import { writeHelperScripts } from './helper-scripts.service.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
+import { waitForUserAnswer } from './ask-user-question.service.js';
 import { SessionId } from '../models/session.model.js';
 import type { UserContext } from '../lib/user-context.js';
 import path from 'node:path';
@@ -332,6 +333,18 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
         },
         settingSources: ['user', 'project', 'local'],
         permissionMode: 'bypassPermissions',
+        canUseTool: async (toolName, input, options) => {
+          if (toolName === 'AskUserQuestion') {
+            const answers = await waitForUserAnswer(
+              sessionId.toString(),
+              options.toolUseID,
+              input,
+              options.signal,
+            );
+            return { behavior: 'allow', updatedInput: { ...input, answers } };
+          }
+          return { behavior: 'allow' };
+        },
         systemPrompt: systemPromptConfig,
         mcpServers,
         tools: {

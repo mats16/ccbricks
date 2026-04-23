@@ -411,6 +411,11 @@
     "showRemainingLines": "Show remaining {{count}} lines",
     "collapseContent": "Collapse content",
     "showRemainingLinesContent": "Show remaining {{count}} lines",
-    "showFullDiff": "Show full diff ({{count}} more lines)"
+    "showFullDiff": "Show full diff ({{count}} more lines)",
+    "askUserQuestion": "Question",
+    "askQuestionStep": "{{current}} / {{total}}",
+    "askQuestionPrev": "Prev",
+    "askQuestionNext": "Next",
+    "askQuestionSubmit": "Submit"
   }
 }
