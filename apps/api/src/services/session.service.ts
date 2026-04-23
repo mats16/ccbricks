@@ -332,7 +332,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           otelHeadersHelper: helperPaths.otelHeadersHelper,
         },
         settingSources: ['user', 'project', 'local'],
-        permissionMode: 'bypassPermissions',
+        permissionMode: 'auto',
         canUseTool: async (toolName, input, options) => {
           if (toolName === 'AskUserQuestion') {
             const answers = await waitForUserAnswer(
