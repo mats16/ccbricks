@@ -131,7 +131,7 @@ export function MainHeader({
             onChange={e => setNewTitle(e.target.value)}
             placeholder={t('main.sessionTitlePlaceholder')}
             onKeyDown={e => {
-              if (e.key === 'Enter' && !isSubmitting) {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && !isSubmitting) {
                 handleRename();
               }
             }}
