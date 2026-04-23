@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useCallback } from 'react';
 import type { SDKMessage } from '@repo/types';
+import { hasParentToolUseId } from '@repo/types';
 import { EventItem } from './EventItem';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { SyncingIndicator } from './SyncingIndicator';
 import { LoadingScreen } from '@/components/ui/loading-spinner';
 import { extractToolResults, groupChildEvents } from '@/lib/message-utils';
+import { HIDDEN_EVENT_TYPES } from '@/lib/tool-constants';
 import { cn, throttle } from '@/lib/utils';
 
 interface MessageAreaProps {
@@ -38,14 +40,12 @@ export function MessageArea({
   // 子イベント（parent_tool_use_id を持つ）をグループ化
   const childEventsMap = useMemo(() => groupChildEvents(events), [events]);
 
-  // トップレベルのイベント（parent_tool_use_id を持たない、type: system を除外、isSynthetic を除外）
+  // トップレベルのイベント（parent_tool_use_id を持たない、非表示タイプを除外、isSynthetic を除外）
   const topLevelEvents = useMemo(() => {
     return events.filter(event => {
+      if (hasParentToolUseId(event)) return false;
+      if (HIDDEN_EVENT_TYPES.has(event.type)) return false;
       const msg = event as Record<string, unknown>;
-      // parent_tool_use_id を持つイベントと system タイプは除外
-      if (msg.parent_tool_use_id) return false;
-      if (msg.type === 'system') return false;
-      // Skill 実行時のシステム生成メッセージを除外
       if (msg.isSynthetic) return false;
       return true;
     });

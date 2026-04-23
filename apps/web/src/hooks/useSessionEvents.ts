@@ -5,6 +5,7 @@ import type {
   UserMessageContentBlock,
   SessionStatus,
 } from '@repo/types';
+import { isSDKResultMessageEvent, isSDKSystemMessageEvent } from '@repo/types';
 import { sessionService } from '@/services/session.service';
 import { useSessionWebSocket } from './useSessionWebSocket';
 
@@ -119,11 +120,11 @@ export function useSessionEvents({
     setEvents(prev => [...prev, event]);
 
     // result イベント受信時に sessionStatus を idle に更新
-    if (event.type === 'result') {
+    if (isSDKResultMessageEvent(event)) {
       setSessionStatus('idle');
     }
     // init イベント受信時に sessionStatus を running に更新
-    if (event.type === 'system' && 'subtype' in event && event.subtype === 'init') {
+    if (isSDKSystemMessageEvent(event) && event.subtype === 'init') {
       setSessionStatus('running');
     }
   }, []);

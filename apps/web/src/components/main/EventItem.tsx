@@ -182,11 +182,6 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
       return null;
     }
 
-    // stream_event（部分レスポンス）はスキップ
-    if (event.type === 'stream_event') {
-      return null;
-    }
-
     return null;
   }, [event, toolResultMap]);
 

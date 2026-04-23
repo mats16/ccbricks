@@ -22,22 +22,20 @@ export function ToolUseBlock({
   childEvents,
   toolResultMap,
 }: ToolUseBlockProps) {
-  const lowerName = name.toLowerCase();
-
-  switch (lowerName) {
-    case 'write':
+  switch (name) {
+    case 'Write':
       return <WriteToolUse name={name} input={input} result={result} />;
 
-    case 'edit':
+    case 'Edit':
       return <EditToolUse name={name} input={input} result={result} />;
 
-    case 'read':
+    case 'Read':
       return <ReadToolUse name={name} input={input} result={result} />;
 
-    case 'todowrite':
+    case 'TodoWrite':
       return <TodoWriteToolUse name={name} input={input} result={result} />;
 
-    case 'task':
+    case 'Task':
       return (
         <TaskToolUse
           name={name}

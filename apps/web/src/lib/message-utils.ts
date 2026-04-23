@@ -6,6 +6,7 @@ import {
   isToolUseContentBlock,
   hasParentToolUseId,
 } from '@repo/types';
+import { TOOL_NAMES_OMIT_INPUT_SUMMARY } from './tool-constants';
 
 export interface ToolResult {
   content: string;
@@ -113,42 +114,34 @@ export function getToolUseId(block: unknown): string | null {
 /**
  * ツール別の入力表示を取得
  */
-export function getToolInputDisplay(name: string, input: Record<string, unknown>): string {
-  const lowerName = name.toLowerCase();
+export function getToolInputDisplay(
+  name: string,
+  input: Record<string, unknown>,
+): string | undefined {
+  if (TOOL_NAMES_OMIT_INPUT_SUMMARY.has(name)) return undefined;
 
-  switch (lowerName) {
-    case 'bash':
-      return typeof input.command === 'string' ? input.command : '';
-    case 'read':
-      return typeof input.file_path === 'string' ? input.file_path : '';
-    case 'write':
-    case 'edit':
-      return typeof input.file_path === 'string' ? input.file_path : '';
-    case 'glob':
-      return typeof input.pattern === 'string' ? input.pattern : '';
-    case 'grep':
-      return typeof input.pattern === 'string' ? input.pattern : '';
-    case 'task':
-      return typeof input.description === 'string' ? input.description : '';
-    case 'skill':
-      return typeof input.skill === 'string' ? input.skill : '';
-    case 'mcp__dbsql__execute_sql_read_only':
-    case 'mcp__dbsql__execute_sql':
-      return typeof input.query === 'string' ? input.query : '';
-    case 'todowrite':
-      if (Array.isArray(input.todos)) {
-        return input.todos
-          .map((todo: { status?: string; content?: string }) => {
-            const status =
-              todo.status === 'completed' ? '✓' : todo.status === 'in_progress' ? '→' : '○';
-            return `${status} ${todo.content ?? ''}`;
-          })
-          .join('\n');
-      }
-      return '';
-    default:
-      return JSON.stringify(input);
-  }
+  if (name === 'Bash' && typeof input.command === 'string') return input.command;
+  if (
+    (name === 'Read' || name === 'Write' || name === 'Edit') &&
+    typeof input.file_path === 'string'
+  )
+    return input.file_path;
+  if ((name === 'Grep' || name === 'Glob') && typeof input.pattern === 'string')
+    return input.pattern;
+  if (name === 'NotebookEdit' && typeof input.notebook_path === 'string')
+    return input.notebook_path;
+  if (name === 'WebSearch' && typeof input.query === 'string') return input.query;
+  if (name === 'WebFetch' && typeof input.url === 'string') return input.url;
+  if (name === 'Task' && typeof input.description === 'string') return input.description;
+  if (name === 'Agent' && input.subagent_type != null) return String(input.subagent_type);
+  if (name === 'Skill' && typeof input.skill === 'string') return input.skill;
+  if (
+    (name === 'mcp__dbsql__execute_sql_read_only' || name === 'mcp__dbsql__execute_sql') &&
+    typeof input.query === 'string'
+  )
+    return input.query;
+
+  return JSON.stringify(input);
 }
 
 /**
@@ -193,7 +186,7 @@ export function extractNestedToolUses(
       const result = toolResultMap.get(toolBlock.id);
       tools.push({
         name: toolBlock.name,
-        input: getToolInputDisplay(toolBlock.name, toolBlock.input),
+        input: getToolInputDisplay(toolBlock.name, toolBlock.input) ?? '',
         result: result?.content,
         isError: result?.isError,
       });
