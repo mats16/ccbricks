@@ -12,7 +12,9 @@ const MODEL_SETTINGS_KEYS = [
 const ALL_SETTINGS_KEYS = [
   'default_new_user_role',
   ...MODEL_SETTINGS_KEYS,
-  'otel_table_name',
+  'otel_metrics_table_name',
+  'otel_logs_table_name',
+  'otel_traces_table_name',
 ] as const;
 
 /**
@@ -79,7 +81,9 @@ export async function getAppSettings(fastify: FastifyInstance): Promise<AppSetti
     default_opus_model: map.get('default_opus_model') ?? null,
     default_sonnet_model: map.get('default_sonnet_model') ?? null,
     default_haiku_model: map.get('default_haiku_model') ?? null,
-    otel_table_name: map.get('otel_table_name') ?? null,
+    otel_metrics_table_name: map.get('otel_metrics_table_name') ?? null,
+    otel_logs_table_name: map.get('otel_logs_table_name') ?? null,
+    otel_traces_table_name: map.get('otel_traces_table_name') ?? null,
   };
 }
 

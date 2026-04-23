@@ -390,9 +390,14 @@
     "resetToDefault": "Reset to default",
     "fetchEndpointsError": "Failed to load serving endpoints",
     "telemetryConfiguration": "Telemetry Configuration",
-    "otelTableName": "OpenTelemetry Metrics Table",
-    "otelTableNamePlaceholder": "catalog.schema.table",
-    "otelTableNameDescription": "Set a Unity Catalog table name to enable Claude Code telemetry metrics export"
+    "telemetryDescription": "Configure Unity Catalog table names to enable Claude Code telemetry export. Each signal type can be enabled independently.",
+    "otelMetricsTableName": "Metrics Table",
+    "otelMetricsTableNameDescription": "Table for OpenTelemetry metrics data",
+    "otelLogsTableName": "Logs Table",
+    "otelLogsTableNameDescription": "Table for OpenTelemetry logs data",
+    "otelTracesTableName": "Traces Table",
+    "otelTracesTableNameDescription": "Table for OpenTelemetry traces (spans) data",
+    "otelTableNamePlaceholder": "catalog.schema.table"
   },
   "tools": {
     "updateTodos": "Update Todos",

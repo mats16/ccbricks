@@ -3,13 +3,21 @@ import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import type { SessionContextResponse, ClaudeSettingsJson, McpConfig } from '@repo/types';
 import type { UserContext } from '../lib/user-context.js';
+import {
+  API_KEY_HELPER_FILENAME,
+  OTEL_HEADERS_HELPER_FILENAME,
+  API_KEY_HELPER_SCRIPT,
+  OTEL_HEADERS_HELPER_SCRIPT,
+} from './helper-scripts.service.js';
 
 /**
  * セッション設定を zip ストリームとして生成する
  *
  * 含まれるファイル:
- * - .claude/settings.json (permissions)
+ * - .claude/settings.json (permissions, apiKeyHelper, otelHeadersHelper)
  * - mcp.json (MCP サーバー設定、headers 除外)
+ * - .claude/generate_temp_api_key.sh (API キーヘルパー)
+ * - .claude/generate_otel_headers.sh (OTel ヘッダーヘルパー)
  * - .claude/skills/** (ユーザーのスキルディレクトリ全体)
  * - .claude/agents/** (ユーザーのエージェントディレクトリ全体)
  */
@@ -30,7 +38,15 @@ export function generateSettingsZip(
       settings.permissions.deny = sessionContext.disallowed_tools;
     }
   }
+  const apiKeyHelperPath = `.claude/${API_KEY_HELPER_FILENAME}`;
+  const otelHeadersHelperPath = `.claude/${OTEL_HEADERS_HELPER_FILENAME}`;
+  settings.apiKeyHelper = apiKeyHelperPath;
+  settings.otelHeadersHelper = otelHeadersHelperPath;
   archive.append(JSON.stringify(settings, null, 2), { name: '.claude/settings.json' });
+
+  // ヘルパースクリプト（内容を直接書き出し — ディスク上のファイル有無に依存しない）
+  archive.append(API_KEY_HELPER_SCRIPT, { name: apiKeyHelperPath, mode: 0o755 });
+  archive.append(OTEL_HEADERS_HELPER_SCRIPT, { name: otelHeadersHelperPath, mode: 0o755 });
 
   // mcp.json — headers はランタイム固有の OBO トークンを含むため除外
   if (sessionContext.mcp_config?.mcpServers) {

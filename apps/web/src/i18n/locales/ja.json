@@ -390,9 +390,14 @@
     "resetToDefault": "デフォルトに戻す",
     "fetchEndpointsError": "Serving Endpoint の取得に失敗しました",
     "telemetryConfiguration": "テレメトリ設定",
-    "otelTableName": "OpenTelemetry メトリクステーブル",
-    "otelTableNamePlaceholder": "catalog.schema.table",
-    "otelTableNameDescription": "Unity Catalog テーブル名を設定すると、Claude Code のテレメトリメトリクスが有効になります"
+    "telemetryDescription": "Unity Catalog テーブル名を設定すると、Claude Code のテレメトリが有効になります。各シグナルタイプは個別に有効化できます。",
+    "otelMetricsTableName": "メトリクステーブル",
+    "otelMetricsTableNameDescription": "OpenTelemetry メトリクスデータ用テーブル",
+    "otelLogsTableName": "ログテーブル",
+    "otelLogsTableNameDescription": "OpenTelemetry ログデータ用テーブル",
+    "otelTracesTableName": "トレーステーブル",
+    "otelTracesTableNameDescription": "OpenTelemetry トレース（スパン）データ用テーブル",
+    "otelTableNamePlaceholder": "catalog.schema.table"
   },
   "tools": {
     "updateTodos": "Update Todos",

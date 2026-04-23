@@ -76,4 +76,8 @@ export interface ClaudeSettingsJson {
   };
   /** Hooks 設定 */
   hooks?: ClaudeSettingsHooks;
+  /** 認証トークンを出力するスクリプトのパス */
+  apiKeyHelper?: string;
+  /** OpenTelemetry ヘッダーを JSON で出力するスクリプトのパス */
+  otelHeadersHelper?: string;
 }
