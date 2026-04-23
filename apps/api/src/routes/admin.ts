@@ -107,17 +107,23 @@ const adminRoute: FastifyPluginAsync = async fastify => {
     }
 
     // バリデーション: OTEL テーブル名（null か Unity Catalog 3-part name のみ許可）
-    if (body.otel_table_name !== undefined && body.otel_table_name !== null) {
-      if (
-        typeof body.otel_table_name !== 'string' ||
-        !/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/.test(body.otel_table_name)
-      ) {
-        return reply.status(400).send({
-          error: 'BadRequest',
-          message:
-            'otel_table_name must be a Unity Catalog 3-part name (catalog.schema.table) or null',
-          statusCode: 400,
-        });
+    for (const key of [
+      'otel_metrics_table_name',
+      'otel_logs_table_name',
+      'otel_traces_table_name',
+    ] as const) {
+      const value = body[key];
+      if (value !== undefined && value !== null) {
+        if (
+          typeof value !== 'string' ||
+          !/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/.test(value)
+        ) {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: `${key} must be a Unity Catalog 3-part name (catalog.schema.table) or null`,
+            statusCode: 400,
+          });
+        }
       }
     }
 

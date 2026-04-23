@@ -310,7 +310,10 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
 
     const appSettings = await getAppSettings(fastify);
     const modelSettings = resolveModelSettings(appSettings);
-    const otelTableName = appSettings.otel_table_name;
+    const otelMetricsTable = appSettings.otel_metrics_table_name;
+    const otelLogsTable = appSettings.otel_logs_table_name;
+    const otelTracesTable = appSettings.otel_traces_table_name;
+    const otelEnabled = !!(otelMetricsTable || otelLogsTable || otelTracesTable);
     const spToken = await authProvider.getToken();
 
     const response = query({
@@ -357,13 +360,45 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           // Databricks CLI 認証: OBO トークンを使用
           DATABRICKS_HOST: `https://${fastify.config.DATABRICKS_HOST}`,
           DATABRICKS_TOKEN: oboToken ?? '',
-          ...(otelTableName
+          // OpenTelemetry: 共通フラグ（いずれかのシグナルが有効な場合）
+          ...(otelEnabled
             ? {
                 CLAUDE_CODE_ENABLE_TELEMETRY: '1',
+                CLAUDE_CODE_ENHANCED_TELEMETRY_BETA: '1',
+                OTEL_LOG_USER_PROMPTS: '1',
+                OTEL_LOG_TOOL_DETAILS: '1',
+                OTEL_LOG_TOOL_CONTENT: '1',
+              }
+            : {}),
+          // OpenTelemetry Metrics
+          ...(otelMetricsTable
+            ? {
                 OTEL_METRICS_EXPORTER: 'otlp',
                 OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: 'http/protobuf',
                 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/otel/v1/metrics`,
-                OTEL_EXPORTER_OTLP_METRICS_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelTableName}`,
+                OTEL_EXPORTER_OTLP_METRICS_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelMetricsTable}`,
+                OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: 'delta',
+                OTEL_METRIC_EXPORT_INTERVAL: '10000',
+              }
+            : {}),
+          // OpenTelemetry Logs
+          ...(otelLogsTable
+            ? {
+                OTEL_LOGS_EXPORTER: 'otlp',
+                OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: 'http/protobuf',
+                OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/otel/v1/logs`,
+                OTEL_EXPORTER_OTLP_LOGS_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelLogsTable}`,
+                OTEL_LOGS_EXPORT_INTERVAL: '5000',
+              }
+            : {}),
+          // OpenTelemetry Traces
+          ...(otelTracesTable
+            ? {
+                OTEL_TRACES_EXPORTER: 'otlp',
+                OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: 'http/protobuf',
+                OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: `https://${fastify.config.DATABRICKS_HOST}/api/2.0/otel/v1/traces`,
+                OTEL_EXPORTER_OTLP_TRACES_HEADERS: `content-type=application/x-protobuf,Authorization=Bearer ${spToken},X-Databricks-UC-Table-Name=${otelTracesTable}`,
+                OTEL_TRACES_EXPORT_INTERVAL: '1000',
               }
             : {}),
         },

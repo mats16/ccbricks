@@ -25,7 +25,9 @@ function AdminSettingsContent() {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [otelTableNameInput, setOtelTableNameInput] = useState('');
+  const [otelMetricsTableInput, setOtelMetricsTableInput] = useState('');
+  const [otelLogsTableInput, setOtelLogsTableInput] = useState('');
+  const [otelTracesTableInput, setOtelTracesTableInput] = useState('');
 
   const MODEL_NULL_SENTINEL = '__default__';
 
@@ -34,7 +36,9 @@ function AdminSettingsContent() {
       setIsLoadingSettings(true);
       const data = await adminService.getSettings();
       setSettings(data);
-      setOtelTableNameInput(data.otel_table_name ?? '');
+      setOtelMetricsTableInput(data.otel_metrics_table_name ?? '');
+      setOtelLogsTableInput(data.otel_logs_table_name ?? '');
+      setOtelTracesTableInput(data.otel_traces_table_name ?? '');
     } catch {
       toast.error(t('admin.fetchError'));
     } finally {
@@ -80,9 +84,20 @@ function AdminSettingsContent() {
   const handleDefaultRoleChange = (value: string) =>
     saveSetting({ default_new_user_role: value as 'admin' | 'member' });
 
-  const handleOtelTableNameSave = () => {
-    const value = otelTableNameInput.trim();
-    return saveSetting({ otel_table_name: value || null });
+  const otelDirty =
+    otelMetricsTableInput.trim() !== (settings?.otel_metrics_table_name ?? '') ||
+    otelLogsTableInput.trim() !== (settings?.otel_logs_table_name ?? '') ||
+    otelTracesTableInput.trim() !== (settings?.otel_traces_table_name ?? '');
+
+  const handleOtelSave = () => {
+    const metrics = otelMetricsTableInput.trim();
+    const logs = otelLogsTableInput.trim();
+    const traces = otelTracesTableInput.trim();
+    return saveSetting({
+      otel_metrics_table_name: metrics || null,
+      otel_logs_table_name: logs || null,
+      otel_traces_table_name: traces || null,
+    });
   };
 
   return (
@@ -174,37 +189,61 @@ function AdminSettingsContent() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="border border-border rounded-lg p-4 space-y-2">
-            <div className="flex items-center justify-between gap-4">
-              <div className="shrink-0">
-                <p className="text-sm font-medium">{t('admin.otelTableName')}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t('admin.otelTableNameDescription')}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
+          <div className="border border-border rounded-lg p-4 space-y-4">
+            <p className="text-xs text-muted-foreground">{t('admin.telemetryDescription')}</p>
+            {(
+              [
+                {
+                  key: 'otel_metrics',
+                  label: t('admin.otelMetricsTableName'),
+                  description: t('admin.otelMetricsTableNameDescription'),
+                  value: otelMetricsTableInput,
+                  onChange: setOtelMetricsTableInput,
+                },
+                {
+                  key: 'otel_logs',
+                  label: t('admin.otelLogsTableName'),
+                  description: t('admin.otelLogsTableNameDescription'),
+                  value: otelLogsTableInput,
+                  onChange: setOtelLogsTableInput,
+                },
+                {
+                  key: 'otel_traces',
+                  label: t('admin.otelTracesTableName'),
+                  description: t('admin.otelTracesTableNameDescription'),
+                  value: otelTracesTableInput,
+                  onChange: setOtelTracesTableInput,
+                },
+              ] as const
+            ).map(({ key, label, description, value, onChange }) => (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <div className="shrink-0">
+                  <p className="text-sm font-medium">{label}</p>
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
                 <Input
                   className="w-[320px]"
                   placeholder={t('admin.otelTableNamePlaceholder')}
-                  value={otelTableNameInput}
-                  onChange={e => setOtelTableNameInput(e.target.value)}
+                  value={value}
+                  onChange={e => onChange(e.target.value)}
                   disabled={isSavingSettings}
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleOtelTableNameSave}
-                  disabled={
-                    isSavingSettings || otelTableNameInput === (settings?.otel_table_name ?? '')
-                  }
-                >
-                  {isSavingSettings ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                </Button>
               </div>
+            ))}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOtelSave}
+                disabled={isSavingSettings || !otelDirty}
+              >
+                {isSavingSettings ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {t('common.save')}
+              </Button>
             </div>
           </div>
         )}
