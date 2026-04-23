@@ -44,6 +44,11 @@ export function waitForUserAnswer(
       reject(new Error('AskUserQuestion aborted'));
     };
     if (signal) {
+      if (signal.aborted) {
+        cleanup();
+        reject(new Error('AskUserQuestion aborted'));
+        return;
+      }
       signal.addEventListener('abort', onAbort, { once: true });
     }
 
@@ -83,18 +88,4 @@ export function resolveUserAnswer(
 
   pending.resolve(answers);
   return true;
-}
-
-/**
- * セッション終了時などに、保留中の全質問をクリーンアップする。
- */
-export function rejectPendingQuestions(toolUseIds: string[], reason: string): void {
-  for (const id of toolUseIds) {
-    const pending = pendingQuestions.get(id);
-    if (pending) {
-      clearTimeout(pending.timeoutId);
-      pendingQuestions.delete(id);
-      pending.reject(new Error(reason));
-    }
-  }
 }

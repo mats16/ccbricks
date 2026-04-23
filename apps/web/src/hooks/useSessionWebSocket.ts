@@ -31,7 +31,10 @@ interface UseSessionWebSocketReturn {
   reconnect: () => void;
   connect: () => void;
   sendMessage: (content: UserMessageContentBlock[]) => void;
-  answerQuestion: (toolUseId: string, answers: Record<string, string | string[]>) => void;
+  answerQuestion: (
+    toolUseId: string,
+    answers: Record<string, string | string[]>
+  ) => Promise<boolean>;
   abort: () => Promise<boolean>;
 }
 
@@ -238,56 +241,54 @@ export function useSessionWebSocket({
     [sessionId, connect]
   );
 
-  // AskUserQuestion に回答する
-  const answerQuestion = useCallback(
-    (toolUseId: string, answers: Record<string, string | string[]>) => {
-      if (!sessionId || wsRef.current?.readyState !== WebSocket.OPEN) return;
+  // control_request を送信し、control_response を待つ共通ヘルパー
+  const sendControlRequest = useCallback(
+    (request: WsControlRequest['request']): Promise<boolean> => {
+      if (!sessionId || wsRef.current?.readyState !== WebSocket.OPEN) {
+        return Promise.resolve(false);
+      }
 
-      const request: WsControlRequest = {
+      const requestId = crypto.randomUUID();
+      const msg: WsControlRequest = {
         type: 'control_request',
-        request_id: crypto.randomUUID(),
-        request: {
-          subtype: 'ask_user_question_answer',
-          tool_use_id: toolUseId,
-          answers,
-        },
+        request_id: requestId,
+        request,
       };
-      wsRef.current.send(JSON.stringify(request));
+
+      return new Promise<boolean>(resolve => {
+        pendingControlRequestsRef.current.set(requestId, {
+          resolve,
+          reject: () => resolve(false),
+        });
+        wsRef.current!.send(JSON.stringify(msg));
+
+        setTimeout(() => {
+          if (pendingControlRequestsRef.current.has(requestId)) {
+            pendingControlRequestsRef.current.delete(requestId);
+            resolve(false);
+          }
+        }, CONTROL_REQUEST_TIMEOUT_MS);
+      });
     },
     [sessionId]
   );
 
+  // AskUserQuestion に回答する
+  const answerQuestion = useCallback(
+    (toolUseId: string, answers: Record<string, string | string[]>): Promise<boolean> =>
+      sendControlRequest({
+        subtype: 'ask_user_question_answer',
+        tool_use_id: toolUseId,
+        answers,
+      }),
+    [sendControlRequest]
+  );
+
   // Agent を abort する
-  const abort = useCallback(async (): Promise<boolean> => {
-    if (!sessionId || wsRef.current?.readyState !== WebSocket.OPEN) {
-      return false;
-    }
-
-    const requestId = crypto.randomUUID();
-    const request: WsControlRequest = {
-      type: 'control_request',
-      request_id: requestId,
-      request: {
-        subtype: 'abort',
-      },
-    };
-
-    return new Promise<boolean>(resolve => {
-      pendingControlRequestsRef.current.set(requestId, {
-        resolve,
-        reject: () => resolve(false),
-      });
-      wsRef.current!.send(JSON.stringify(request));
-
-      // タイムアウト
-      setTimeout(() => {
-        if (pendingControlRequestsRef.current.has(requestId)) {
-          pendingControlRequestsRef.current.delete(requestId);
-          resolve(false);
-        }
-      }, CONTROL_REQUEST_TIMEOUT_MS);
-    });
-  }, [sessionId]);
+  const abort = useCallback(
+    (): Promise<boolean> => sendControlRequest({ subtype: 'abort' }),
+    [sendControlRequest]
+  );
 
   return {
     isConnected,

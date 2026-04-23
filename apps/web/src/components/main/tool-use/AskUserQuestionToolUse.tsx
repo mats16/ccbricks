@@ -29,8 +29,11 @@ interface AskUserQuestionToolUseProps extends BaseToolUseProps {
 }
 
 /**
- * tool_result テキストから回答をパース
- * 形式: User has answered your questions: "header1"="label1", "header2"="label2". ...
+ * tool_result テキストから回答をパース（表示専用）。
+ *
+ * フォーマット `"header"="label"` は Claude Agent SDK の AskUserQuestion ツールが
+ * 生成する結果文字列に依存。パース失敗時は空オブジェクトを返し、選択状態が
+ * 表示されないだけで機能には影響しない。
  */
 function parseAnswersFromResult(content: string): Record<string, string> {
   const answers: Record<string, string> = {};
@@ -185,23 +188,34 @@ function TabbedQuestions({
         }
       />
 
-      {questions.length > 1 && (
+      {isPending && (
         <div className="flex items-center justify-end mt-3">
           <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={isFirstTab}
-              className={cn(
-                'text-xs px-2.5 py-1 rounded-md border border-border transition-colors',
-                isFirstTab
-                  ? 'text-muted-foreground/40 cursor-not-allowed'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-            >
-              {t('tools.askQuestionPrev')}
-            </button>
-            {isLastTab && isPending ? (
+            {questions.length > 1 && (
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={isFirstTab}
+                className={cn(
+                  'text-xs px-2.5 py-1 rounded-md border border-border transition-colors',
+                  isFirstTab
+                    ? 'text-muted-foreground/40 cursor-not-allowed'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )}
+              >
+                {t('tools.askQuestionPrev')}
+              </button>
+            )}
+            {questions.length > 1 && !isLastTab && (
+              <button
+                type="button"
+                onClick={goNext}
+                className="text-xs px-2.5 py-1 rounded-md border border-border transition-colors text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                {t('tools.askQuestionNext')}
+              </button>
+            )}
+            {(questions.length === 1 || isLastTab) && (
               <button
                 type="button"
                 onClick={handleSubmit}
@@ -214,20 +228,6 @@ function TabbedQuestions({
                 )}
               >
                 {t('tools.askQuestionSubmit')}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={goNext}
-                disabled={isLastTab}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-md border border-border transition-colors',
-                  isLastTab
-                    ? 'text-muted-foreground/40 cursor-not-allowed'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                )}
-              >
-                {t('tools.askQuestionNext')}
               </button>
             )}
           </div>

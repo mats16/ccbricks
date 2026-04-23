@@ -28,7 +28,10 @@ interface UseSessionEventsReturn {
   /** WebSocket からの result 受信で更新される session status */
   sessionStatus: SessionStatus | null;
   sendMessage: (content: UserMessageContentBlock[]) => void;
-  answerQuestion: (toolUseId: string, answers: Record<string, string | string[]>) => void;
+  answerQuestion: (
+    toolUseId: string,
+    answers: Record<string, string | string[]>
+  ) => Promise<boolean>;
   abort: () => Promise<boolean>;
 }
 

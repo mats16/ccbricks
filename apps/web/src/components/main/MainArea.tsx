@@ -80,11 +80,14 @@ export function MainArea({
 
   const submitAnswer = useCallback(
     (toolUseId: string, answers: Record<string, string | string[]>) => {
-      answerQuestion(toolUseId, answers);
-      setPendingQuestions(prev => {
-        const next = new Map(prev);
-        next.delete(toolUseId);
-        return next;
+      answerQuestion(toolUseId, answers).then(success => {
+        if (success) {
+          setPendingQuestions(prev => {
+            const next = new Map(prev);
+            next.delete(toolUseId);
+            return next;
+          });
+        }
       });
     },
     [answerQuestion]
