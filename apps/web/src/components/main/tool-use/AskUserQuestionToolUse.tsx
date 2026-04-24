@@ -155,12 +155,9 @@ function TabbedQuestions({
   const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const [selections, setSelections] = useState<Record<string, string | string[]>>(
-    () => buildInitialState(questions, answeredSelections).selections
-  );
-  const [otherTexts, setOtherTexts] = useState<Record<string, string>>(
-    () => buildInitialState(questions, answeredSelections).otherTexts
-  );
+  const [initialState] = useState(() => buildInitialState(questions, answeredSelections));
+  const [selections, setSelections] = useState(initialState.selections);
+  const [otherTexts, setOtherTexts] = useState(initialState.otherTexts);
 
   const isLastTab = activeIndex === questions.length - 1;
   const isFirstTab = activeIndex === 0;
