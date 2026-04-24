@@ -1,11 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 import { StatusDot } from './BaseToolUse';
 import { CollapsibleContent } from '../CollapsibleContent';
 import { useAskUserQuestion } from '@/contexts/AskUserQuestionContext';
 import type { BaseToolUseProps } from './types';
+
+const OTHER_SENTINEL = '__OTHER__';
 
 interface QuestionOption {
   label: string;
@@ -45,6 +48,40 @@ function parseAnswersFromResult(content: string): Record<string, string> {
   return answers;
 }
 
+/** 回答済みの値から selections / otherTexts の初期値を一括生成 */
+function buildInitialState(
+  questions: Question[],
+  answeredSelections?: Record<string, string>
+): { selections: Record<string, string | string[]>; otherTexts: Record<string, string> } {
+  const selections: Record<string, string | string[]> = {};
+  const otherTexts: Record<string, string> = {};
+
+  for (const q of questions) {
+    const val = answeredSelections?.[q.header];
+    if (!val) {
+      selections[q.header] = q.multiSelect ? [] : '';
+      otherTexts[q.header] = '';
+      continue;
+    }
+
+    const optionLabels = (q.options ?? []).map(o => o.label);
+
+    if (q.multiSelect) {
+      const vals = val.split(',');
+      const known = vals.filter(v => optionLabels.includes(v));
+      const unknown = vals.filter(v => !optionLabels.includes(v));
+      selections[q.header] = unknown.length > 0 ? [...known, OTHER_SENTINEL] : known;
+      otherTexts[q.header] = unknown.join(',');
+    } else {
+      const isKnown = optionLabels.includes(val);
+      selections[q.header] = isKnown ? val : OTHER_SENTINEL;
+      otherTexts[q.header] = isKnown ? '' : val;
+    }
+  }
+
+  return { selections, otherTexts };
+}
+
 export function AskUserQuestionToolUse({ input, result, toolUseId }: AskUserQuestionToolUseProps) {
   const { t } = useTranslation();
   const typedInput = input as unknown as AskUserQuestionInput;
@@ -57,10 +94,8 @@ export function AskUserQuestionToolUse({ input, result, toolUseId }: AskUserQues
   const questions = typedInput.questions;
   const hasTabbed = questions && questions.length > 0;
 
-  // この tool_use_id が pending（ユーザーの回答待ち）かどうか
   const isPending = toolUseId ? pendingQuestions.has(toolUseId) : false;
 
-  // 結果がある場合、回答をパースして初期選択状態に反映
   const answeredSelections =
     result && !result.isError ? parseAnswersFromResult(result.content) : undefined;
 
@@ -120,19 +155,9 @@ function TabbedQuestions({
   const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // 各質問の選択状態: header → selected label(s)
-  const [selections, setSelections] = useState<Record<string, string | string[]>>(() => {
-    const initial: Record<string, string | string[]> = {};
-    for (const q of questions) {
-      if (answeredSelections?.[q.header]) {
-        const val = answeredSelections[q.header];
-        initial[q.header] = q.multiSelect ? val.split(',') : val;
-      } else {
-        initial[q.header] = q.multiSelect ? [] : '';
-      }
-    }
-    return initial;
-  });
+  const [initialState] = useState(() => buildInitialState(questions, answeredSelections));
+  const [selections, setSelections] = useState(initialState.selections);
+  const [otherTexts, setOtherTexts] = useState(initialState.otherTexts);
 
   const isLastTab = activeIndex === questions.length - 1;
   const isFirstTab = activeIndex === 0;
@@ -159,18 +184,35 @@ function TabbedQuestions({
     });
   };
 
-  // 全質問で少なくとも1つ選択されているか
   const allAnswered = questions.every(q => {
     const sel = selections[q.header];
-    if (q.multiSelect) return (sel as string[]).length > 0;
+    if (q.multiSelect) {
+      const arr = sel as string[];
+      if (arr.length === 0) return false;
+      if (arr.includes(OTHER_SENTINEL) && otherTexts[q.header].trim() === '') return false;
+      return true;
+    }
+    if (sel === OTHER_SENTINEL) return otherTexts[q.header].trim() !== '';
     return (sel as string) !== '';
   });
 
   const handleSubmit = () => {
-    if (allAnswered) {
-      onSubmit(selections);
+    if (!allAnswered) return;
+    const resolved: Record<string, string | string[]> = {};
+    for (const q of questions) {
+      const sel = selections[q.header];
+      if (q.multiSelect) {
+        resolved[q.header] = (sel as string[]).map(v =>
+          v === OTHER_SENTINEL ? otherTexts[q.header].trim() : v
+        );
+      } else {
+        resolved[q.header] = sel === OTHER_SENTINEL ? otherTexts[q.header].trim() : (sel as string);
+      }
     }
+    onSubmit(resolved);
   };
+
+  const showSubmit = isPending && (questions.length === 1 || isLastTab);
 
   return (
     <div className="mt-2 ml-5">
@@ -186,9 +228,16 @@ function TabbedQuestions({
         onSelect={label =>
           handleSelect(activeQuestion.header, label, activeQuestion.multiSelect ?? false)
         }
+        otherText={otherTexts[activeQuestion.header]}
+        onOtherTextChange={text =>
+          setOtherTexts(prev => ({ ...prev, [activeQuestion.header]: text }))
+        }
+        onSelectOther={() =>
+          handleSelect(activeQuestion.header, OTHER_SENTINEL, activeQuestion.multiSelect ?? false)
+        }
       />
 
-      {isPending && (
+      {(questions.length > 1 || showSubmit) && (
         <div className="flex items-center justify-end mt-3">
           <div className="flex gap-1.5">
             {questions.length > 1 && (
@@ -215,7 +264,7 @@ function TabbedQuestions({
                 {t('tools.askQuestionNext')}
               </button>
             )}
-            {(questions.length === 1 || isLastTab) && (
+            {showSubmit && (
               <button
                 type="button"
                 onClick={handleSubmit}
@@ -243,6 +292,9 @@ interface QuestionPanelProps {
   selection: string | string[];
   isPending: boolean;
   onSelect: (label: string) => void;
+  otherText: string;
+  onOtherTextChange: (text: string) => void;
+  onSelectOther: () => void;
 }
 
 function QuestionPanel({
@@ -251,7 +303,16 @@ function QuestionPanel({
   selection,
   isPending,
   onSelect,
+  otherText,
+  onOtherTextChange,
+  onSelectOther,
 }: QuestionPanelProps) {
+  const { t } = useTranslation();
+  const isMultiSelect = question.multiSelect ?? false;
+  const isOtherSelected = isMultiSelect
+    ? (selection as string[]).includes(OTHER_SENTINEL)
+    : selection === OTHER_SENTINEL;
+
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
@@ -263,22 +324,63 @@ function QuestionPanel({
       {question.options && question.options.length > 0 && (
         <div className="space-y-1.5">
           {question.options.map(option => {
-            const isSelected = question.multiSelect
+            const isSelected = isMultiSelect
               ? (selection as string[]).includes(option.label)
               : selection === option.label;
             return (
               <OptionCard
                 key={option.label}
                 option={option}
-                isMultiSelect={question.multiSelect ?? false}
+                isMultiSelect={isMultiSelect}
                 isSelected={isSelected}
                 isPending={isPending}
                 onSelect={() => onSelect(option.label)}
               />
             );
           })}
+          <OtherOptionCard
+            isMultiSelect={isMultiSelect}
+            isSelected={isOtherSelected}
+            isPending={isPending}
+            otherText={otherText}
+            onSelect={onSelectOther}
+            onTextChange={onOtherTextChange}
+            label={t('tools.askQuestionOther')}
+            placeholder={t('tools.askQuestionOtherPlaceholder')}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+function SelectionIndicator({
+  isMultiSelect,
+  isSelected,
+}: {
+  isMultiSelect: boolean;
+  isSelected: boolean;
+}) {
+  if (isMultiSelect) {
+    return (
+      <div
+        className={cn(
+          'h-3.5 w-3.5 rounded-sm border flex items-center justify-center',
+          isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+        )}
+      >
+        {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+      </div>
+    );
+  }
+  return (
+    <div
+      className={cn(
+        'h-3.5 w-3.5 rounded-full border flex items-center justify-center',
+        isSelected ? 'border-primary' : 'border-muted-foreground/40'
+      )}
+    >
+      {isSelected && <div className="h-2 w-2 rounded-full bg-primary" />}
     </div>
   );
 }
@@ -305,25 +407,7 @@ function OptionCard({ option, isMultiSelect, isSelected, isPending, onSelect }: 
       )}
     >
       <div className="flex-shrink-0 mt-0.5">
-        {isMultiSelect ? (
-          <div
-            className={cn(
-              'h-3.5 w-3.5 rounded-sm border flex items-center justify-center',
-              isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/40'
-            )}
-          >
-            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-          </div>
-        ) : (
-          <div
-            className={cn(
-              'h-3.5 w-3.5 rounded-full border flex items-center justify-center',
-              isSelected ? 'border-primary' : 'border-muted-foreground/40'
-            )}
-          >
-            {isSelected && <div className="h-2 w-2 rounded-full bg-primary" />}
-          </div>
-        )}
+        <SelectionIndicator isMultiSelect={isMultiSelect} isSelected={isSelected} />
       </div>
       <div className="min-w-0">
         <div className="text-sm font-medium leading-tight">{option.label}</div>
@@ -334,5 +418,78 @@ function OptionCard({ option, isMultiSelect, isSelected, isPending, onSelect }: 
         )}
       </div>
     </button>
+  );
+}
+
+interface OtherOptionCardProps {
+  isMultiSelect: boolean;
+  isSelected: boolean;
+  isPending: boolean;
+  otherText: string;
+  onSelect: () => void;
+  onTextChange: (text: string) => void;
+  label: string;
+  placeholder: string;
+}
+
+function OtherOptionCard({
+  isMultiSelect,
+  isSelected,
+  isPending,
+  otherText,
+  onSelect,
+  onTextChange,
+  label,
+  placeholder,
+}: OtherOptionCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSelected && isPending) {
+      inputRef.current?.focus();
+    }
+  }, [isSelected, isPending]);
+
+  return (
+    <div
+      role="button"
+      tabIndex={isPending ? 0 : -1}
+      onClick={isPending && !isSelected ? onSelect : undefined}
+      onKeyDown={
+        isPending && !isSelected
+          ? e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect();
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        'flex items-start gap-2.5 rounded-md border p-2.5 w-full text-left transition-colors',
+        isPending && !isSelected && 'cursor-pointer hover:bg-accent/50',
+        !isPending && 'cursor-default',
+        isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card'
+      )}
+    >
+      <div className="flex-shrink-0 mt-0.5">
+        <SelectionIndicator isMultiSelect={isMultiSelect} isSelected={isSelected} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium leading-tight">{label}</div>
+        {isSelected && (
+          <Input
+            ref={inputRef}
+            type="text"
+            value={otherText}
+            onChange={e => onTextChange(e.target.value)}
+            onClick={e => e.stopPropagation()}
+            disabled={!isPending}
+            placeholder={placeholder}
+            className="mt-1.5 h-auto px-2 py-1 text-sm"
+          />
+        )}
+      </div>
+    </div>
   );
 }
