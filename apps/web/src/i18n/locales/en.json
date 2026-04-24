@@ -416,6 +416,8 @@
     "askQuestionStep": "{{current}} / {{total}}",
     "askQuestionPrev": "Prev",
     "askQuestionNext": "Next",
-    "askQuestionSubmit": "Submit"
+    "askQuestionSubmit": "Submit",
+    "askQuestionOther": "Other",
+    "askQuestionOtherPlaceholder": "Enter your answer..."
   }
 }

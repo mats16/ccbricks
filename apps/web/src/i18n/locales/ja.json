@@ -416,6 +416,8 @@
     "askQuestionStep": "{{current}} / {{total}}",
     "askQuestionPrev": "前へ",
     "askQuestionNext": "次へ",
-    "askQuestionSubmit": "送信"
+    "askQuestionSubmit": "送信",
+    "askQuestionOther": "その他",
+    "askQuestionOtherPlaceholder": "回答を入力..."
   }
 }
