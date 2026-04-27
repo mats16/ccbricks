@@ -90,6 +90,31 @@ const adminRoute: FastifyPluginAsync = async fastify => {
       });
     }
 
+    // バリデーション: 表示名（null でデフォルトへ戻す）
+    const settings: UpdateAppSettingsRequest = { ...body };
+    for (const key of ['app_title', 'welcome_heading'] as const) {
+      const value = settings[key];
+      if (value !== undefined && value !== null) {
+        if (typeof value !== 'string') {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: `${key} must be a non-empty string or null`,
+            statusCode: 400,
+          });
+        }
+
+        const trimmed = value.trim();
+        if (trimmed.length === 0 || trimmed.length > 80) {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: `${key} must be between 1 and 80 characters`,
+            statusCode: 400,
+          });
+        }
+        settings[key] = trimmed;
+      }
+    }
+
     // バリデーション: モデル設定（null か 非空文字列のみ許可）
     for (const key of [
       'default_opus_model',
@@ -127,7 +152,7 @@ const adminRoute: FastifyPluginAsync = async fastify => {
       }
     }
 
-    await updateAppSettings(fastify, body);
+    await updateAppSettings(fastify, settings);
     return reply.send({ success: true });
   });
 };

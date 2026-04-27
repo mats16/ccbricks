@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useSidebar } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
 
 export function AppSidebarHeader() {
   const { t } = useTranslation();
   const { state, toggleSidebar } = useSidebar();
+  const { appTitle } = useUser();
   const isCollapsed = state === 'collapsed';
 
   return (
@@ -36,10 +38,10 @@ export function AppSidebarHeader() {
           </Tooltip>
         ) : (
           <>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <WandSparkles className="h-5 w-5 shrink-0" />
-              <span className="font-semibold text-foreground whitespace-nowrap">
-                {t('app.title')}
+              <span className="font-semibold text-foreground truncate" title={appTitle}>
+                {appTitle || t('app.title')}
               </span>
             </div>
             <Tooltip>

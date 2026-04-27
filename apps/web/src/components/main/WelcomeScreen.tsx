@@ -42,6 +42,7 @@ import {
   MCP_DBSQL_ID,
 } from '@/constants';
 import { useMcpSelection } from '@/hooks/useMcpSelection';
+import { useUser } from '@/hooks/useUser';
 import type { UserMessageContentBlock, McpConfig, WorkspaceSelection } from '@repo/types';
 
 export interface NewSessionParams {
@@ -62,6 +63,7 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps) {
   const { t } = useTranslation();
+  const { welcomeHeading } = useUser();
   const [selectedQuickstart, setSelectedQuickstart] = useState<QuickstartType | null>(null);
   const [content, setContent] = useLocalStorageState('chat-draft-new-session', {
     defaultValue: '',
@@ -179,7 +181,9 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
     <div className="flex-1 flex flex-col items-center justify-center p-8">
       {/* Title */}
       <div className="w-full max-w-3xl mb-6 text-center">
-        <h1 className="text-2xl font-semibold text-foreground">{t('welcome.heading')}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">
+          {welcomeHeading || t('welcome.heading')}
+        </h1>
       </div>
 
       {/* Workspace Selector */}

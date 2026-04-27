@@ -4,6 +4,10 @@ CREATE TABLE `app_settings` (
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
+INSERT INTO `app_settings` (`key`, `value`) VALUES ('app_title', 'ccbricks');
+--> statement-breakpoint
+INSERT INTO `app_settings` (`key`, `value`) VALUES ('welcome_heading', 'Claude Code on Databricks');
+--> statement-breakpoint
 CREATE TABLE `mcp_servers` (
 	`user_id` text NOT NULL,
 	`id` text NOT NULL,
