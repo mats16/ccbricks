@@ -35,8 +35,8 @@ export function UserProvider({ children }: UserProviderProps) {
       setWelcomeHeading(data.welcome_heading);
       document.title = data.app_title;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Unknown error');
-      console.error('Failed to fetch app settings:', error);
+      console.error('Failed to fetch app settings:', err);
+      // Keep document.title as the static HTML <title> value
     }
   }, []);
 

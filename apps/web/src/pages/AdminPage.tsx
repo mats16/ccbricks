@@ -21,7 +21,7 @@ function useAdminSettings() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AppSettingsResponse | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -40,8 +40,8 @@ function useAdminSettings() {
   }, [fetchSettings]);
 
   const saveSetting = useCallback(
-    async (patch: Parameters<typeof adminService.updateSettings>[0]) => {
-      setIsSavingSettings(true);
+    async (key: string, patch: Parameters<typeof adminService.updateSettings>[0]) => {
+      setSavingKey(key);
       try {
         await adminService.updateSettings(patch);
         setSettings(prev => (prev ? ({ ...prev, ...patch } as AppSettingsResponse) : prev));
@@ -51,18 +51,18 @@ function useAdminSettings() {
         toast.error(t('admin.updateSettingsError'));
         return false;
       } finally {
-        setIsSavingSettings(false);
+        setSavingKey(null);
       }
     },
     [t]
   );
 
-  return { settings, isLoadingSettings, isSavingSettings, saveSetting };
+  return { settings, isLoadingSettings, savingKey, saveSetting };
 }
 
 function AdminSettingsContent() {
   const { t } = useTranslation();
-  const { settings, isLoadingSettings, isSavingSettings, saveSetting } = useAdminSettings();
+  const { settings, isLoadingSettings, savingKey, saveSetting } = useAdminSettings();
 
   const [servingEndpoints, setServingEndpoints] = useState<ServingEndpointsByTier | null>(null);
   const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(true);
@@ -99,10 +99,10 @@ function AdminSettingsContent() {
   const handleModelChange = (
     key: 'default_opus_model' | 'default_sonnet_model' | 'default_haiku_model',
     value: string | null
-  ) => saveSetting({ [key]: value });
+  ) => saveSetting(key, { [key]: value });
 
   const handleDefaultRoleChange = (value: string) =>
-    saveSetting({ default_new_user_role: value as 'admin' | 'member' });
+    saveSetting('default_new_user_role', { default_new_user_role: value as 'admin' | 'member' });
 
   const otelDirty =
     otelMetricsTableInput.trim() !== (settings?.otel_metrics_table_name ?? '') ||
@@ -113,7 +113,7 @@ function AdminSettingsContent() {
     const metrics = otelMetricsTableInput.trim();
     const logs = otelLogsTableInput.trim();
     const traces = otelTracesTableInput.trim();
-    return saveSetting({
+    return saveSetting('otel', {
       otel_metrics_table_name: metrics || null,
       otel_logs_table_name: logs || null,
       otel_traces_table_name: traces || null,
@@ -135,7 +135,7 @@ function AdminSettingsContent() {
               <Select
                 value={settings?.default_new_user_role ?? 'admin'}
                 onValueChange={handleDefaultRoleChange}
-                disabled={isSavingSettings}
+                disabled={savingKey !== null}
               >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue />
@@ -182,7 +182,7 @@ function AdminSettingsContent() {
                 <Select
                   value={settings?.[key] ?? MODEL_NULL_SENTINEL}
                   onValueChange={v => handleModelChange(key, v === MODEL_NULL_SENTINEL ? null : v)}
-                  disabled={isSavingSettings}
+                  disabled={savingKey !== null}
                 >
                   <SelectTrigger className="w-[320px]">
                     <SelectValue />
@@ -246,7 +246,7 @@ function AdminSettingsContent() {
                   placeholder={t('admin.otelTableNamePlaceholder')}
                   value={value}
                   onChange={e => onChange(e.target.value)}
-                  disabled={isSavingSettings}
+                  disabled={savingKey !== null}
                 />
               </div>
             ))}
@@ -255,9 +255,9 @@ function AdminSettingsContent() {
                 variant="outline"
                 size="sm"
                 onClick={handleOtelSave}
-                disabled={isSavingSettings || !otelDirty}
+                disabled={savingKey !== null || !otelDirty}
               >
-                {isSavingSettings ? (
+                {savingKey === 'otel' ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
@@ -275,7 +275,7 @@ function AdminSettingsContent() {
 function AdminBrandingContent() {
   const { t } = useTranslation();
   const { refetchAppSettings } = useUser();
-  const { settings, isLoadingSettings, isSavingSettings, saveSetting } = useAdminSettings();
+  const { settings, isLoadingSettings, savingKey, saveSetting } = useAdminSettings();
 
   const [appTitleInput, setAppTitleInput] = useState('');
   const [welcomeHeadingInput, setWelcomeHeadingInput] = useState('');
@@ -308,7 +308,7 @@ function AdminBrandingContent() {
 
   const handleTextSettingSave = async (key: 'app_title' | 'welcome_heading', value: string) => {
     const trimmed = value.trim();
-    const saved = await saveSetting({ [key]: trimmed || null });
+    const saved = await saveSetting(key, { [key]: trimmed || null });
     if (saved) await refetchAppSettings();
   };
 
@@ -336,15 +336,15 @@ function AdminBrandingContent() {
                   placeholder={placeholder}
                   value={value}
                   onChange={e => onChange(e.target.value)}
-                  disabled={isSavingSettings}
+                  disabled={savingKey !== null}
                 />
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleTextSettingSave(key, value)}
-                  disabled={isSavingSettings || !dirty}
+                  disabled={savingKey !== null || !dirty}
                 >
-                  {isSavingSettings ? (
+                  {savingKey === key ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : (
                     <Save className="h-4 w-4 mr-2" />
@@ -515,6 +515,11 @@ export function AdminContent() {
         ? 'branding'
         : 'settings';
 
+  const [mounted, setMounted] = useState<Set<string>>(() => new Set([activeTab]));
+  useEffect(() => {
+    setMounted(prev => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
+  }, [activeTab]);
+
   useEffect(() => {
     if (!isAdmin) {
       navigate('/');
@@ -542,13 +547,15 @@ export function AdminContent() {
         </Tabs>
       </div>
 
-      {activeTab === 'settings' ? (
-        <AdminSettingsContent />
-      ) : activeTab === 'branding' ? (
-        <AdminBrandingContent />
-      ) : (
-        <AdminUsersContent />
-      )}
+      <div className={activeTab === 'settings' ? 'flex-1 flex flex-col' : 'hidden'}>
+        {mounted.has('settings') && <AdminSettingsContent />}
+      </div>
+      <div className={activeTab === 'branding' ? 'flex-1 flex flex-col' : 'hidden'}>
+        {mounted.has('branding') && <AdminBrandingContent />}
+      </div>
+      <div className={activeTab === 'users' ? 'flex-1 flex flex-col' : 'hidden'}>
+        {mounted.has('users') && <AdminUsersContent />}
+      </div>
     </div>
   );
 }

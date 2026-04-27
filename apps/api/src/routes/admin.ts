@@ -121,7 +121,7 @@ const adminRoute: FastifyPluginAsync = async fastify => {
       'default_sonnet_model',
       'default_haiku_model',
     ] as const) {
-      const value = body[key];
+      const value = settings[key];
       if (value !== undefined && value !== null && (typeof value !== 'string' || value === '')) {
         return reply.status(400).send({
           error: 'BadRequest',
@@ -137,7 +137,7 @@ const adminRoute: FastifyPluginAsync = async fastify => {
       'otel_logs_table_name',
       'otel_traces_table_name',
     ] as const) {
-      const value = body[key];
+      const value = settings[key];
       if (value !== undefined && value !== null) {
         if (
           typeof value !== 'string' ||
