@@ -31,6 +31,7 @@ import {
   canAbortSession,
   executeAbort,
 } from '../services/session.service.js';
+import { TelemetryConfigurationError } from '../services/claude-telemetry-env.service.js';
 import { listSessionEvents, getSessionLastEventId } from '../services/session-events.service.js';
 import { wsManager } from '../services/websocket-manager.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -98,6 +99,9 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
       return reply.status(201).send(result);
     } catch (error) {
       request.log.error(error, 'Failed to create session');
+      if (error instanceof TelemetryConfigurationError) {
+        return sendError(reply, 500, 'InternalServerError', error.message);
+      }
       return sendError(reply, 500, 'InternalServerError', 'Failed to create session');
     }
   });
