@@ -1,10 +1,18 @@
 // apps/api/src/routes/session.ts
-import type { FastifyPluginAsync, FastifyReply, FastifyBaseLogger } from 'fastify';
+import type {
+  FastifyPluginAsync,
+  FastifyReply,
+  FastifyBaseLogger,
+  FastifyInstance,
+  FastifyRequest,
+} from 'fastify';
 import type { WebSocket } from 'ws';
 import type {
   SessionCreateRequest,
   SessionCreateResponse,
   SessionEventsResponse,
+  SessionEventPostResponse,
+  SessionEventCreateRequest,
   SessionEventsQuery,
   SessionListQuery,
   SessionListResponse,
@@ -34,8 +42,11 @@ import {
 import { TelemetryConfigurationError } from '../services/claude-telemetry-env.service.js';
 import { listSessionEvents, getSessionLastEventId } from '../services/session-events.service.js';
 import { wsManager } from '../services/websocket-manager.service.js';
+import { encodeSseEvent, sessionStreamHub } from '../services/session-stream-hub.service.js';
 import { SessionId } from '../models/session.model.js';
 import { createUserContext } from '../lib/user-context.js';
+
+const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 
 /**
  * エラーレスポンスを生成するヘルパー
@@ -74,6 +85,99 @@ function parseSessionId(sessionIdStr: string, logger?: FastifyBaseLogger): Sessi
     logger?.debug({ sessionIdStr, error }, 'Invalid session ID format');
     return null;
   }
+}
+
+function getLastEventIdHeader(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function createAuthStatusMessage(sessionId: SessionId, error: unknown): SDKAuthStatusMessage {
+  const errorCode = (error as Error & { code?: string }).code;
+  return {
+    type: 'auth_status',
+    uuid: crypto.randomUUID(),
+    session_id: sessionId.toString(),
+    isAuthenticating: false,
+    output: [],
+    error: isAuthError(errorCode)
+      ? 'Invalid API key · Please run /login'
+      : error instanceof Error
+        ? error.message
+        : 'Unknown error',
+  };
+}
+
+function getMessageErrorStatus(error: unknown): 400 | 404 | 500 {
+  if (!(error instanceof Error)) return 500;
+  if (error.message === 'Session not found') return 404;
+  if (error.message === 'Session is archived') return 400;
+  if (error.message === 'Session is not ready (still initializing)') return 400;
+  return 500;
+}
+
+function handleControlRequest(
+  fastify: FastifyInstance,
+  request: FastifyRequest,
+  userId: string,
+  sessionId: SessionId,
+  controlRequest: WsControlRequest
+): WsControlResponse {
+  if (controlRequest.request.subtype === 'ask_user_question_answer') {
+    const answerRequest = controlRequest.request as WsAskUserQuestionAnswerRequest;
+    const resolved = resolveUserAnswer(answerRequest.tool_use_id, answerRequest.answers);
+    return {
+      type: 'control_response',
+      response: resolved
+        ? { subtype: 'success', request_id: controlRequest.request_id }
+        : {
+            subtype: 'error',
+            request_id: controlRequest.request_id,
+            error: 'No pending question found for this tool_use_id',
+          },
+    };
+  }
+
+  if (controlRequest.request.subtype === 'abort') {
+    if (!canAbortSession(sessionId)) {
+      return {
+        type: 'control_response',
+        response: {
+          subtype: 'error',
+          request_id: controlRequest.request_id,
+          error: 'No active query for this session',
+        },
+      };
+    }
+
+    executeAbort(fastify, userId, sessionId).catch(err => {
+      request.log.error(err, 'Failed to execute abort');
+      const errorMsg: WsErrorMessage = {
+        type: 'error',
+        code: 'ABORT_FAILED',
+        message: err instanceof Error ? err.message : 'Failed to abort session',
+      };
+      sessionStreamHub.send(sessionId.toString(), errorMsg);
+      wsManager.broadcast(sessionId.toString(), errorMsg);
+    });
+
+    return {
+      type: 'control_response',
+      response: {
+        subtype: 'success',
+        request_id: controlRequest.request_id,
+      },
+    };
+  }
+
+  return {
+    type: 'control_response',
+    response: {
+      subtype: 'error',
+      request_id: controlRequest.request_id,
+      error: 'Unsupported control request',
+    },
+  };
 }
 
 const sessionRoute: FastifyPluginAsync = async fastify => {
@@ -293,6 +397,139 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
     }
   });
 
+  // GET /sessions/:session_id/stream - SSE リアルタイムイベント配信
+  fastify.get<{
+    Params: { session_id: string };
+    Querystring: { after?: string };
+  }>('/sessions/:session_id/stream', { compress: false }, async (request, reply) => {
+    const { user } = request.ctx!;
+
+    if (!user.id) {
+      return sendError(reply, 401, 'Unauthorized', 'User ID not found in request context');
+    }
+
+    const { session_id } = request.params;
+    const sessionId = parseSessionId(session_id, request.log);
+
+    if (!sessionId) {
+      return sendError(reply, 404, 'NotFound', 'Session not found');
+    }
+
+    let lastEventId: string | null;
+    const replayEvents: SessionEventsResponse['data'] = [];
+
+    try {
+      lastEventId = await getSessionLastEventId(fastify, user.id, sessionId);
+      const replayAfter =
+        request.query.after ?? getLastEventIdHeader(request.headers['last-event-id']);
+
+      if (replayAfter && replayAfter !== lastEventId) {
+        let cursor: string | undefined = replayAfter;
+        let hasMore = true;
+        for (let page = 0; page < 20 && hasMore; page++) {
+          const response = await listSessionEvents(fastify, user.id, sessionId, {
+            after: cursor,
+            limit: 1000,
+          });
+          replayEvents.push(...response.data);
+          hasMore = response.has_more;
+          const nextCursor = response.last_id || undefined;
+          if (!nextCursor || nextCursor === cursor) break;
+          cursor = nextCursor;
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Session not found') {
+        return sendError(reply, 404, 'NotFound', 'Session not found');
+      }
+      request.log.error(error, 'SSE stream connection error');
+      return sendError(reply, 500, 'InternalServerError', 'Failed to establish stream');
+    }
+
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    (reply.raw as typeof reply.raw & { flushHeaders?: () => void }).flushHeaders?.();
+
+    const cleanup = sessionStreamHub.addConnection(session_id, user.id, reply.raw);
+    const heartbeat = setInterval(() => {
+      sessionStreamHub.heartbeat(session_id);
+    }, SSE_HEARTBEAT_INTERVAL_MS);
+
+    const close = () => {
+      cleanup();
+      clearInterval(heartbeat);
+      request.log.info({ sessionId: session_id, userId: user.id }, 'SSE stream disconnected');
+    };
+    request.raw.on('close', close);
+
+    const connectedMsg: WsConnectedMessage = {
+      type: 'connected',
+      session_id,
+      last_event_id: lastEventId,
+    };
+    reply.raw.write(encodeSseEvent('connected', connectedMsg, undefined, 1000));
+
+    for (const event of replayEvents) {
+      const eventId = 'uuid' in event && typeof event.uuid === 'string' ? event.uuid : undefined;
+      reply.raw.write(encodeSseEvent('message', event, eventId));
+    }
+
+    request.log.info({ sessionId: session_id, userId: user.id }, 'SSE stream connected');
+  });
+
+  // POST /sessions/:session_id/events - ユーザーイベント送信 / control request
+  // idle/error 時は即 resume、init/running 時は queued event として保存し実行完了後に resume する
+  fastify.post<{
+    Params: { session_id: string };
+    Body: SessionEventCreateRequest;
+    Reply: SessionEventPostResponse | ApiError;
+  }>('/sessions/:session_id/events', async (request, reply) => {
+    const { user } = request.ctx!;
+
+    if (!user.id) {
+      return sendError(reply, 401, 'Unauthorized', 'User ID not found in request context');
+    }
+
+    const { session_id } = request.params;
+    const sessionId = parseSessionId(session_id, request.log);
+
+    if (!sessionId) {
+      return sendError(reply, 404, 'NotFound', 'Session not found');
+    }
+
+    try {
+      if (request.body?.type === 'control_request') {
+        return reply.send(handleControlRequest(fastify, request, user.id, sessionId, request.body));
+      }
+
+      if (request.body?.type !== 'user') {
+        return sendError(reply, 400, 'BadRequest', 'Only user and control events can be submitted');
+      }
+
+      const ctx = createUserContext(fastify, request);
+      await sendMessageToSession(fastify, user.id, sessionId, request.body, ctx);
+      return reply.status(202).send({ success: true });
+    } catch (error) {
+      request.log.error(error, 'Failed to send message to session');
+      const authStatusMsg = createAuthStatusMessage(sessionId, error);
+      sessionStreamHub.send(sessionId.toString(), authStatusMsg);
+      wsManager.broadcast(sessionId.toString(), authStatusMsg);
+
+      const status = getMessageErrorStatus(error);
+      return sendError(
+        reply,
+        status,
+        status === 404 ? 'NotFound' : status === 400 ? 'BadRequest' : 'InternalServerError',
+        authStatusMsg.error ?? 'Failed to send message to session'
+      );
+    }
+  });
+
   // WebSocket /sessions/:session_id/subscribe - リアルタイムイベント配信
   fastify.get<{
     Params: { session_id: string };
@@ -338,84 +575,22 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
           if (msg.type === 'keep_alive') {
             // keep_alive メッセージは接続維持のため受信のみ（レスポンス不要）
           } else if (msg.type === 'user') {
-            // SDKUserMessage を受信 → セッションにメッセージ送信
             try {
               await sendMessageToSession(fastify, user.id, sessionId, msg, ctx);
             } catch (error) {
-              // サーバーサイドエラー（トークン取得失敗など）を SDKAuthStatusMessage として送信
-              // SDK のエラーは SDK 内で SDKMessage として処理されるため、ここでは catch されない
               request.log.error(error, 'Failed to send message to session');
-
-              const errorCode = (error as Error & { code?: string }).code;
-              const authStatusMsg: SDKAuthStatusMessage = {
-                type: 'auth_status',
-                uuid: crypto.randomUUID(),
-                session_id: sessionId.toString(),
-                isAuthenticating: false,
-                output: [],
-                error: isAuthError(errorCode)
-                  ? 'Invalid API key · Please run /login'
-                  : error instanceof Error
-                    ? error.message
-                    : 'Unknown error',
-              };
+              const authStatusMsg = createAuthStatusMessage(sessionId, error);
               socket.send(JSON.stringify(authStatusMsg));
             }
           } else if (msg.type === 'control_request') {
-            // control_request を受信
-            const controlRequest = msg as WsControlRequest;
-
-            if (controlRequest.request.subtype === 'ask_user_question_answer') {
-              // AskUserQuestion の回答を受信 → 保留中の Promise を resolve
-              const answerRequest = controlRequest.request as WsAskUserQuestionAnswerRequest;
-              const resolved = resolveUserAnswer(answerRequest.tool_use_id, answerRequest.answers);
-              const response: WsControlResponse = {
-                type: 'control_response',
-                response: resolved
-                  ? { subtype: 'success', request_id: controlRequest.request_id }
-                  : {
-                      subtype: 'error',
-                      request_id: controlRequest.request_id,
-                      error: 'No pending question found for this tool_use_id',
-                    },
-              };
-              socket.send(JSON.stringify(response));
-            } else if (controlRequest.request.subtype === 'abort') {
-              // 1. まず control_response を返す
-              if (canAbortSession(sessionId)) {
-                const response: WsControlResponse = {
-                  type: 'control_response',
-                  response: {
-                    subtype: 'success',
-                    request_id: controlRequest.request_id,
-                  },
-                };
-                socket.send(JSON.stringify(response));
-
-                // 2. abort 処理を非同期で実行（await しない）
-                executeAbort(fastify, user.id, sessionId).catch(err => {
-                  request.log.error(err, 'Failed to execute abort');
-                  // エラー発生時にクライアントに通知
-                  const errorMsg: WsErrorMessage = {
-                    type: 'error',
-                    code: 'ABORT_FAILED',
-                    message: err instanceof Error ? err.message : 'Failed to abort session',
-                  };
-                  socket.send(JSON.stringify(errorMsg));
-                });
-              } else {
-                // abort 不可能な場合はエラーを返す
-                const response: WsControlResponse = {
-                  type: 'control_response',
-                  response: {
-                    subtype: 'error',
-                    request_id: controlRequest.request_id,
-                    error: 'No active query for this session',
-                  },
-                };
-                socket.send(JSON.stringify(response));
-              }
-            }
+            const response = handleControlRequest(
+              fastify,
+              request,
+              user.id,
+              sessionId,
+              msg as WsControlRequest
+            );
+            socket.send(JSON.stringify(response));
           }
         } catch {
           // JSON パースエラーは無視

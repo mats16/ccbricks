@@ -8,7 +8,7 @@ import type {
 } from '@repo/types';
 import { isSDKResultMessageEvent, isSDKSystemMessageEvent } from '@repo/types';
 import { sessionService } from '@/services/session.service';
-import { useSessionWebSocket } from './useSessionWebSocket';
+import { useSessionStream } from './useSessionStream';
 
 interface UseSessionEventsOptions {
   sessionId: string | null;
@@ -25,7 +25,7 @@ interface UseSessionEventsReturn {
   isLoading: boolean;
   isConnected: boolean;
   error: Error | null;
-  /** WebSocket からの result 受信で更新される session status */
+  /** stream からの result 受信で更新される session status */
   sessionStatus: SessionStatus | null;
   sendMessage: (content: UserMessageContentBlock[]) => void;
   answerQuestion: (
@@ -102,11 +102,9 @@ export function useSessionEvents({
           return [...prev, ...newEvents];
         });
 
-        // session_status が init/running の場合のみ自動接続
-        // （initialSessionStatus を使って判定）
-        const needsWebSocket =
-          initialSessionStatus === 'init' || initialSessionStatus === 'running';
-        setShouldAutoConnect(needsWebSocket);
+        // 選択中セッションでは SSE を接続しておく。
+        // idle から追加入力する場合も、POST 前に stream を確立してイベントを取りこぼさないため。
+        setShouldAutoConnect(initialSessionStatus !== 'archived');
       } catch (e) {
         setError(e instanceof Error ? e : new Error('Failed to load events'));
       } finally {
@@ -116,7 +114,7 @@ export function useSessionEvents({
     [initialSessionStatus]
   );
 
-  // WebSocket イベントハンドラ
+  // stream イベントハンドラ
   const handleEvent = useCallback((event: SDKMessage) => {
     // 重複チェック（uuid ベース、uuid がない場合はスキップ）
     if ('uuid' in event && event.uuid) {
@@ -137,13 +135,19 @@ export function useSessionEvents({
     }
   }, []);
 
-  // WebSocket 接続成功時のハンドラ
+  // stream 接続成功時のハンドラ
   const handleConnected = useCallback((_msg: { last_event_id: string | null }) => {
-    // WebSocket 接続成功時はリアルタイム更新を受け取る準備のみ
+    // stream 接続成功時はリアルタイム更新を受け取る準備のみ
   }, []);
 
-  // WebSocket 接続（shouldAutoConnect に基づいて自動接続を制御）
-  const { isConnected, sendMessage, answerQuestion, abort } = useSessionWebSocket({
+  // SSE 接続（shouldAutoConnect に基づいて自動接続を制御）
+  const {
+    isConnected,
+    error: streamError,
+    sendMessage,
+    answerQuestion,
+    abort,
+  } = useSessionStream({
     sessionId,
     autoConnect: shouldAutoConnect,
     onEvent: handleEvent,
@@ -173,7 +177,7 @@ export function useSessionEvents({
     events,
     isLoading,
     isConnected,
-    error,
+    error: error ?? streamError,
     sessionStatus,
     sendMessage,
     answerQuestion,

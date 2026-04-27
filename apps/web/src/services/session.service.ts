@@ -3,6 +3,8 @@ import type {
   SessionCreateRequest,
   SessionCreateResponse,
   SessionEventsResponse,
+  SessionEventCreateResponse,
+  SessionEventPostResponse,
   SessionListResponse,
   SessionListQuery,
   SessionResponse,
@@ -10,6 +12,8 @@ import type {
   SessionUpdateRequest,
   GenerateTitleRequest,
   GenerateTitleResponse,
+  SDKUserMessage,
+  WsControlRequest,
 } from '@repo/types';
 
 export const sessionService = {
@@ -68,6 +72,26 @@ export const sessionService = {
 
   async getSession(sessionId: string): Promise<SessionResponse> {
     return apiClient<SessionResponse>(`/api/sessions/${sessionId}`);
+  },
+
+  async sendMessage(
+    sessionId: string,
+    message: SDKUserMessage
+  ): Promise<SessionEventCreateResponse> {
+    return apiClient<SessionEventCreateResponse>(`/api/sessions/${sessionId}/events`, {
+      method: 'POST',
+      body: JSON.stringify(message),
+    });
+  },
+
+  async sendControlRequest(
+    sessionId: string,
+    request: WsControlRequest
+  ): Promise<SessionEventPostResponse> {
+    return apiClient<SessionEventPostResponse>(`/api/sessions/${sessionId}/events`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   },
 
   async updateSession(sessionId: string, request: SessionUpdateRequest): Promise<SessionResponse> {
