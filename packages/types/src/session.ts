@@ -163,6 +163,7 @@ import type {
   SDKUserMessage,
   SDKAuthStatusMessage,
 } from '@anthropic-ai/claude-agent-sdk';
+import type { WsControlRequest, WsControlResponse } from './websocket.js';
 
 // SDK Message 型を re-export
 export type { SDKMessage, SDKUserMessage, SDKAuthStatusMessage };
@@ -186,6 +187,23 @@ export interface SessionEventsResponse {
   last_id: string;
   has_more: boolean;
 }
+
+/**
+ * POST /api/sessions/:session_id/events のレスポンス
+ */
+export interface SessionEventCreateResponse {
+  success: true;
+}
+
+/**
+ * POST /api/sessions/:session_id/events のリクエスト
+ */
+export type SessionEventCreateRequest = SDKUserMessage | WsControlRequest;
+
+/**
+ * POST /api/sessions/:session_id/events のレスポンス
+ */
+export type SessionEventPostResponse = SessionEventCreateResponse | WsControlResponse;
 
 // =====================================================
 // Message Types

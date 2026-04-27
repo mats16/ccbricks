@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { eq, desc, and, inArray, lt } from 'drizzle-orm';
+import { eq, desc, and, inArray, lt, asc } from 'drizzle-orm';
 import {
   query,
   type McpServerConfig,
@@ -25,7 +25,7 @@ import type {
   ResolvedDatabricksAppsOutcome,
 } from '@repo/types';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
-import { sessions } from '../db/schema.js';
+import { sessionEvents, sessions } from '../db/schema.js';
 import { insertSessionEventInTx } from '../db/helpers.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
@@ -37,6 +37,7 @@ import { getAppSettings, resolveModelSettings } from './admin.service.js';
 import { writeHelperScripts } from './helper-scripts.service.js';
 import { buildClaudeTelemetryEnv } from './claude-telemetry-env.service.js';
 import { wsManager } from './websocket-manager.service.js';
+import { sessionStreamHub } from './session-stream-hub.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { waitForUserAnswer } from './ask-user-question.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -45,6 +46,13 @@ import path from 'node:path';
 
 /** セッションID → AbortController のマッピング（abort 用） */
 const sessionAbortControllers = new Map<string, AbortController>();
+const QUEUED_USER_EVENT_SUBTYPE = 'queued';
+
+interface QueuedUserMessageResume {
+  userMessage: SDKUserMessage;
+  sessionContext: SessionContextResponse;
+  sdkSessionId: string;
+}
 
 /**
  * 単一の SDKUserMessage を AsyncIterable として返す
@@ -75,10 +83,10 @@ function extractEventUuid(message: SDKMessage): string {
 }
 
 /**
- * イベントをバッチバッファに追加し、WebSocket にブロードキャストする
+ * イベントをバッチバッファに追加し、リアルタイム接続にブロードキャストする
  *
  * 1. バッチバッファに追加（非同期で DB 永続化）
- * 2. WebSocket にブロードキャスト
+ * 2. SSE / WebSocket にブロードキャスト
  *
  * @param sessionId - SessionId オブジェクト
  */
@@ -101,7 +109,8 @@ function saveAndBroadcastEvent(
     message,
   });
 
-  // 2. WebSocket にブロードキャスト
+  // 2. リアルタイム接続にブロードキャスト
+  sessionStreamHub.send(sessionId.toString(), message);
   wsManager.broadcast(sessionId.toString(), message);
 }
 
@@ -120,10 +129,11 @@ function saveAndBroadcastEvent(
 async function processAllEvents(
   response: AsyncIterable<SDKMessage>,
   fastify: FastifyInstance,
-  userId: string,
+  ctx: UserContext,
   sessionId: SessionId,
   initialUserEvent?: SessionCreateEventData
 ): Promise<void> {
+  const { userId } = ctx;
   let hasError = false;
   let pendingSdkSessionId: string | null = null;
 
@@ -204,28 +214,106 @@ async function processAllEvents(
     // - error 状態は hasError フラグで保護済み
     if (!hasError) {
       try {
-        await fastify.withUserContext(userId, async tx => {
-          await tx
-            .update(sessions)
-            .set({
-              status: 'idle',
-              ...(pendingSdkSessionId != null && { sdkSessionId: pendingSdkSessionId }),
-            })
-            .where(
-              and(
-                eq(sessions.id, sessionId.toUUID()),
-                inArray(sessions.status, ['init', 'running'])
-              )
-            );
-        });
+        const queuedResume = await completeRunAndClaimQueuedMessage(
+          fastify,
+          userId,
+          sessionId,
+          pendingSdkSessionId
+        );
+        if (queuedResume) {
+          await startQueryPipeline({
+            fastify,
+            ctx,
+            sessionId,
+            prompt: queuedResume.userMessage,
+            sessionContext: queuedResume.sessionContext,
+            sdkSessionId: queuedResume.sdkSessionId,
+            initialUserEvent: undefined,
+          });
+        }
       } catch (updateError) {
         fastify.log.error(
           { sessionId: sessionId.toString(), updateError },
-          'Failed to update session status to idle in finally'
+          'Failed to complete session run in finally'
         );
       }
     }
   }
+}
+
+async function completeRunAndClaimQueuedMessage(
+  fastify: FastifyInstance,
+  userId: string,
+  sessionId: SessionId,
+  pendingSdkSessionId: string | null
+): Promise<QueuedUserMessageResume | null> {
+  return fastify.withUserContext(userId, async tx => {
+    const [sessionRow] = await tx
+      .select({
+        sdkSessionId: sessions.sdkSessionId,
+        status: sessions.status,
+        context: sessions.context,
+      })
+      .from(sessions)
+      .where(eq(sessions.id, sessionId.toUUID()))
+      .limit(1);
+
+    if (!sessionRow || sessionRow.status === 'archived') {
+      return null;
+    }
+
+    const effectiveSdkSessionId = pendingSdkSessionId ?? sessionRow.sdkSessionId;
+
+    const [queuedEvent] = await tx
+      .select({
+        uuid: sessionEvents.uuid,
+        message: sessionEvents.message,
+      })
+      .from(sessionEvents)
+      .where(
+        and(
+          eq(sessionEvents.sessionId, sessionId.toUUID()),
+          eq(sessionEvents.type, 'user'),
+          eq(sessionEvents.subtype, QUEUED_USER_EVENT_SUBTYPE)
+        )
+      )
+      .orderBy(asc(sessionEvents.createdAt))
+      .limit(1);
+
+    if (queuedEvent && effectiveSdkSessionId) {
+      await tx
+        .update(sessionEvents)
+        .set({ subtype: null })
+        .where(eq(sessionEvents.uuid, queuedEvent.uuid));
+
+      await tx
+        .update(sessions)
+        .set({
+          status: 'running',
+          sdkSessionId: effectiveSdkSessionId,
+          updatedAt: new Date(),
+        })
+        .where(eq(sessions.id, sessionId.toUUID()));
+
+      return {
+        userMessage: queuedEvent.message as SDKUserMessage,
+        sessionContext: sessionRow.context as SessionContextResponse,
+        sdkSessionId: effectiveSdkSessionId,
+      };
+    }
+
+    await tx
+      .update(sessions)
+      .set({
+        status: 'idle',
+        ...(pendingSdkSessionId != null && { sdkSessionId: pendingSdkSessionId }),
+      })
+      .where(
+        and(eq(sessions.id, sessionId.toUUID()), inArray(sessions.status, ['init', 'running']))
+      );
+
+    return null;
+  });
 }
 
 /**
@@ -394,7 +482,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
     sessionAbortControllers.set(sessionId.toString(), abortController);
 
     // バックグラウンド処理開始（await しない）
-    processAllEvents(response, fastify, userId, sessionId, initialUserEvent).catch(error => {
+    processAllEvents(response, fastify, ctx, sessionId, initialUserEvent).catch(error => {
       fastify.log.error(
         { sessionId: sessionId.toString(), error },
         'Background event processing failed'
@@ -765,8 +853,8 @@ export async function updateSession(
  * 処理フロー:
  * 1. セッション取得（sdkSessionId, status, context を取得）
  * 2. archived → エラー throw
- * 3. sdkSessionId が null → エラー throw（init 中）
- * 4. その他 → 即時処理を開始
+ * 3. init/running 中 → user message を queued event として保存
+ * 4. idle/error → 即時処理を開始
  *    - user message を session_events に INSERT
  *    - sessions.status を 'running' に UPDATE
  *    - query({ resume: sdkSessionId, prompt }) で SDK 呼び出し
@@ -808,14 +896,38 @@ export async function sendMessageToSession(
     throw new Error('Session is archived');
   }
 
-  // 3. sdkSessionId が null の場合はエラー（init 中）
-  if (!sessionRow.sdkSessionId) {
+  // 3. sdkSessionId が null かつ実行中でない場合はエラー
+  if (!sessionRow.sdkSessionId && !['init', 'running'].includes(sessionRow.status)) {
     throw new Error('Session is not ready (still initializing)');
   }
 
   const sessionContext = sessionRow.context as SessionContextResponse;
 
-  // 4. user message を DB に保存し、status を running に更新
+  // 4. 実行中は user message を queued event として保存するだけにする。
+  // 現在の SDK stream 完了後に processAllEvents() の finally で最古の queued event を resume する。
+  if (sessionRow.status === 'init' || sessionRow.status === 'running') {
+    const eventUuid = extractEventUuid(userMessage);
+    await fastify.withUserContext(userId, async tx => {
+      await insertSessionEventInTx(tx, {
+        uuid: eventUuid,
+        sessionId: sessionId.toUUID(),
+        type: 'user',
+        subtype: QUEUED_USER_EVENT_SUBTYPE,
+        message: userMessage,
+      });
+
+      await tx
+        .update(sessions)
+        .set({ updatedAt: new Date() })
+        .where(eq(sessions.id, sessionId.toUUID()));
+    });
+
+    sessionStreamHub.send(sessionId.toString(), userMessage);
+    wsManager.broadcast(sessionId.toString(), userMessage);
+    return;
+  }
+
+  // 5. user message を DB に保存し、status を running に更新
   const eventUuid = extractEventUuid(userMessage);
   await fastify.withUserContext(userId, async tx => {
     // user message を session_events に INSERT
@@ -834,10 +946,15 @@ export async function sendMessageToSession(
       .where(eq(sessions.id, sessionId.toUUID()));
   });
 
-  // WebSocket でユーザーメッセージをブロードキャスト
+  // リアルタイム接続にユーザーメッセージをブロードキャスト
+  sessionStreamHub.send(sessionId.toString(), userMessage);
   wsManager.broadcast(sessionId.toString(), userMessage);
 
-  // 5. SDK query パイプラインを開始（resume）
+  if (!sessionRow.sdkSessionId) {
+    throw new Error('Session is not ready (still initializing)');
+  }
+
+  // 6. SDK query パイプラインを開始（resume）
   await startQueryPipeline({
     fastify,
     ctx,
