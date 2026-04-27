@@ -20,6 +20,8 @@ export interface UpdateUserRoleRequest {
 export type UserRole = 'admin' | 'member';
 
 export interface AppSettingsResponse {
+  app_title: string;
+  welcome_heading: string;
   default_new_user_role: UserRole;
   default_opus_model: string | null;
   default_sonnet_model: string | null;
@@ -29,7 +31,14 @@ export interface AppSettingsResponse {
   otel_traces_table_name: string | null;
 }
 
+export interface AppPublicSettingsResponse {
+  app_title: string;
+  welcome_heading: string;
+}
+
 export interface UpdateAppSettingsRequest {
+  app_title?: string | null;
+  welcome_heading?: string | null;
   default_new_user_role?: UserRole;
   default_opus_model?: string | null;
   default_sonnet_model?: string | null;

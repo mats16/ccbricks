@@ -17,34 +17,60 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
-function AdminSettingsContent() {
+function useAdminSettings() {
   const { t } = useTranslation();
-
   const [settings, setSettings] = useState<AppSettingsResponse | null>(null);
-  const [servingEndpoints, setServingEndpoints] = useState<ServingEndpointsByTier | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-  const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(true);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [otelMetricsTableInput, setOtelMetricsTableInput] = useState('');
-  const [otelLogsTableInput, setOtelLogsTableInput] = useState('');
-  const [otelTracesTableInput, setOtelTracesTableInput] = useState('');
-
-  const MODEL_NULL_SENTINEL = '__default__';
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   const fetchSettings = useCallback(async () => {
     try {
       setIsLoadingSettings(true);
       const data = await adminService.getSettings();
       setSettings(data);
-      setOtelMetricsTableInput(data.otel_metrics_table_name ?? '');
-      setOtelLogsTableInput(data.otel_logs_table_name ?? '');
-      setOtelTracesTableInput(data.otel_traces_table_name ?? '');
     } catch {
       toast.error(t('admin.fetchError'));
     } finally {
       setIsLoadingSettings(false);
     }
   }, [t]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const saveSetting = useCallback(
+    async (key: string, patch: Parameters<typeof adminService.updateSettings>[0]) => {
+      setSavingKey(key);
+      try {
+        await adminService.updateSettings(patch);
+        setSettings(prev => (prev ? ({ ...prev, ...patch } as AppSettingsResponse) : prev));
+        toast.success(t('admin.updateSettingsSuccess'));
+        return true;
+      } catch {
+        toast.error(t('admin.updateSettingsError'));
+        return false;
+      } finally {
+        setSavingKey(null);
+      }
+    },
+    [t]
+  );
+
+  return { settings, isLoadingSettings, savingKey, saveSetting };
+}
+
+function AdminSettingsContent() {
+  const { t } = useTranslation();
+  const { settings, isLoadingSettings, savingKey, saveSetting } = useAdminSettings();
+
+  const [servingEndpoints, setServingEndpoints] = useState<ServingEndpointsByTier | null>(null);
+  const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(true);
+  const [otelMetricsTableInput, setOtelMetricsTableInput] = useState('');
+  const [otelLogsTableInput, setOtelLogsTableInput] = useState('');
+  const [otelTracesTableInput, setOtelTracesTableInput] = useState('');
+
+  const MODEL_NULL_SENTINEL = '__default__';
 
   const fetchServingEndpoints = useCallback(async () => {
     try {
@@ -59,30 +85,24 @@ function AdminSettingsContent() {
   }, [t]);
 
   useEffect(() => {
-    fetchSettings();
     fetchServingEndpoints();
-  }, [fetchSettings, fetchServingEndpoints]);
+  }, [fetchServingEndpoints]);
 
-  const saveSetting = async (patch: Parameters<typeof adminService.updateSettings>[0]) => {
-    setIsSavingSettings(true);
-    try {
-      await adminService.updateSettings(patch);
-      setSettings(prev => (prev ? { ...prev, ...patch } : prev));
-      toast.success(t('admin.updateSettingsSuccess'));
-    } catch {
-      toast.error(t('admin.updateSettingsError'));
-    } finally {
-      setIsSavingSettings(false);
+  useEffect(() => {
+    if (settings) {
+      setOtelMetricsTableInput(settings.otel_metrics_table_name ?? '');
+      setOtelLogsTableInput(settings.otel_logs_table_name ?? '');
+      setOtelTracesTableInput(settings.otel_traces_table_name ?? '');
     }
-  };
+  }, [settings]);
 
   const handleModelChange = (
     key: 'default_opus_model' | 'default_sonnet_model' | 'default_haiku_model',
     value: string | null
-  ) => saveSetting({ [key]: value });
+  ) => saveSetting(key, { [key]: value });
 
   const handleDefaultRoleChange = (value: string) =>
-    saveSetting({ default_new_user_role: value as 'admin' | 'member' });
+    saveSetting('default_new_user_role', { default_new_user_role: value as 'admin' | 'member' });
 
   const otelDirty =
     otelMetricsTableInput.trim() !== (settings?.otel_metrics_table_name ?? '') ||
@@ -93,7 +113,7 @@ function AdminSettingsContent() {
     const metrics = otelMetricsTableInput.trim();
     const logs = otelLogsTableInput.trim();
     const traces = otelTracesTableInput.trim();
-    return saveSetting({
+    return saveSetting('otel', {
       otel_metrics_table_name: metrics || null,
       otel_logs_table_name: logs || null,
       otel_traces_table_name: traces || null,
@@ -115,7 +135,7 @@ function AdminSettingsContent() {
               <Select
                 value={settings?.default_new_user_role ?? 'admin'}
                 onValueChange={handleDefaultRoleChange}
-                disabled={isSavingSettings}
+                disabled={savingKey !== null}
               >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue />
@@ -162,7 +182,7 @@ function AdminSettingsContent() {
                 <Select
                   value={settings?.[key] ?? MODEL_NULL_SENTINEL}
                   onValueChange={v => handleModelChange(key, v === MODEL_NULL_SENTINEL ? null : v)}
-                  disabled={isSavingSettings}
+                  disabled={savingKey !== null}
                 >
                   <SelectTrigger className="w-[320px]">
                     <SelectValue />
@@ -226,7 +246,7 @@ function AdminSettingsContent() {
                   placeholder={t('admin.otelTableNamePlaceholder')}
                   value={value}
                   onChange={e => onChange(e.target.value)}
-                  disabled={isSavingSettings}
+                  disabled={savingKey !== null}
                 />
               </div>
             ))}
@@ -235,9 +255,9 @@ function AdminSettingsContent() {
                 variant="outline"
                 size="sm"
                 onClick={handleOtelSave}
-                disabled={isSavingSettings || !otelDirty}
+                disabled={savingKey !== null || !otelDirty}
               >
-                {isSavingSettings ? (
+                {savingKey === 'otel' ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
@@ -249,6 +269,94 @@ function AdminSettingsContent() {
         )}
       </section>
     </div>
+  );
+}
+
+function AdminBrandingContent() {
+  const { t } = useTranslation();
+  const { refetchAppSettings } = useUser();
+  const { settings, isLoadingSettings, savingKey, saveSetting } = useAdminSettings();
+
+  const [appTitleInput, setAppTitleInput] = useState('');
+  const [welcomeHeadingInput, setWelcomeHeadingInput] = useState('');
+
+  useEffect(() => {
+    if (settings) {
+      setAppTitleInput(settings.app_title);
+      setWelcomeHeadingInput(settings.welcome_heading);
+    }
+  }, [settings]);
+
+  const textSettings = [
+    {
+      key: 'app_title' as const,
+      label: t('admin.appTitle'),
+      placeholder: t('app.title'),
+      value: appTitleInput,
+      onChange: setAppTitleInput,
+      dirty: appTitleInput.trim() !== (settings?.app_title ?? ''),
+    },
+    {
+      key: 'welcome_heading' as const,
+      label: t('admin.welcomeHeading'),
+      placeholder: t('welcome.heading'),
+      value: welcomeHeadingInput,
+      onChange: setWelcomeHeadingInput,
+      dirty: welcomeHeadingInput.trim() !== (settings?.welcome_heading ?? ''),
+    },
+  ];
+
+  const handleTextSettingSave = async (key: 'app_title' | 'welcome_heading', value: string) => {
+    const trimmed = value.trim();
+    const saved = await saveSetting(key, { [key]: trimmed || null });
+    if (saved) await refetchAppSettings();
+  };
+
+  return (
+    <section className="flex-1 overflow-auto p-6">
+      <h2 className="text-lg font-semibold mb-4">{t('admin.branding')}</h2>
+      {isLoadingSettings ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="border border-border rounded-lg p-4">
+          {textSettings.map(({ key, label, placeholder, value, onChange, dirty }, index) => (
+            <div
+              key={key}
+              className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ${
+                index === textSettings.length - 1 ? '' : 'pb-4 mb-4 border-b border-border'
+              }`}
+            >
+              <p className="text-sm font-medium shrink-0">{label}</p>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <Input
+                  className="w-full sm:w-[260px]"
+                  maxLength={80}
+                  placeholder={placeholder}
+                  value={value}
+                  onChange={e => onChange(e.target.value)}
+                  disabled={savingKey !== null}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTextSettingSave(key, value)}
+                  disabled={savingKey !== null || !dirty}
+                >
+                  {savingKey === key ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {t('common.save')}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -400,7 +508,17 @@ export function AdminContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const activeTab = location.pathname === '/admin/users' ? 'users' : 'settings';
+  const activeTab =
+    location.pathname === '/admin/users'
+      ? 'users'
+      : location.pathname === '/admin/branding'
+        ? 'branding'
+        : 'settings';
+
+  const [mounted, setMounted] = useState<Set<string>>(() => new Set([activeTab]));
+  useEffect(() => {
+    setMounted(prev => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
+  }, [activeTab]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -423,12 +541,21 @@ export function AdminContent() {
         <Tabs value={activeTab} onValueChange={val => navigate(`/admin/${val}`, { replace: true })}>
           <TabsList>
             <TabsTrigger value="settings">{t('admin.settings')}</TabsTrigger>
+            <TabsTrigger value="branding">{t('admin.branding')}</TabsTrigger>
             <TabsTrigger value="users">{t('admin.userManagement')}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {activeTab === 'settings' ? <AdminSettingsContent /> : <AdminUsersContent />}
+      <div className={activeTab === 'settings' ? 'flex-1 flex flex-col' : 'hidden'}>
+        {mounted.has('settings') && <AdminSettingsContent />}
+      </div>
+      <div className={activeTab === 'branding' ? 'flex-1 flex flex-col' : 'hidden'}>
+        {mounted.has('branding') && <AdminBrandingContent />}
+      </div>
+      <div className={activeTab === 'users' ? 'flex-1 flex flex-col' : 'hidden'}>
+        {mounted.has('users') && <AdminUsersContent />}
+      </div>
     </div>
   );
 }

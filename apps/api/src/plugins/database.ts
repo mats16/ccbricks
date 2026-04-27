@@ -150,6 +150,8 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
       "updated_at" INTEGER NOT NULL DEFAULT ${TS},
       PRIMARY KEY ("user_id", "id")
     );
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('app_title', 'ccbricks');
+    INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('welcome_heading', 'Claude Code on Databricks');
     INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_new_user_role', 'admin');
     INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_opus_model', 'databricks-claude-opus-4-6');
     INSERT OR IGNORE INTO "app_settings" ("key", "value") VALUES ('default_sonnet_model', 'databricks-claude-sonnet-4-6');

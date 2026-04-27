@@ -1,3 +1,4 @@
+export { appSettingsService } from './app-settings.service';
 export { adminService } from './admin.service';
 export { apiClient, ApiClientError } from './api-client';
 export { userService } from './user.service';

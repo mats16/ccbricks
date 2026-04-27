@@ -1,14 +1,17 @@
 import { createContext, useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { UserInfo } from '@repo/types';
-import { userService } from '@/services';
+import { appSettingsService, userService } from '@/services';
 
 export interface UserContextValue {
   user: UserInfo | null;
   databricksHost: string | null;
+  appTitle: string;
+  welcomeHeading: string;
   isLoading: boolean;
   isAdmin: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
+  refetchAppSettings: () => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextValue | null>(null);
@@ -20,8 +23,22 @@ interface UserProviderProps {
 export function UserProvider({ children }: UserProviderProps) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [databricksHost, setDatabricksHost] = useState<string | null>(null);
+  const [appTitle, setAppTitle] = useState('');
+  const [welcomeHeading, setWelcomeHeading] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const fetchAppSettings = useCallback(async () => {
+    try {
+      const data = await appSettingsService.getPublicSettings();
+      setAppTitle(data.app_title);
+      setWelcomeHeading(data.welcome_heading);
+      document.title = data.app_title;
+    } catch (err) {
+      console.error('Failed to fetch app settings:', err);
+      // Keep document.title as the static HTML <title> value
+    }
+  }, []);
 
   const fetchUser = useCallback(async () => {
     try {
@@ -42,20 +59,23 @@ export function UserProvider({ children }: UserProviderProps) {
     }
   }, []);
 
-  // アプリ初期化時に一度だけ取得
   useEffect(() => {
     fetchUser();
-  }, [fetchUser]);
+    fetchAppSettings();
+  }, [fetchUser, fetchAppSettings]);
 
   return (
     <UserContext.Provider
       value={{
         user,
         databricksHost,
+        appTitle,
+        welcomeHeading,
         isLoading,
         isAdmin: user?.is_admin ?? false,
         error,
         refetch: fetchUser,
+        refetchAppSettings: fetchAppSettings,
       }}
     >
       {children}

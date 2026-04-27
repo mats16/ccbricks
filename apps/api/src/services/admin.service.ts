@@ -1,7 +1,19 @@
 import type { FastifyInstance } from 'fastify';
-import type { AdminUserInfo, AppSettingsResponse, UpdateAppSettingsRequest } from '@repo/types';
+import type {
+  AdminUserInfo,
+  AppPublicSettingsResponse,
+  AppSettingsResponse,
+  UpdateAppSettingsRequest,
+} from '@repo/types';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { users, appSettings } from '../db/schema.js';
+import { TtlCache } from '../lib/ttl-cache.js';
+
+const APP_TITLE_DEFAULT = 'ccbricks';
+const WELCOME_HEADING_DEFAULT = 'Claude Code on Databricks';
+const APP_SETTINGS_CACHE_KEY = 'app-settings';
+const APP_SETTINGS_CACHE_TTL_MS = 60 * 1000;
+const appSettingsCache = new TtlCache<AppSettingsResponse>(APP_SETTINGS_CACHE_TTL_MS);
 
 const MODEL_SETTINGS_KEYS = [
   'default_opus_model',
@@ -10,6 +22,8 @@ const MODEL_SETTINGS_KEYS = [
 ] as const;
 
 const ALL_SETTINGS_KEYS = [
+  'app_title',
+  'welcome_heading',
   'default_new_user_role',
   ...MODEL_SETTINGS_KEYS,
   'otel_metrics_table_name',
@@ -68,6 +82,9 @@ export async function updateUserIsAdmin(
  * アプリケーション設定を取得する
  */
 export async function getAppSettings(fastify: FastifyInstance): Promise<AppSettingsResponse> {
+  const cached = appSettingsCache.get(APP_SETTINGS_CACHE_KEY);
+  if (cached) return cached;
+
   const rows = await fastify.db
     .select({ key: appSettings.key, value: appSettings.value })
     .from(appSettings)
@@ -76,7 +93,9 @@ export async function getAppSettings(fastify: FastifyInstance): Promise<AppSetti
   const map = new Map(rows.map(r => [r.key, r.value]));
   const roleValue = map.get('default_new_user_role');
 
-  return {
+  const settings = {
+    app_title: map.get('app_title') ?? APP_TITLE_DEFAULT,
+    welcome_heading: map.get('welcome_heading') ?? WELCOME_HEADING_DEFAULT,
     default_new_user_role: roleValue === 'admin' || roleValue === 'member' ? roleValue : 'admin',
     default_opus_model: map.get('default_opus_model') ?? null,
     default_sonnet_model: map.get('default_sonnet_model') ?? null,
@@ -84,6 +103,22 @@ export async function getAppSettings(fastify: FastifyInstance): Promise<AppSetti
     otel_metrics_table_name: map.get('otel_metrics_table_name') ?? null,
     otel_logs_table_name: map.get('otel_logs_table_name') ?? null,
     otel_traces_table_name: map.get('otel_traces_table_name') ?? null,
+  };
+
+  appSettingsCache.set(APP_SETTINGS_CACHE_KEY, settings);
+  return settings;
+}
+
+/**
+ * 全ユーザー向けに公開してよいアプリケーション設定を取得する
+ */
+export async function getPublicAppSettings(
+  fastify: FastifyInstance
+): Promise<AppPublicSettingsResponse> {
+  const settings = await getAppSettings(fastify);
+  return {
+    app_title: settings.app_title,
+    welcome_heading: settings.welcome_heading,
   };
 }
 
@@ -120,6 +155,8 @@ export async function updateAppSettings(
         });
     }
   }
+
+  appSettingsCache.delete(APP_SETTINGS_CACHE_KEY);
 }
 
 /**

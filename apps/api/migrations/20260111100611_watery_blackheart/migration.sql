@@ -54,6 +54,10 @@ CREATE TABLE "app_settings" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+INSERT INTO "app_settings" ("key", "value") VALUES ('app_title', 'ccbricks');
+--> statement-breakpoint
+INSERT INTO "app_settings" ("key", "value") VALUES ('welcome_heading', 'Claude Code on Databricks');
+--> statement-breakpoint
 INSERT INTO "app_settings" ("key", "value") VALUES ('default_new_user_role', 'admin');
 --> statement-breakpoint
 INSERT INTO "app_settings" ("key", "value") VALUES ('default_opus_model', 'databricks-claude-opus-4-6');
