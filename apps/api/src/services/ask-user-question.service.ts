@@ -1,5 +1,6 @@
 import type { WsAskUserQuestionRequest } from '@repo/types';
 import { wsManager } from './websocket-manager.service.js';
+import { sessionStreamHub } from './session-stream-hub.service.js';
 
 interface PendingQuestion {
   resolve: (answers: Record<string, string | string[]>) => void;
@@ -64,12 +65,13 @@ export function waitForUserAnswer(
       timeoutId,
     });
 
-    // WebSocket で質問リクエストを broadcast
+    // リアルタイム接続に質問リクエストを broadcast
     const request: WsAskUserQuestionRequest = {
       type: 'ask_user_question',
       tool_use_id: toolUseId,
       input,
     };
+    sessionStreamHub.send(sessionId, request);
     wsManager.broadcast(sessionId, request);
   });
 }

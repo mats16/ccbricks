@@ -13,6 +13,8 @@ vi.mock('../services/session.service.js', () => ({
   updateSession: vi.fn(),
   archiveSession: vi.fn(),
   sendMessageToSession: vi.fn(),
+  canAbortSession: vi.fn(),
+  executeAbort: vi.fn(),
 }));
 
 // Mock session-events service
@@ -26,6 +28,16 @@ vi.mock('../services/websocket-manager.service.js', () => ({
   wsManager: {
     addConnection: vi.fn(),
     removeConnection: vi.fn(),
+    broadcast: vi.fn(),
+  },
+}));
+
+// Mock session stream hub
+vi.mock('../services/session-stream-hub.service.js', () => ({
+  encodeSseEvent: vi.fn(() => 'event: message\ndata: {}\n\n'),
+  sessionStreamHub: {
+    addConnection: vi.fn(() => vi.fn()),
+    send: vi.fn(),
   },
 }));
 
