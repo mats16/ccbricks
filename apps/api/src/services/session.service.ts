@@ -23,6 +23,7 @@ import type {
   DatabricksWorkspaceSource,
   DatabricksAppsOutcome,
   ResolvedDatabricksAppsOutcome,
+  WsServerMessage,
 } from '@repo/types';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessionEvents, sessions } from '../db/schema.js';
@@ -110,8 +111,15 @@ function saveAndBroadcastEvent(
   });
 
   // 2. リアルタイム接続にブロードキャスト
-  sessionStreamHub.send(sessionId.toString(), message);
-  wsManager.broadcast(sessionId.toString(), message);
+  broadcastToSession(sessionId.toString(), message);
+}
+
+/**
+ * SSE / WebSocket の両方にメッセージをブロードキャストする
+ */
+export function broadcastToSession(sessionId: string, message: WsServerMessage | SDKMessage): void {
+  sessionStreamHub.send(sessionId, message);
+  wsManager.broadcast(sessionId, message);
 }
 
 /**
@@ -922,8 +930,7 @@ export async function sendMessageToSession(
         .where(eq(sessions.id, sessionId.toUUID()));
     });
 
-    sessionStreamHub.send(sessionId.toString(), userMessage);
-    wsManager.broadcast(sessionId.toString(), userMessage);
+    broadcastToSession(sessionId.toString(), userMessage);
     return;
   }
 
@@ -947,8 +954,7 @@ export async function sendMessageToSession(
   });
 
   // リアルタイム接続にユーザーメッセージをブロードキャスト
-  sessionStreamHub.send(sessionId.toString(), userMessage);
-  wsManager.broadcast(sessionId.toString(), userMessage);
+  broadcastToSession(sessionId.toString(), userMessage);
 
   if (!sessionRow.sdkSessionId) {
     throw new Error('Session is not ready (still initializing)');

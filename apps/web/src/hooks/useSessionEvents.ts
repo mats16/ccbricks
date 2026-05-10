@@ -135,11 +135,6 @@ export function useSessionEvents({
     }
   }, []);
 
-  // stream 接続成功時のハンドラ
-  const handleConnected = useCallback((_msg: { last_event_id: string | null }) => {
-    // stream 接続成功時はリアルタイム更新を受け取る準備のみ
-  }, []);
-
   // SSE 接続（shouldAutoConnect に基づいて自動接続を制御）
   const {
     isConnected,
@@ -151,7 +146,6 @@ export function useSessionEvents({
     sessionId,
     autoConnect: shouldAutoConnect,
     onEvent: handleEvent,
-    onConnected: handleConnected,
     onAskUserQuestion,
   });
 

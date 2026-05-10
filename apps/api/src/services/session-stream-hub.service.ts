@@ -1,5 +1,7 @@
 import type { SDKMessage, WsServerMessage } from '@repo/types';
 
+const NEWLINE_RE = /\r?\n/;
+
 export type SseEventName =
   | 'connected'
   | 'message'
@@ -9,7 +11,6 @@ export type SseEventName =
 
 export interface SseWritable {
   write(chunk: string): boolean;
-  end?: () => void;
   destroyed?: boolean;
   writableEnded?: boolean;
 }
@@ -46,7 +47,7 @@ export function encodeSseEvent(
   lines.push(`event: ${event}`);
   if (retry !== undefined) lines.push(`retry: ${retry}`);
   const payload = JSON.stringify(data);
-  for (const line of payload.split(/\r?\n/)) {
+  for (const line of payload.split(NEWLINE_RE)) {
     lines.push(`data: ${line}`);
   }
   lines.push('', '');
@@ -96,17 +97,21 @@ class SessionStreamHub {
     const conns = this.connections.get(sessionId);
     if (!conns) return;
 
+    const stale: SessionStreamConnection[] = [];
     for (const conn of conns) {
-      if (conn.stream.destroyed || conn.stream.writableEnded) {
-        this.removeConnection(sessionId, conn);
+      if (conn.stream.destroyed === true || conn.stream.writableEnded === true) {
+        stale.push(conn);
         continue;
       }
 
       try {
         conn.stream.write(payload);
       } catch {
-        this.removeConnection(sessionId, conn);
+        stale.push(conn);
       }
+    }
+    for (const conn of stale) {
+      this.removeConnection(sessionId, conn);
     }
   }
 

@@ -38,6 +38,7 @@ import {
   sendMessageToSession,
   canAbortSession,
   executeAbort,
+  broadcastToSession,
 } from '../services/session.service.js';
 import { TelemetryConfigurationError } from '../services/claude-telemetry-env.service.js';
 import { listSessionEvents, getSessionLastEventId } from '../services/session-events.service.js';
@@ -157,8 +158,7 @@ function handleControlRequest(
         code: 'ABORT_FAILED',
         message: err instanceof Error ? err.message : 'Failed to abort session',
       };
-      sessionStreamHub.send(sessionId.toString(), errorMsg);
-      wsManager.broadcast(sessionId.toString(), errorMsg);
+      broadcastToSession(sessionId.toString(), errorMsg);
     });
 
     return {
@@ -416,28 +416,11 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
     }
 
     let lastEventId: string | null;
-    const replayEvents: SessionEventsResponse['data'] = [];
+    let replayAfter: string | undefined;
 
     try {
       lastEventId = await getSessionLastEventId(fastify, user.id, sessionId);
-      const replayAfter =
-        request.query.after ?? getLastEventIdHeader(request.headers['last-event-id']);
-
-      if (replayAfter && replayAfter !== lastEventId) {
-        let cursor: string | undefined = replayAfter;
-        let hasMore = true;
-        for (let page = 0; page < 20 && hasMore; page++) {
-          const response = await listSessionEvents(fastify, user.id, sessionId, {
-            after: cursor,
-            limit: 1000,
-          });
-          replayEvents.push(...response.data);
-          hasMore = response.has_more;
-          const nextCursor = response.last_id || undefined;
-          if (!nextCursor || nextCursor === cursor) break;
-          cursor = nextCursor;
-        }
-      }
+      replayAfter = request.query.after ?? getLastEventIdHeader(request.headers['last-event-id']);
     } catch (error) {
       if (error instanceof Error && error.message === 'Session not found') {
         return sendError(reply, 404, 'NotFound', 'Session not found');
@@ -460,12 +443,16 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
       sessionStreamHub.heartbeat(session_id);
     }, SSE_HEARTBEAT_INTERVAL_MS);
 
+    let closed = false;
     const close = () => {
+      if (closed) return;
+      closed = true;
       cleanup();
       clearInterval(heartbeat);
       request.log.info({ sessionId: session_id, userId: user.id }, 'SSE stream disconnected');
     };
     request.raw.on('close', close);
+    reply.raw.on('error', close);
 
     const connectedMsg: WsConnectedMessage = {
       type: 'connected',
@@ -474,9 +461,25 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
     };
     reply.raw.write(encodeSseEvent('connected', connectedMsg, undefined, 1000));
 
-    for (const event of replayEvents) {
-      const eventId = 'uuid' in event && typeof event.uuid === 'string' ? event.uuid : undefined;
-      reply.raw.write(encodeSseEvent('message', event, eventId));
+    // リプレイイベントをページ単位でストリーミング（メモリに蓄積しない）
+    if (replayAfter && replayAfter !== lastEventId) {
+      let cursor: string | undefined = replayAfter;
+      let hasMore = true;
+      for (let page = 0; page < 20 && hasMore; page++) {
+        const response = await listSessionEvents(fastify, user.id, sessionId, {
+          after: cursor,
+          limit: 1000,
+        });
+        for (const event of response.data) {
+          const eventId =
+            'uuid' in event && typeof event.uuid === 'string' ? event.uuid : undefined;
+          reply.raw.write(encodeSseEvent('message', event, eventId));
+        }
+        hasMore = response.has_more;
+        const nextCursor = response.last_id || undefined;
+        if (!nextCursor || nextCursor === cursor) break;
+        cursor = nextCursor;
+      }
     }
 
     request.log.info({ sessionId: session_id, userId: user.id }, 'SSE stream connected');
@@ -517,8 +520,7 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
     } catch (error) {
       request.log.error(error, 'Failed to send message to session');
       const authStatusMsg = createAuthStatusMessage(sessionId, error);
-      sessionStreamHub.send(sessionId.toString(), authStatusMsg);
-      wsManager.broadcast(sessionId.toString(), authStatusMsg);
+      broadcastToSession(sessionId.toString(), authStatusMsg);
 
       const status = getMessageErrorStatus(error);
       return sendError(

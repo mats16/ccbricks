@@ -104,6 +104,10 @@ export function useSessionStream({
       return;
     }
 
+    // 前の EventSource が残っていれば確実に閉じる
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+
     setIsConnecting(true);
     setError(null);
 
